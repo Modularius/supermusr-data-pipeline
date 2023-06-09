@@ -1,5 +1,5 @@
 [package]
-name = "trace-to-events"
+name = "trace-to-dsp-events"
 version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
@@ -7,6 +7,9 @@ edition = "2021"
 [dependencies]
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
+
+rand = "0.8.5"
+charts = "0.3.0"
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }

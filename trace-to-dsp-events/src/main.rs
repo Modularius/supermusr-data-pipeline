@@ -2,6 +2,7 @@ mod metrics;
 mod processing;
 
 use anyhow::Result;
+use charts::{ScaleLinear, LineSeriesView, MarkerType, PointLabelPosition, Chart, Color};
 use clap::Parser;
 use common::Intensity;
 use kagiyama::{AlwaysReady, Watcher};
@@ -16,132 +17,89 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 
-#[derive(Debug, Parser)]
-#[clap(author, version, about)]
-struct Cli {
-    #[clap(long)]
-    broker: String,
+mod dsp;
+use dsp::*;
 
-    #[clap(long)]
-    username: String,
-
-    #[clap(long)]
-    password: String,
-
-    #[clap(long = "group")]
-    consumer_group: String,
-
-    #[clap(long)]
-    trace_topic: String,
-
-    #[clap(long)]
-    event_topic: String,
-
-    #[clap(long)]
-    threshold: Intensity,
-
-    #[clap(long, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
-}
+use rand::random;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // Define chart related sizes.
+    let width = 1600;
+    let height = 1200;
+    let (top, right, bottom, left) = (90, 40, 50, 60);
 
-    let args = Cli::parse();
+    // Create a band scale that will interpolate values in [0, 200] to values in the
+    // [0, availableWidth] range (the width of the chart without the margins).
+    let x = ScaleLinear::new()
+        .set_domain(vec![0_f32, 200_f32])
+        .set_range(vec![0, width - left - right]);
 
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&watcher);
-    watcher.start_server(args.observability_address).await;
+    // Create a linear scale that will interpolate values in [0, 100] range to corresponding
+    // values in [availableHeight, 0] range (the height of the chart without the margins).
+    // The [availableHeight, 0] range is inverted because SVGs coordinate system's origin is
+    // in top left corner, while chart's origin is in bottom left corner, hence we need to invert
+    // the range on Y axis for the chart to display as though its origin is at bottom left.
+    let y = ScaleLinear::new()
+        .set_domain(vec![0_f32, 200_f32])
+        .set_range(vec![height - top - bottom, 0]);
 
-    let consumer: StreamConsumer = ClientConfig::new()
-        .set("bootstrap.servers", &args.broker)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &args.username)
-        .set("sasl.password", &args.password)
-        .set("group.id", &args.consumer_group)
-        .set("enable.partition.eof", "false")
-        .set("session.timeout.ms", "6000")
-        .set("enable.auto.commit", "false")
-        .create()?;
+    // You can use your own iterable as data as long as its items implement the `PointDatum` trait.
+    let data = (0..200).map(|_|random::<Intensity>() % 128).collect::<Vec<Intensity>>();
+    let old_range = std(&data);
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    // Create Line series view that is going to represent the data.
+    let line_view1 = LineSeriesView::new()
+        .set_x_scale(&x)
+        .set_y_scale(&y)
+        .set_marker_type(MarkerType::Circle)
+        .set_label_position(PointLabelPosition::N)
+        .set_label_visibility(false)
+        .set_colors(Color::from_vec_of_hex_strings(vec!["#bbbbbb"]))
+        .load_data(&vector_to_point_data(&data)).unwrap();
 
-    let producer: FutureProducer = ClientConfig::new()
-        .set("bootstrap.servers", &args.broker)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &args.username)
-        .set("sasl.password", &args.password)
-        .create()?;
+        // You can use your own iterable as data as long as its items implement the `PointDatum` trait.
+        let data = smooth(data,3);
+    
+        // Create Line series view that is going to represent the data.
+        let line_view2 = LineSeriesView::new()
+            .set_x_scale(&x)
+            .set_y_scale(&y)
+            .set_marker_type(MarkerType::Circle)
+            .set_label_position(PointLabelPosition::N)
+            .set_label_visibility(false)
+            .set_colors(Color::from_vec_of_hex_strings(vec!["#880000"]))
+            .load_data(&vector_to_point_data(&data)).unwrap();
+    
 
-    loop {
-        match consumer.recv().await {
-            Ok(m) => {
-                log::debug!(
-                    "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-                    m.key(),
-                    m.topic(),
-                    m.partition(),
-                    m.offset(),
-                    m.timestamp()
-                );
+    // You can use your own iterable as data as long as its items implement the `PointDatum` trait.
+    let new_range = std(&data);
+    let data = scale(data,old_range/new_range);
 
-                if let Some(payload) = m.payload() {
-                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Trace,
-                            ))
-                            .inc();
-                        match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(thing) => {
-                                match producer
-                                    .send(
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(&thing, args.threshold))
-                                            .key("test"),
-                                        Duration::from_secs(0),
-                                    )
-                                    .await
-                                {
-                                    Ok(_) => {
-                                        log::trace!("Published event message");
-                                        metrics::MESSAGES_PROCESSED.inc();
-                                    }
-                                    Err(e) => {
-                                        log::error!("{:?}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::KafkaPublishFailed,
-                                            ))
-                                            .inc();
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
-                            }
-                        }
-                    } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
-                    }
-                }
+    // Create Line series view that is going to represent the data.
+    let line_view3 = LineSeriesView::new()
+        .set_x_scale(&x)
+        .set_y_scale(&y)
+        .set_marker_type(MarkerType::Circle)
+        .set_label_position(PointLabelPosition::N)
+        .set_label_visibility(false)
+        .set_colors(Color::from_vec_of_hex_strings(vec!["#000000"]))
+        .load_data(&vector_to_point_data(&data)).unwrap();
 
-                consumer.commit_message(&m, CommitMode::Async).unwrap();
-            }
-            Err(e) => log::warn!("Kafka error: {}", e),
-        };
-    }
+
+    // Generate and save the chart.
+    Chart::new()
+        .set_width(width)
+        .set_height(height)
+        .set_margins(top, right, bottom, left)
+        .add_title(String::from("Line Chart"))
+        .add_view(&line_view1)
+        .add_view(&line_view2)
+        .add_view(&line_view3)
+        .add_axis_bottom(&x)
+        .add_axis_left(&y)
+        .add_left_axis_label("Custom Y Axis Label")
+        .add_bottom_axis_label("Custom X Axis Label")
+        .save("line-chart.svg").unwrap();
+    Ok(())
 }
