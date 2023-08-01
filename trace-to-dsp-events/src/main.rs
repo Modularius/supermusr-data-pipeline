@@ -57,7 +57,7 @@ pub(crate) struct Cli {
 #[derive(Subcommand, Clone)]
 enum Mode {
     #[clap(about = "Generate Random Traces and Extract Pulses")]
-    Normal(NormalParameters),
+    Simulation(SimulationParameters),
     #[clap(about = "Read Traces from a File and Extract Pulses")]
     File(FileParameters),
     #[clap(about = "Read Database Traces and Extract Pulses")]
@@ -65,7 +65,7 @@ enum Mode {
 }
 
 #[derive(Parser, Clone)]
-struct NormalParameters {
+struct SimulationParameters {
     #[clap(long, short = 'l', default_value = "500")]
     trace_length: usize,
 
@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.mode {
-        Some(Mode::Normal(npm)) => run_normal_mode(npm),
+        Some(Mode::Simulation(npm)) => run_simulated_mode(npm),
         Some(Mode::Database(dpm)) => (),
         Some(Mode::File(fpm)) => run_file_mode(fpm),
         None => run_file_mode(FileParameters::parse()),
@@ -148,7 +148,7 @@ fn save_to_file<T: Display, I: Iterator<Item = T>>(name: &str, it: I) {
         .unwrap_or_else(|e| log_then_panic_t(format!("Cannot event to {name} : {e}")));
 }
 
-fn run_normal_mode(params: NormalParameters) {
+fn run_simulated_mode(params: SimulationParameters) {
     /*
     let distrbution = PulseDistribution {
         std_dev: RandomInterval(params.std_dev_min,params.std_dev_max),
