@@ -1,32 +1,36 @@
 use std::collections::VecDeque;
 
+use crate::{trace_iterators::RealArray, Detector, Integer, Real};
 use common::Intensity;
 use common::Time;
-use crate::{Detector, Real, Integer, trace_iterators::RealArray};
 
-use crate::window::{Window, smoothing_window::SmoothingWindow};
+use crate::window::{smoothing_window::SmoothingWindow, Window};
 
 use super::smoothing_window::SNRSign;
 use super::smoothing_window::Stats;
 
-
 #[derive(Default)]
 pub struct NoiseSmoothingWindow {
-    threshold : Real,
-    _influence : Real,  //  Maybe we should do something with this?
-    position : Real,
-    window : SmoothingWindow,
+    threshold: Real,
+    _influence: Real, //  Maybe we should do something with this?
+    position: Real,
+    window: SmoothingWindow,
 }
 impl NoiseSmoothingWindow {
-    pub fn new(size : usize, threshold : Real, _influence : Real) -> Self {
-        NoiseSmoothingWindow { threshold, _influence, window: SmoothingWindow::new(size),..Default::default()}
+    pub fn new(size: usize, threshold: Real, _influence: Real) -> Self {
+        NoiseSmoothingWindow {
+            threshold,
+            _influence,
+            window: SmoothingWindow::new(size),
+            ..Default::default()
+        }
     }
 }
 impl Window for NoiseSmoothingWindow {
     type InputType = Real;
     type OutputType = Stats;
 
-    fn push(&mut self, value : Real) -> bool {
+    fn push(&mut self, value: Real) -> bool {
         if let Some(mut stats) = self.window.stats() {
             stats.value = value - self.position;
             if let SNRSign::Zero = stats.signal_over_noise_sign(self.threshold) {
@@ -38,7 +42,6 @@ impl Window for NoiseSmoothingWindow {
         } else {
             self.window.push(value)
         }
-        
     }
     fn stats(&self) -> Option<Self::OutputType> {
         let mut stats = self.window.stats()?;

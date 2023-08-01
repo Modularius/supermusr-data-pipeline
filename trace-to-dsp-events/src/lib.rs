@@ -1,10 +1,9 @@
 // Code from https://github.com/swizard0/smoothed_z_score/blob/master/README.md
 
-
 /*
 iterators of raw trace data have the trait EventFilter<I,S,D> implemented
 The events method consumes a raw trace iterator and emits an EventIter iterator
-A detector is a struct that 
+A detector is a struct that
 
 I is an iterator to the enumerated raw trace data, S is the detector signal type and D is the detector.
 
@@ -17,8 +16,8 @@ use std::{collections::VecDeque, iter::Peekable, marker::PhantomData, slice::Ite
 use common::Intensity;
 
 pub mod events;
+pub use detectors::{event_detector, peak_detector, Detector};
 use events::{Event, MultipleEvents};
-pub use detectors::{Detector, peak_detector,event_detector};
 
 pub mod trace_iterators;
 pub use trace_iterators::RealArray;
@@ -26,36 +25,37 @@ pub use trace_iterators::RealArray;
 pub mod window;
 pub use window::smoothing_window::SmoothingWindow;
 
-
-
 pub type Real = f64;
 pub type Integer = i16;
 
 pub mod processing {
     use super::*;
-    pub fn make_enumerate_real((i,v) : (usize, &Intensity)) -> (Real,Real) { (i as Real, *v as Real) }
-    pub fn make_enumerate_integeral((i,v) : (Real,Real)) -> (usize, Integer) { (i as usize, v as Integer) }
+    pub fn make_enumerate_real((i, v): (usize, &Intensity)) -> (Real, Real) {
+        (i as Real, *v as Real)
+    }
+    pub fn make_enumerate_integeral((i, v): (Real, Real)) -> (usize, Integer) {
+        (i as usize, v as Integer)
+    }
 }
 
-
-
-
-
-
-
-pub struct EventIter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
-    source : I,
-    detector : D,
+pub struct EventIter<I, D>
+where
+    I: Iterator<Item = (D::TimeType, D::ValueType)>,
+    D: Detector,
+{
+    source: I,
+    detector: D,
 }
 
-impl<I,D> Iterator for EventIter<I,D> where
-    I: Iterator<Item = (D::TimeType,D::ValueType)>,
-    D : Detector
+impl<I, D> Iterator for EventIter<I, D>
+where
+    I: Iterator<Item = (D::TimeType, D::ValueType)>,
+    D: Detector,
 {
     type Item = D::EventType;
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(item) = self.source.next() {
-            if let Some(event) = self.detector.signal(item.0,item.1) {
+            if let Some(event) = self.detector.signal(item.0, item.1) {
                 return Some(event);
             }
         }
@@ -102,43 +102,64 @@ impl<'a, I,D,E> Iterator for MultiEventIter<'a, I,D,E> where
 
 */
 
-
-
-pub trait EventFilter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
-    fn events(self, detector : D) -> EventIter<I,D>;
+pub trait EventFilter<I, D>
+where
+    I: Iterator<Item = (D::TimeType, D::ValueType)>,
+    D: Detector,
+{
+    fn events(self, detector: D) -> EventIter<I, D>;
 }
 
-impl<I,D> EventFilter<I,D> for I where I : Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
-    fn events(self, detector: D) -> EventIter<I,D> {
-        EventIter { source: self, detector }
+impl<I, D> EventFilter<I, D> for I
+where
+    I: Iterator<Item = (D::TimeType, D::ValueType)>,
+    D: Detector,
+{
+    fn events(self, detector: D) -> EventIter<I, D> {
+        EventIter {
+            source: self,
+            detector,
+        }
     }
 }
 
+pub struct TraceMakerIter<I, E>
+where
+    I: Iterator<Item = E>,
+    E: Event,
+{
+    source: Peekable<I>,
+    end: usize,
 
-
-pub struct TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Event {
-    source : Peekable<I>,
-    end : usize,
-
-    next_event : Option<E>,
-    index : usize,
-    events : VecDeque<E>
+    next_event: Option<E>,
+    index: usize,
+    events: VecDeque<E>,
 }
 
-impl<I,E> TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Event {
-    fn new(source: I, end : usize) -> Self {
-        let mut itr = Self { source: source.peekable(), end,
+impl<I, E> TraceMakerIter<I, E>
+where
+    I: Iterator<Item = E>,
+    E: Event,
+{
+    fn new(source: I, end: usize) -> Self {
+        let mut itr = Self {
+            source: source.peekable(),
+            end,
             next_event: Option::<E>::default(),
-            index : usize::default(),
-            events : VecDeque::<E>::default(),
+            index: usize::default(),
+            events: VecDeque::<E>::default(),
         };
         itr.next_event = itr.source.next();
         itr
     }
 }
 
-impl<I,E> Iterator for TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Event {
-    type Item = (Real,Real);
+impl<I, E> Iterator for TraceMakerIter<I, E>
+where
+    I: Iterator<Item = E>,
+    E: Event,
+{
+    type Item = (Real, Real);
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == self.end {
             return None;
@@ -165,53 +186,63 @@ impl<I,E> Iterator for TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Even
             }
         }
 
-        
         self.index += 1;
-        Some(((self.index - 1) as Real, self.events.iter().map(|e|e.get_intensity_at((self.index - 1) as Real)).sum()))
+        Some((
+            (self.index - 1) as Real,
+            self.events
+                .iter()
+                .map(|e| e.get_intensity_at((self.index - 1) as Real))
+                .sum(),
+        ))
     }
 }
 
-
-
-
-pub trait TraceMakerFilter<I,E> where I: Iterator<Item = E>, E : Event {
-    fn trace(self, end : usize) -> TraceMakerIter<I,E>;
+pub trait TraceMakerFilter<I, E>
+where
+    I: Iterator<Item = E>,
+    E: Event,
+{
+    fn trace(self, end: usize) -> TraceMakerIter<I, E>;
 }
 
-impl<I,E> TraceMakerFilter<I,E> for I where I: Iterator<Item = E>, E : Event {
-    fn trace(self, end : usize) -> TraceMakerIter<I,E> {
-        TraceMakerIter::new(self,end)
+impl<I, E> TraceMakerFilter<I, E> for I
+where
+    I: Iterator<Item = E>,
+    E: Event,
+{
+    fn trace(self, end: usize) -> TraceMakerIter<I, E> {
+        TraceMakerIter::new(self, end)
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
-    use common::Intensity;
-    use crate::window::WindowFilter;
     use crate::window::composite::CompositeWindow;
+    use crate::window::WindowFilter;
+    use common::Intensity;
 
     use super::trace_iterators::finite_difference::FiniteDifferencesFilter;
 
-    use super::{event_detector::EventsDetector, EventFilter,Real};
+    use super::{event_detector::EventsDetector, EventFilter, Real};
 
     #[test]
     fn sample_data() {
         let input = vec![
-            1.0, 1.0, 1.1, 1.0, 0.9, 1.0, 1.0, 1.1, 1.0, 0.9, 1.0, 1.1, 1.0, 1.0, 0.9, 1.0, 1.0, 1.1, 1.0,
-            1.0, 1.0, 1.0, 1.1, 0.9, 1.0, 1.1, 1.0, 1.0, 0.9, 1.0, 1.1, 1.0, 1.0, 1.1, 1.0, 0.8, 0.9, 1.0,
-            1.2, 0.9, 1.0, 1.0, 1.1, 1.2, 1.0, 1.5, 1.0, 3.0, 2.0, 5.0, 3.0, 2.0, 1.0, 1.0, 1.0, 0.9, 1.0,
-            1.0, 3.0, 2.6, 4.0, 3.0, 3.2, 2.0, 1.0, 1.0, 0.8, 4.0, 4.0, 2.0, 2.5, 1.0, 1.0, 1.0
+            1.0, 1.0, 1.1, 1.0, 0.9, 1.0, 1.0, 1.1, 1.0, 0.9, 1.0, 1.1, 1.0, 1.0, 0.9, 1.0, 1.0,
+            1.1, 1.0, 1.0, 1.0, 1.0, 1.1, 0.9, 1.0, 1.1, 1.0, 1.0, 0.9, 1.0, 1.1, 1.0, 1.0, 1.1,
+            1.0, 0.8, 0.9, 1.0, 1.2, 0.9, 1.0, 1.0, 1.1, 1.2, 1.0, 1.5, 1.0, 3.0, 2.0, 5.0, 3.0,
+            2.0, 1.0, 1.0, 1.0, 0.9, 1.0, 1.0, 3.0, 2.6, 4.0, 3.0, 3.2, 2.0, 1.0, 1.0, 0.8, 4.0,
+            4.0, 2.0, 2.5, 1.0, 1.0, 1.0,
         ];
-        let output: Vec<_> = input.iter().map(|x|(x*1000.) as Intensity)
+        let output: Vec<_> = input
+            .iter()
+            .map(|x| (x * 1000.) as Intensity)
             .into_iter()
             .enumerate()
-            .map(|(i,v)|(i as Real,v as Real))
+            .map(|(i, v)| (i as Real, v as Real))
             .finite_differences()
-            .window(CompositeWindow::trivial())
-            .events(EventsDetector::new([10.0, 2.0]))
+            .window(CompositeWindow::<1>::trivial())
+            //.events(EventsDetector::new())
             .collect();
         for line in output {
             println!("{line:?}")
