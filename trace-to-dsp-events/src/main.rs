@@ -176,7 +176,8 @@ fn run_simulated_mode(params: SimulationParameters) {
 }
 fn run_file_mode(params: FileParameters) {
     let file_name = params.file_name.unwrap_or(
-        "traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces".to_owned(),
+        //"../../Data/Traces/MuSR_A27_B28_C29_D30_Apr2021_Ag_ZF_InstDeg_Slit60_short.traces".to_owned(),
+        "../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces".to_owned(),
     );
     let mut trace_file = load_trace_file(&file_name).unwrap();
     let event_index = 243;
@@ -188,31 +189,10 @@ fn run_file_mode(params: FileParameters) {
         .iter()
         .enumerate();
 
-    /*
-    iter_enumerate.clone()
-        .save_to_file("data/trace.csv")
-        .unwrap();
-
-    iter_enumerate.clone()
-        .map(processing::make_enumerate_real)
-        .window(Gate::new(2.))
-        .window(SmoothingWindow::new(3))
-        .map(smoothing_window::extract::enumerated_normalised_value)
-        .window(SmoothingWindow::new(8))
-        .map(smoothing_window::extract::enumerated_mean)
-        .save_to_file("data/trace1.csv")
-        .unwrap();
-    iter_enumerate.clone()
-        .map(processing::make_enumerate_real)
-        .window(SmoothingWindow::new(64))
-        .map(smoothing_window::extract::enumerated_variance)
-        //.map(smoothing_window::extract::enumerated_normalised_mean)
-        .save_to_file("data/trace2.csv")
-        .unwrap();*/
-
     let events: Vec<_> = iter_enumerate
         .clone()
         .map(processing::make_enumerate_real)
+        .map(|(i,v)| (i,100000. + v))
         .window(Gate::new(2.))
         .window(SmoothingWindow::new(3))
         .map(smoothing_window::extract::enumerated_normalised_value)
@@ -223,36 +203,28 @@ fn run_file_mode(params: FileParameters) {
             Box::new(SmoothingWindow::new(8)),
         ]))
         .map(|(i, stats)| (i, stats.map(smoothing_window::extract::mean)))
-        .events(CompositeDetector::new([
-            Box::new(SignDetector::new(1.)),
-            Box::new(SignDetector::new(1.)),
-            Box::new(SignDetector::new(1.)),
-        ]))
+        .events(EventsDetector::new(
+            CompositeDetector::new([
+                Box::new(SimpleChangeDetector::new(1.)),
+                Box::new(SimpleChangeDetector::new(1.)),
+                Box::new(SimpleChangeDetector::new(1.)),
+        ]),
+        SmoothingWindow::new(50)))
         /*.events(FiniteDifferenceChangeDetector::new([
             SimpleChangeDetector::new(1.),
             SimpleChangeDetector::new(1.),
         ]))*/
-        .flat_map(|m| m.into_iter())
+        //.flat_map(|m| m.into_iter())
         .collect();
     println!("{:?}", events.iter().len());
     let mut counter: i32 = 0;
     for event in events.iter() {
-        let index = event.get_data().get_index();
-        let data = event.get_data().get_data();
-        if index == 1 {
-            let change = match data.get_class() {
-                trace_to_dsp_events::detectors::change_detector::SignClass::Zero => 0,
-                trace_to_dsp_events::detectors::change_detector::SignClass::Pos => 1,
-                trace_to_dsp_events::detectors::change_detector::SignClass::Neg => -1,
-            };
-            if change != 0 {
-                counter += change;
-            }
-        }
+        let index = event.get_time();
+        let data = event.get_data();
         println!("{:?}", event);
     }
     //.window(NoiseSmoothingWindow::new(5,0.5,0.))
     //.map(smoothing_window::extract::enumerated_mean)
-    //.save_to_file("data/trace1.csv")
+    //.save_to_file("../../Data/CSV/trace1.csv")
     //.unwrap();
 }

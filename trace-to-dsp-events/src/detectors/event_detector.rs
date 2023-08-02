@@ -1,10 +1,22 @@
 use std::collections::VecDeque;
 use std::fmt::Display;
 
-use crate::events::{Event, EventData, EventWithData, SimpleEvent, TimeValue};
-use crate::window::smoothing_window::{SNRSign, Stats};
+use crate::events::{
+    Event,
+    EventData,
+    EventWithData,
+    SimpleEvent,
+    TimeValue
+};
+use crate::window::{Window, smoothing_window};
+use crate::window::smoothing_window::{SmoothingWindow,SNRSign, Stats};
 use crate::{Detector, Real, RealArray};
 use common::Intensity;
+use fitting::approx::assert_abs_diff_eq;
+use fitting::Gaussian;
+use fitting::gaussian::GaussianError;
+use fitting::ndarray::{array, Array, Array1};
+use num::complex::ComplexFloat;
 
 use super::change_detector;
 use super::composite::CompositeDetector;
@@ -64,72 +76,114 @@ impl SignalState {
     }
 }
 
+enum EventsDetectorState {
+    WaitingForNonzero,
+    WaitingForChange,
+}
 pub struct EventsDetector<const N: usize> {
-    prev_signal: VecDeque<(Real, RealArray<N>)>,
-    pulses_begun: VecDeque<Real>,
-    pulses_found: VecDeque<SimpleEvent<Data>>,
+    state : EventsDetectorState,
+
+    base_line : Real,
+
+    prev_signal: Vec<(Real, Real)>,
+    pulses_in_progress: VecDeque<Gaussian<Real>>,
 
     change_detector: CompositeDetector<N, SimpleEvent<change_detector::Data>>,
+
+    baseline_detector : SmoothingWindow,
 }
 
 impl<const N: usize> EventsDetector<N> {
     pub fn new(
         change_detector: CompositeDetector<N, SimpleEvent<change_detector::Data>>,
+        baseline_detector: SmoothingWindow,
     ) -> EventsDetector<N> {
         EventsDetector {
             change_detector,
-            prev_signal: VecDeque::<(Real, RealArray<N>)>::default(),
-            pulses_begun: VecDeque::<Real>::default(),
-            pulses_found: VecDeque::<SimpleEvent<Data>>::default(),
+            state: EventsDetectorState::WaitingForNonzero,
+            base_line : Real::default(),
+            prev_signal: Vec::<(Real, Real)>::default(),
+            pulses_in_progress: VecDeque::<Gaussian<Real>>::default(),
+            baseline_detector,
         }
     }
-    fn retro(&mut self) {
-        for (time, values) in &mut self.prev_signal {
-            for pulse in &mut self.pulses_found {
-                for n in 0..N {
-                    values[n] -= Self::gaussian_diff(
-                        pulse.get_time(),
-                        pulse.get_data().half_peak_full_width.unwrap(),
-                        pulse.get_data().peak_intensity.unwrap(),
-                        *time,
-                        n,
-                    );
-                }
+    fn extract_gaussian(&mut self) -> Result<Gaussian<Real>,GaussianError> {
+        let x_vec : Array1<Real> = self.prev_signal.iter().map(|s|s.0).collect();
+        let y_vec : Array1<Real> = self.prev_signal.iter().map(|s|s.1).collect();
+        println!("{x_vec:?}, {y_vec:?}");
+        let estimated = Gaussian::fit(x_vec.clone(), y_vec.clone())?;
+
+        self.prev_signal.clear();
+        Ok(estimated)
+    }
+    fn correct_signal(&mut self, time : Real, value : Real) -> (Real,Real) {
+        (time,Real::min(value - self.base_line - self.pulses_in_progress.iter().map(|g|g.value(time)).sum::<Real>(),0.))
+    }
+    fn detect_event(&mut self, time: Real, value: RealArray<N>) -> Option<change_detector::Data>{
+        if let Some(events)= self.change_detector.signal(time, value) {
+            let mut iter = events.into_iter();
+            if let Some(event) = iter.find(|e| e.get_data().get_index() == 1) {
+                return Some(event.get_data().get_data().clone())
             }
         }
+        None
     }
-    fn gaussian_diff(mu: Real, sigma2: Real, peak: Real, time: Real, n: usize) -> Real {
-        if n == 0 {
-            -peak * (0.5 * (time - mu).powi(2) / sigma2).exp()
-        } else {
-            ((time - mu) * mu / sigma2) * Self::gaussian_diff(mu, sigma2, peak, time, 0)
-                - (0.5 * (time - mu).powi(2) / sigma2)
-                    * Self::gaussian_diff(mu, sigma2, peak, time, n - 1)
-        }
+    fn detect_next_pulse(&mut self, time: Real, value: RealArray<N>) {
+        let new_gaussian = match self.extract_gaussian() {
+            Ok(gaussian) => gaussian,
+            Err(e) => panic!("{:?}\n{e}",self.pulses_in_progress),
+        };
+        self.pulses_in_progress.push_back(new_gaussian);
     }
 }
+
 impl<const N: usize> Detector for EventsDetector<N> {
     type TimeType = Real;
     type ValueType = RealArray<N>;
     type EventType = SimpleEvent<Data>;
 
     fn signal(&mut self, time: Real, value: Self::ValueType) -> Option<SimpleEvent<Data>> {
-        self.prev_signal.push_back((time, value));
-        match self.change_detector.signal(time, value) {
-            Some(events) => {
-                let mut iter = events.into_iter();
-                if let Some(event) = iter.find(|e| e.get_data().get_index() == 1) {
-                    match event.get_data().get_data().class {
-                        change_detector::Class::Flat => {
-                            //self.pulses_found.push_back(time)
+        match &self.state {
+            EventsDetectorState::WaitingForNonzero => {
+                self.baseline_detector.push(value[0]);
+                if let Some(event) = self.detect_event(time, value) {
+                    if change_detector::Class::Flat != event.class {
+                        self.state= EventsDetectorState::WaitingForChange;
+                    }
+                };
+            },
+            EventsDetectorState::WaitingForChange => {
+                if let Some(_) = self.detect_event(time, value) {
+                    self.detect_next_pulse(time, value);
+                    if let Some(stats) = self.baseline_detector.stats() {
+                        let self.base_line = smoothing_window::extract::mean(stats);
+                        for (i,val) in self.prev_signal.iter_mut() {
+                            *val -= mean;
                         }
-                        change_detector::Class::Rising => self.pulses_begun.push_back(time),
-                        change_detector::Class::Falling => todo!(),
                     }
                 }
-                None
+                let signal = self.correct_signal(time, value[0]);
+                self.prev_signal.push(signal);
+            },
+        };
+        if let Some(pulse) = self.pulses_in_progress.front() {
+            if pulse.value(time).abs() < 1e-6 {
+                let pulse = self.pulses_in_progress.pop_front().unwrap();
+                return Some(
+                    SimpleEvent::<Data>::new(
+                        *pulse.mu(),
+                         Data {
+                             class: Class::Flat,
+                             peak_intensity: Some(*pulse.a()),
+                             area_under_curve: None,
+                             half_peak_full_width: Some(*pulse.sigma()),
+                             start: None,
+                             end: None
+                        }
+                    )
+                );
             }
-            None => None,
         }
+        None
     }
 }
