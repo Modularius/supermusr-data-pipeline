@@ -6,10 +6,12 @@ use common::Time;
 
 use crate::window::{smoothing_window::SmoothingWindow, Window};
 
-use super::smoothing_window::SNRSign;
-use super::smoothing_window::Stats;
+use crate::tagged::{
+    SNRSign,
+    Stats
+};
 
-#[derive(Default)]
+#[derive(Default,Clone)]
 pub struct NoiseSmoothingWindow {
     threshold: Real,
     _influence: Real, //  Maybe we should do something with this?
@@ -48,4 +50,5 @@ impl Window for NoiseSmoothingWindow {
         stats.shift(self.position);
         Some(stats)
     }
+    fn get_time_shift(&self) -> Real { self.window.get_time_shift() }
 }

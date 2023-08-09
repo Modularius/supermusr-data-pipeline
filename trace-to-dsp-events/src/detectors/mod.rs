@@ -1,14 +1,14 @@
 pub mod change_detector;
 pub mod composite;
-pub mod event_detector;
-pub mod event_formation;
+pub mod pulse_detector;
 pub mod peak_detector;
+//pub mod partitioner;
 
-use crate::events::Event;
+use crate::events::{event::Event, EventData};
 
 pub trait Detector {
     type TimeType;
     type ValueType;
-    type EventType: Event;
-    fn signal(&mut self, time: Self::TimeType, value: Self::ValueType) -> Option<Self::EventType>;
+    type DataType : EventData;
+    fn signal(&mut self, time: Self::TimeType, value: Self::ValueType) -> Option<Event<Self::DataType>>;
 }

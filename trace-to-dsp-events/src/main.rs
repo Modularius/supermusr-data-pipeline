@@ -22,26 +22,46 @@ use tdengine::utils::log_then_panic_t;
 use trace_simulator::generator::{PulseDistribution, RandomInterval};
 
 use trace_to_dsp_events::detectors::change_detector::{
-    ChangeDetector, SignDetector, SimpleChangeDetector,
+    ChangeDetector,
+    ChangeEvent,
 };
-use trace_to_dsp_events::detectors::composite::CompositeDetector;
-use trace_to_dsp_events::events::EventWithData;
-use trace_to_dsp_events::trace_iterators::finite_difference::{
-    self, FiniteDifferencesFilter, FiniteDifferencesIter,
+use trace_to_dsp_events::detectors::composite::CompositeTopOnlyDetector;
+use trace_to_dsp_events::event_iterators::pulse_formation::{PulseData, Gaussian};
+use trace_to_dsp_events::partition::PartitionFilter;
+use trace_to_dsp_events::peak_detector::PeakClass;
+use trace_to_dsp_events::tagged;
+use trace_to_dsp_events::trace_iterators::to_trace::ToTrace;
+use trace_to_dsp_events::trace_iterators::{
+    find_baseline::FindBaselineFilter,
+    finite_difference,
+    finite_difference::{
+        FiniteDifferencesFilter,
+        FiniteDifferencesIter,
+    },
 };
-use trace_to_dsp_events::window::{noise_smoothing_window::NoiseSmoothingWindow, WindowFilter};
+use trace_to_dsp_events::window::noise_smoothing_window::NoiseSmoothingWindow;
 use trace_to_dsp_events::{
-    detectors::{event_detector::EventsDetector, peak_detector::PeakDetector},
-    events::Event,
-    events::SimpleEvent,
+    window::{
+        WindowFilter
+    },
+    detectors::{
+        peak_detector::PeakDetector,
+    },
+    event_iterators::{
+        pulse_formation::PulseFormationFilter,
+        pulse_formation::PulseEvent,
+        save_to_file::SaveEventsToFile,
+    },
+    events::{
+        Event,
+    },
     processing,
     trace_iterators::{load_from_trace_file::load_trace_file, save_to_file::SaveToFile},
     window::{
-        composite::CompositeWindow,
         gate::Gate,
-        smoothing_window::{self, SmoothingWindow, Stats},
+        smoothing_window::{SmoothingWindow},
     },
-    EventFilter, Integer, Real, TraceMakerFilter,
+    EventFilter, Real,
 };
 
 use tdengine::tdengine::TDEngine;
@@ -112,6 +132,8 @@ struct SimulationParameters {
 struct FileParameters {
     #[clap(long, short = 'f')]
     file_name: Option<String>,
+    #[clap(long, short = 'o')]
+    save_file_name: Option<String>,
 }
 
 #[derive(Parser, Clone)]
@@ -179,52 +201,92 @@ fn run_file_mode(params: FileParameters) {
         //"../../Data/Traces/MuSR_A27_B28_C29_D30_Apr2021_Ag_ZF_InstDeg_Slit60_short.traces".to_owned(),
         "../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces".to_owned(),
     );
+    let save_file_name = params.save_file_name.unwrap_or("Saves/output".to_owned());
+
     let mut trace_file = load_trace_file(&file_name).unwrap();
     let event_index = 243;
     let channel_index = 0;
     let run = trace_file.get_event(event_index).unwrap();
+    run_trace(run.normalized_channel_trace(channel_index), save_file_name);
+}
 
-    let iter_enumerate = run
-        .normalized_channel_trace(channel_index)
+fn run_trace(trace: &Vec<u16>, save_file_name: String) {
+    let iter_enumerate = trace
         .iter()
         .enumerate();
 
-    let events: Vec<_> = iter_enumerate
-        .clone()
+    let trace_baselined = iter_enumerate
         .map(processing::make_enumerate_real)
-        .map(|(i,v)| (i,100000. + v))
+        .map(|(i,v)| (i,-v))
+        .find_baseline(1000)
+        .collect_vec();
+
+    let trace_smoothed = trace_baselined
+        .iter()
+        .cloned()
+        //.window(NoiseSmoothingWindow::new(16,2.,0.))
         .window(Gate::new(2.))
-        .window(SmoothingWindow::new(3))
-        .map(smoothing_window::extract::enumerated_normalised_value)
-        .finite_differences()
-        .window(CompositeWindow::new([
-            Box::new(SmoothingWindow::new(8)),
-            Box::new(SmoothingWindow::new(8)),
-            Box::new(SmoothingWindow::new(8)),
-        ]))
-        .map(|(i, stats)| (i, stats.map(smoothing_window::extract::mean)))
-        .events(EventsDetector::new(
-            CompositeDetector::new([
-                Box::new(SimpleChangeDetector::new(1.)),
-                Box::new(SimpleChangeDetector::new(1.)),
-                Box::new(SimpleChangeDetector::new(1.)),
-        ]),
-        SmoothingWindow::new(50)))
-        /*.events(FiniteDifferenceChangeDetector::new([
-            SimpleChangeDetector::new(1.),
-            SimpleChangeDetector::new(1.),
-        ]))*/
-        //.flat_map(|m| m.into_iter())
-        .collect();
-    println!("{:?}", events.iter().len());
-    let mut counter: i32 = 0;
-    for event in events.iter() {
-        let index = event.get_time();
-        let data = event.get_data();
-        println!("{:?}", event);
+        .window(SmoothingWindow::new(4))
+        .event(PulseFormer::new(PeakDetector::new()))
+        .map(tagged::extract::enumerated_mean)
+        .collect_vec();
+
+    let mut pulse_events = trace_smoothed
+        .clone()
+        .into_iter()
+        .partition_on_detections(PeakDetector::new())
+        //.filter(|trace_partition|trace_partition.get_event().get_data().get_class() == PeakClass::LocalMax)
+        .map(|trace_partition| {
+            let event = trace_partition.get_event();
+            let a = event.get_data().get_value().unwrap_or_default();
+            let mu = event.get_time();
+            PulseEvent {
+                time: mu,
+                data: PulseData::new(
+                    Some(mu),
+                    Some(a),
+                    trace_partition.iter()
+                        .find(|(_,v)| *v > a*(Real::exp(-0.5)))
+                        .map(|(i,_)|mu - i)
+                )
+            }
+        })
+        .collect_vec();
+    for i in 0..pulse_events.len() {
+        let time = pulse_events[i].get_time();
+        //pulse_events[i].get_data_mut().set_peak_time(Some(trace_baselined[time as usize - 999].1));
+        let gaussian = Gaussian::new(
+            pulse_events[i].get_data().get_peak_intensity().unwrap_or_default(),
+            time,
+            pulse_events[i].get_data().get_radius().unwrap_or_default(),
+        );
+        pulse_events[(i+1)..].iter_mut().for_each(|event| {
+            let new_intensity = event.get_data().get_peak_intensity().map(|v|v - gaussian.get_value_at(event.get_time()));
+            event.get_data_mut().set_peak_intensity(new_intensity);
+        });
     }
-    //.window(NoiseSmoothingWindow::new(5,0.5,0.))
-    //.map(smoothing_window::extract::enumerated_mean)
-    //.save_to_file("../../Data/CSV/trace1.csv")
-    //.unwrap();
+    let trace_simulated = trace_baselined
+        .iter()
+        .cloned()
+        .to_trace(&pulse_events);
+
+    let (v,d) = trace_baselined
+        .iter()
+        .cloned()
+        .evaluate_events(&pulse_events)
+        .map(|(_,v,d)|(v*v,d*d))
+        .fold((0.,0.),|(full_v,full_d), (v,d)|(full_v + v, full_d + d));
+    println!("Ratio of Diff = {0}/{1} = {2}", Real::sqrt(d), Real::sqrt(v), Real::sqrt(d/v));
+
+    trace_baselined
+        .iter()
+        .cloned()
+        .save_to_file(&(save_file_name.clone() + "_baselined" + ".csv")).unwrap();
+    trace_smoothed
+        .iter()
+        .cloned()
+        .save_to_file(&(save_file_name.clone() + "_smoothed" + ".csv")).unwrap();
+    SaveToFile::save_to_file(trace_simulated.into_iter(), &(save_file_name.clone() + "_simulated" + ".csv")).unwrap();
+    SaveEventsToFile::save_to_file(pulse_events.into_iter(), &(save_file_name.clone() + "_pulse" + ".csv")).unwrap();
+    //pulse_events.save_to_file(&(save_file_name.clone() + "5" + ".csv")).unwrap();
 }

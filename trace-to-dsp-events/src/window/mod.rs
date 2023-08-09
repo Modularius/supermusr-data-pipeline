@@ -1,11 +1,13 @@
+use std::{marker::PhantomData, ops::Add};
+
 use crate::Real;
 
 pub mod composite;
 pub mod gate;
 pub mod noise_smoothing_window;
 pub mod smoothing_window;
+pub mod trivial;
 
-use smoothing_window::Stats;
 
 pub trait Window {
     type InputType: Copy;
@@ -13,6 +15,7 @@ pub trait Window {
 
     fn push(&mut self, value: Self::InputType) -> bool;
     fn stats(&self) -> Option<Self::OutputType>;
+    fn get_time_shift(&self) -> Real;
 }
 
 #[derive(Clone)]
@@ -23,6 +26,7 @@ where
 {
     window: W,
     source: I,
+    delta: Option<(W::InputType,fn(W::InputType,W::InputType)->W::InputType)>,
 }
 
 impl<I, W> WindowIter<I, W>
@@ -31,7 +35,13 @@ where
     W: Window,
 {
     pub fn new(source: I, window: W) -> Self {
-        WindowIter { source, window }
+        WindowIter { source, window, delta:None }
+    }
+    pub fn set_delta(&mut self, delta : W::InputType) {
+        self.delta.map(|(mut x,_)|{x = delta;});
+    }
+    pub fn set_delta_op(&mut self, delta_op : fn(W::InputType,W::InputType)->W::InputType) {
+        self.delta.map(|(_,mut x)|{x = delta_op;});
     }
     #[cfg(test)]
     pub fn get_window(&self) -> &W {
@@ -48,9 +58,12 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let val = self.source.next()?;
+            let val = match self.delta {
+                Some((delta,delta_op)) => { let (time,value) = self.source.next()?; (time,delta_op(value,delta)) },
+                None => self.source.next()?,
+            };
             if self.window.push(val.1) {
-                return Some((val.0, self.window.stats()?));
+                return Some((val.0 - self.window.get_time_shift(), self.window.stats()?));
             }
         }
     }
@@ -73,23 +86,7 @@ where
     }
 }
 
-#[derive(Default, Clone, Copy)]
-pub struct TrivialWindow {
-    value: Real,
-}
-impl Window for TrivialWindow {
-    type InputType = Real;
-    type OutputType = Stats;
 
-    fn push(&mut self, value: Real) -> bool {
-        self.value = value;
-        true
-    }
-    fn stats(&self) -> Option<Self::OutputType> {
-        Some(Stats {
-            value: self.value,
-            mean: self.value,
-            variance: 0.,
-        })
-    }
-}
+
+
+

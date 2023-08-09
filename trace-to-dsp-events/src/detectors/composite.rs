@@ -1,45 +1,54 @@
-use std::array::{from_fn, from_ref};
 use std::fmt::Display;
 
-use crate::events::{Event, EventData, EventWithData, MultipleEvents, SimpleEvent, TimeValue};
-use crate::window::smoothing_window::{SNRSign, Stats};
-use crate::window::Window;
-use crate::{Detector, Real, RealArray, SmoothingWindow};
+use crate::events::{
+    EventData,
+    event::Event,
+};
+use crate::{Detector, Real, RealArray};
 
-type ConstituantType<E> = Box<dyn Detector<TimeType = Real, ValueType = Real, EventType = E>>;
-//#[derive(Default)]
-pub struct CompositeDetector<const N: usize, E: EventWithData> {
-    detectors: [ConstituantType<E>; N],
+type ConstituantType<D> = Box<dyn Detector<TimeType = Real, ValueType = Real, DataType = D>>;
+//#[derive(Clone)]
+pub struct CompositeDetector<const N: usize, D: EventData> {
+    detectors: [ConstituantType<D>; N],
 }
 
-impl<const N: usize, E: EventWithData> CompositeDetector<N, E> {
-    pub fn new(detectors: [ConstituantType<E>; N]) -> CompositeDetector<N, E> {
-        CompositeDetector::<N, E> { detectors }
+impl<const N: usize, D: EventData> CompositeDetector<N, D> {
+    pub fn new(detectors: [ConstituantType<D>; N]) -> CompositeDetector<N, D> {
+        CompositeDetector::<N, D> { detectors }
     }
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct CompositeData<D: EventData> {
-    index: usize,
-    data: D,
+#[derive(Clone, Debug)]
+pub struct CompositeData<D: EventData, const N : usize> {
+    value: RealArray<N>,
+    data: Vec<(usize,D)>,
 }
-
-impl<D: EventData> CompositeData<D> {
-    pub fn get_index(&self) -> usize {
-        self.index
+impl<D: EventData, const N : usize> Default for CompositeData<D,N> {
+    fn default() -> Self {
+        CompositeData{
+            value : [Real::default(); N],
+            data: Vec::<(usize,D)>::default(),
+        }
     }
-    pub fn get_data(&self) -> &D {
+}
+pub type CompositeEvent<D,const N : usize> = Event<CompositeData<D,N>>;
+
+impl<D: EventData, const N : usize> CompositeData<D,N> {
+    pub fn get_value(&self) -> &RealArray<N> {
+        &self.value
+    }
+    pub fn get_data(&self) -> &Vec<(usize, D)> {
         &self.data
     }
 }
 
-impl<D: EventData> Display for CompositeData<D> {
+impl<D: EventData, const N : usize> Display for CompositeData<D,N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{0}:{1}", self.index, self.data))
+        f.write_fmt(format_args!("{0:?}:{1:?}", self.value, self.data))
     }
 }
 
-impl<D: EventData> EventData for CompositeData<D> {
+impl<D: EventData, const N : usize> EventData for CompositeData<D,N> {
     fn has_influence_at(&self, index: Real) -> bool {
         true
     }
@@ -49,32 +58,116 @@ impl<D: EventData> EventData for CompositeData<D> {
     }
 }
 
-impl<const N: usize, E: EventWithData> Detector for CompositeDetector<N, E> {
+
+
+
+
+
+
+
+
+impl<const N: usize, D: EventData> Detector for CompositeDetector<N, D> {
     type TimeType = Real;
     type ValueType = RealArray<N>;
-    type EventType = MultipleEvents<SimpleEvent<CompositeData<E::DataType>>>;
+    type DataType = CompositeData<D,N>;
 
-    fn signal(&mut self, time: Real, value: RealArray<N>) -> Option<Self::EventType> {
-        let events: Vec<SimpleEvent<CompositeData<E::DataType>>> = self
+    fn signal(&mut self, time: Real, value: RealArray<N>) -> Option<CompositeEvent<D,N>> {
+        let data: Vec<(usize, D)> = self
             .detectors
             .iter_mut()
             .enumerate()
             .map(|(i, detector)| {
                 let event = detector.signal(time, value[i])?;
-                Some(SimpleEvent::new(
-                    event.get_time(),
-                    CompositeData {
-                        index: i,
-                        data: event.take_data(),
-                    },
-                ))
+                Some((i,event.take_data()))
             })
             .flatten()
             .collect();
-        if events.is_empty() {
+        if data.is_empty() {
             None
         } else {
-            Some(MultipleEvents::new(events, time))
+            Some(CompositeEvent::new(time,CompositeData::<D,N> { value, data }))
+        }
+    }
+}
+
+
+
+
+
+
+
+
+#[derive(Clone, Debug)]
+pub struct CompositeTopOnlyData<D: EventData, const N : usize> {
+    value: RealArray<N>,
+    index: usize,
+    data: D,
+}
+impl<D: EventData, const N : usize> Default for CompositeTopOnlyData<D,N> {
+    fn default() -> Self {
+        CompositeTopOnlyData{
+            value : [Real::default(); N],
+            index : usize::default(),
+            data: D::default(),
+        }
+    }
+}
+pub type CompositeTopOnlyEvent<D,const N : usize> = Event<CompositeTopOnlyData<D,N>>;
+
+impl<D: EventData, const N : usize> CompositeTopOnlyData<D,N> {
+    pub fn get_value(&self) -> &RealArray<N> { &self.value }
+    pub fn get_index(&self) -> usize { self.index }
+    pub fn get_data(&self) -> &D { &self.data }
+}
+
+impl<D: EventData, const N : usize> Display for CompositeTopOnlyData<D,N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{0:?}:{1:?}", self.value, self.data))
+    }
+}
+
+impl<D: EventData, const N : usize> EventData for CompositeTopOnlyData<D,N> {
+    fn has_influence_at(&self, index: Real) -> bool {
+        true
+    }
+
+    fn get_intensity_at(&self, index: Real) -> Real {
+        Real::default()
+    }
+}
+
+
+
+pub struct CompositeTopOnlyDetector<const N: usize, D: EventData> {
+    detectors: [ConstituantType<D>; N],
+}
+
+impl<const N: usize, D: EventData> CompositeTopOnlyDetector<N, D> {
+    pub fn new(detectors: [ConstituantType<D>; N]) -> CompositeTopOnlyDetector<N, D> {
+        CompositeTopOnlyDetector::<N, D> { detectors }
+    }
+}
+
+impl<const N: usize, D: EventData> Detector for CompositeTopOnlyDetector<N, D> {
+    type TimeType = Real;
+    type ValueType = RealArray<N>;
+    type DataType = CompositeTopOnlyData<D,N>;
+
+    fn signal(&mut self, time: Real, value: RealArray<N>) -> Option<CompositeTopOnlyEvent<D,N>> {
+        let data: Vec<(usize, D)> = self
+            .detectors
+            .iter_mut()
+            .enumerate()
+            .map(|(i, detector)| {
+                let event = detector.signal(time, value[i])?;
+                Some((i,event.take_data()))
+            })
+            .flatten()
+            .collect();
+        if data.is_empty() {
+            None
+        } else {
+            Some(CompositeTopOnlyEvent::new(time,CompositeTopOnlyData::<D,N> { value, index: data[0].0, data: data[0].1.clone() }))
         }
     }
 }

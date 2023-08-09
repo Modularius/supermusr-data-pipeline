@@ -7,123 +7,9 @@ use num::Signed;
 
 use crate::window::Window;
 
-pub mod extract {
-    use super::*;
-    pub fn mean(
-        Stats {
-            value: _,
-            mean,
-            variance: _,
-        }: Stats,
-    ) -> Real {
-        mean
-    }
-    pub fn enumerated_mean(
-        (
-            i,
-            Stats {
-                value: _,
-                mean,
-                variance: _,
-            },
-        ): (Real, Stats),
-    ) -> (Real, Real) {
-        (i, mean)
-    }
-    pub fn enumerated_variance(
-        (
-            i,
-            Stats {
-                value: _,
-                mean: _,
-                variance,
-            },
-        ): (Real, Stats),
-    ) -> (Real, Real) {
-        (i, variance)
-    }
-    pub fn enumerated_standard_deviation(
-        (
-            i,
-            Stats {
-                value: _,
-                mean: _,
-                variance,
-            },
-        ): (Real, Stats),
-    ) -> (Real, Real) {
-        (i, variance.sqrt())
-    }
-    pub fn enumerated_normalised_mean(
-        (
-            i,
-            Stats {
-                value: _,
-                mean,
-                variance,
-            },
-        ): (Real, Stats),
-    ) -> (Real, Real) {
-        if variance == 0. {
-            (i, mean)
-        } else {
-            (i, mean / variance.sqrt())
-        }
-    }
-    pub fn enumerated_normalised_value(
-        (
-            i,
-            Stats {
-                value,
-                mean,
-                variance,
-            },
-        ): (Real, Stats),
-    ) -> (Real, Real) {
-        if variance == 0. {
-            (i, value)
-        } else {
-            (i, (value - mean) / variance.sqrt() + mean)
-        }
-    }
-}
+use crate::tagged::Stats;
 
-#[derive(Default, Clone, Debug)]
-pub struct Stats {
-    pub value: Real,
-    pub mean: Real,
-    pub variance: Real,
-}
-
-#[derive(Default, Clone)]
-pub enum SNRSign {
-    Pos,
-    Neg,
-    #[default]
-    Zero,
-}
-impl Stats {
-    pub fn signal_over_noise_sign(&self, threshold: Real) -> SNRSign {
-        if (self.value - self.mean).powi(2) >= self.variance * threshold.powi(2) {
-            if (self.value - self.mean).is_sign_positive() {
-                SNRSign::Pos
-            } else {
-                SNRSign::Neg
-            }
-        } else {
-            SNRSign::Zero
-        }
-    }
-    pub fn get_normalized_value(&self) -> Real {
-        (self.value - self.mean).powi(2) / self.variance.sqrt()
-    }
-    pub fn shift(&mut self, delta: Real) {
-        self.value += delta;
-        self.mean += delta;
-    }
-}
-
-#[derive(Default)]
+#[derive(Default,Clone)]
 pub struct SmoothingWindow {
     value: Real,
     sum: Real,
@@ -184,6 +70,7 @@ impl Window for SmoothingWindow {
             None
         }
     }
+    fn get_time_shift(&self) -> Real { self.size/2.0 }
 }
 
 #[cfg(test)]

@@ -1,73 +1,85 @@
 use std::fmt::Display;
 
-use crate::events::{EventData, SimpleEvent, TimeValue};
+use crate::events::{
+    EventData, 
+    event::Event,
+};
 use crate::{Detector, Real};
 
-#[derive(Default, Debug, Clone)]
-pub enum Class {
+#[derive(Default, Debug, Clone,PartialEq)]
+pub enum PeakClass {
     #[default]
     Flat,
     LocalMax,
     LocalMin,
 }
-impl EventData for Data {}
 
 #[derive(Default, Debug, Clone)]
-pub struct Data {
-    class: Class,
+pub struct PeakData {
+    class: PeakClass,
+    value : Option<Real>,
 }
+impl PeakData {
+    pub fn get_class(&self) -> PeakClass { self.class.clone() }
+    pub fn get_value(&self) -> Option<Real> { self.value }
+}
+impl EventData for PeakData {}
 
-impl Display for Data {
+impl Display for PeakData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{0}",
-            match self.class {
-                Class::LocalMax => 1,
-                Class::Flat => 0,
-                Class::LocalMin => -1,
-            }
+            "{0},{1}", self.value.unwrap_or(0.),
+            match self.class { PeakClass::LocalMax => 1, PeakClass::Flat => 0, PeakClass::LocalMin => -1, }
         ))
     }
 }
 
+type PeakEvent = Event<PeakData>;
+
 #[derive(Default)]
 pub struct PeakDetector {
-    prev_prev_value: Real,
-    prev_value: Real,
+    prev: Option<(Real,Option<Real>)>,
+}
+
+impl PeakDetector {
+    pub fn new() -> Self { Self::default() }
 }
 
 impl Detector for PeakDetector {
     type TimeType = Real;
     type ValueType = Real;
-    type EventType = SimpleEvent<Data>;
+    type DataType = PeakData;
 
-    fn signal(&mut self, time: Real, value: Real) -> Option<Self::EventType> {
-        let mut return_value = Option::<SimpleEvent<Data>>::default();
-        if self.prev_prev_value < self.prev_value && value < self.prev_value {
-            let peak = TimeValue {
-                time: Real::from(time - 1.),
-                value: Real::from(self.prev_value),
+    fn signal(&mut self, time: Real, value: Real) -> Option<PeakEvent> {
+        if let Some((prev_value,Some(prev_prev_value))) = self.prev {
+            let return_value = {
+                if (prev_prev_value < prev_value && prev_value >= value) || (prev_prev_value <= prev_value && prev_value > value) {
+                    Some(PeakEvent::new(
+                        time - 1.,
+                        PeakData {
+                            class: PeakClass::LocalMax,
+                            value: Some(prev_value),
+                        },
+                    ))
+                } else if (prev_prev_value > prev_value && prev_value <= value) || (prev_prev_value >= prev_value && prev_value < value) {
+                    Some(PeakEvent::new(
+                        time - 1.,
+                        PeakData {
+                            class: PeakClass::LocalMin,
+                            value: Some(prev_value),
+                        },
+                    ))
+                } else { None }
             };
-            return_value = Some(SimpleEvent::new(
-                time - 1.,
-                Data {
-                    class: Class::LocalMax,
-                },
-            ));
-        } else if self.prev_prev_value > self.prev_value && value > self.prev_value {
-            let peak = TimeValue {
-                time: Real::from(time - 1.),
-                value: Real::from(self.prev_value),
-            };
-            return_value = Some(SimpleEvent::new(
-                time - 1.,
-                Data {
-                    class: Class::LocalMin,
-                },
-            ));
+            self.prev = Some((value,Some(prev_value)));
+            return_value       
+        } else if let Some((prev_value,None)) = self.prev {
+            self.prev = Some((value,Some(prev_value)));
+            None
         }
-        self.prev_prev_value = self.prev_value;
-        self.prev_value = value;
-        return_value
+        else {
+            self.prev = Some((value,None));
+            None
+        }
     }
 }

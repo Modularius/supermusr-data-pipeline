@@ -3,28 +3,27 @@ use core::array::from_fn;
 
 use crate::window::Window;
 
-use super::smoothing_window::Stats;
-use super::TrivialWindow;
+use super::trivial::{TrivialWindow, Realisable};
 
-type BoxedDynWindow = Box<dyn Window<InputType = Real, OutputType = Stats>>;
+type BoxedDynWindow<O> = Box<dyn Window<InputType = Real, OutputType = O>>;
 
-pub struct CompositeWindow<const N: usize> {
-    windows: [BoxedDynWindow; N],
+pub struct CompositeWindow<const N: usize, O> where O : Realisable {
+    windows: [BoxedDynWindow<O>; N],
 }
-impl<const N: usize> CompositeWindow<N> {
-    pub fn new(windows: [BoxedDynWindow; N]) -> Self {
+impl<const N: usize, O> CompositeWindow<N, O> where O : Realisable + 'static {
+    pub fn new(windows: [BoxedDynWindow<O>; N]) -> Self {
         CompositeWindow { windows }
     }
 
     pub fn trivial() -> Self {
         CompositeWindow {
-            windows: from_fn(|_| Box::new(TrivialWindow::default()) as BoxedDynWindow),
+            windows: from_fn(|_| Box::new(TrivialWindow::<O>::default()) as BoxedDynWindow<O>),
         }
     }
 }
-impl<const N: usize> Window for CompositeWindow<N> {
+impl<const N: usize, O> Window for CompositeWindow<N, O> where O : Realisable {
     type InputType = RealArray<N>;
-    type OutputType = [Stats; N];
+    type OutputType = [O; N];
 
     fn push(&mut self, value: RealArray<N>) -> bool {
         let mut full = true;
@@ -41,4 +40,5 @@ impl<const N: usize> Window for CompositeWindow<N> {
             Some(from_fn(|i| self.windows[i].stats().unwrap()))
         }
     }
+    fn get_time_shift(&self) -> Real { 0. }
 }
