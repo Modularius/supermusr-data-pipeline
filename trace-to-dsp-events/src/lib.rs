@@ -14,7 +14,6 @@ pub mod event_iterators;
 pub mod events;
 pub mod tagged;
 pub mod partition;
-pub mod modifiers;
 
 use std::{collections::VecDeque, iter::Peekable};
 

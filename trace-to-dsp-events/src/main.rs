@@ -25,43 +25,40 @@ use trace_to_dsp_events::detectors::change_detector::{
     ChangeDetector,
     ChangeEvent,
 };
-use trace_to_dsp_events::detectors::composite::CompositeTopOnlyDetector;
-use trace_to_dsp_events::event_iterators::pulse_formation::{PulseData, Gaussian};
-use trace_to_dsp_events::partition::PartitionFilter;
-use trace_to_dsp_events::peak_detector::PeakClass;
-use trace_to_dsp_events::tagged;
-use trace_to_dsp_events::trace_iterators::to_trace::ToTrace;
-use trace_to_dsp_events::trace_iterators::{
-    find_baseline::FindBaselineFilter,
-    finite_difference,
-    finite_difference::{
-        FiniteDifferencesFilter,
-        FiniteDifferencesIter,
-    },
+use trace_to_dsp_events::detectors::{
+    composite::CompositeTopOnlyDetector,
+    pulse_detector::PulseDetector,
+    peak_detector::{PeakClass, PeakDetector},
 };
+use trace_to_dsp_events::tagged::{Stats, extract};
+use trace_to_dsp_events::partition::PartitionFilter;
+
 use trace_to_dsp_events::window::noise_smoothing_window::NoiseSmoothingWindow;
 use trace_to_dsp_events::{
-    window::{
-        WindowFilter
-    },
-    detectors::{
-        peak_detector::PeakDetector,
-    },
-    event_iterators::{
-        pulse_formation::PulseFormationFilter,
-        pulse_formation::PulseEvent,
-        save_to_file::SaveEventsToFile,
-    },
     events::{
+        EventFilter,
         Event,
+        SaveEventsToFile,
     },
     processing,
-    trace_iterators::{load_from_trace_file::load_trace_file, save_to_file::SaveToFile},
-    window::{
-        gate::Gate,
-        smoothing_window::{SmoothingWindow},
+    trace_iterators::{
+        load_from_trace_file::load_trace_file,
+        save_to_file::SaveToFile,
+        find_baseline::FindBaselineFilter,
+        finite_difference,
+        finite_difference::{
+            FiniteDifferencesFilter,
+            FiniteDifferencesIter,
+        },
+        to_trace::ToTrace,
+        feedback::FeedbackFilter,
     },
-    EventFilter, Real,
+    window::{
+        WindowFilter,
+        gate::Gate,
+        smoothing_window::SmoothingWindow,
+    },
+    Real,
 };
 
 use tdengine::tdengine::TDEngine;
@@ -211,11 +208,9 @@ fn run_file_mode(params: FileParameters) {
 }
 
 fn run_trace(trace: &Vec<u16>, save_file_name: String) {
-    let iter_enumerate = trace
+    let trace_baselined = trace
         .iter()
-        .enumerate();
-
-    let trace_baselined = iter_enumerate
+        .enumerate()
         .map(processing::make_enumerate_real)
         .map(|(i,v)| (i,-v))
         .find_baseline(1000)
@@ -224,13 +219,17 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String) {
     let trace_smoothed = trace_baselined
         .iter()
         .cloned()
-        //.window(NoiseSmoothingWindow::new(16,2.,0.))
         .window(Gate::new(2.))
+        .feedback(|x,y|x + y,0.)
         .window(SmoothingWindow::new(4))
-        .event(PulseFormer::new(PeakDetector::new()))
-        .map(tagged::extract::enumerated_mean)
         .collect_vec();
 
+    let pulse_events = trace_smoothed
+        .iter()
+        .cloned()
+        .events(PulseDetector::new(PeakDetector::new()))
+        .collect_vec();
+/*
     let mut pulse_events = trace_smoothed
         .clone()
         .into_iter()
@@ -264,11 +263,11 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String) {
             let new_intensity = event.get_data().get_peak_intensity().map(|v|v - gaussian.get_value_at(event.get_time()));
             event.get_data_mut().set_peak_intensity(new_intensity);
         });
-    }
+    } */
     let trace_simulated = trace_baselined
         .iter()
         .cloned()
-        .to_trace(&pulse_events);
+        .to_trace(pulse_events.as_slice());
 
     let (v,d) = trace_baselined
         .iter()
@@ -285,8 +284,9 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String) {
     trace_smoothed
         .iter()
         .cloned()
+        .map(extract::enumerated_mean)
         .save_to_file(&(save_file_name.clone() + "_smoothed" + ".csv")).unwrap();
-    SaveToFile::save_to_file(trace_simulated.into_iter(), &(save_file_name.clone() + "_simulated" + ".csv")).unwrap();
+    //SaveToFile::save_to_file(trace_simulated.into_iter(), &(save_file_name.clone() + "_simulated" + ".csv")).unwrap();
     SaveEventsToFile::save_to_file(pulse_events.into_iter(), &(save_file_name.clone() + "_pulse" + ".csv")).unwrap();
     //pulse_events.save_to_file(&(save_file_name.clone() + "5" + ".csv")).unwrap();
 }

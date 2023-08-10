@@ -1,9 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::{trace_iterators::RealArray, Detector, Integer, Real};
-use common::Intensity;
-use common::Time;
-use num::Signed;
+use crate::Real;
 
 use crate::window::Window;
 
@@ -44,6 +41,7 @@ impl SmoothingWindow {
     }
 }
 impl Window for SmoothingWindow {
+    type TimeType = Real;
     type InputType = Real;
     type OutputType = Stats;
 
@@ -70,13 +68,14 @@ impl Window for SmoothingWindow {
             None
         }
     }
-    fn get_time_shift(&self) -> Real { self.size/2.0 }
+    fn apply_time_shift(&self, time : Real) -> Real { time - self.size/2.0 }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::processing;
 
+    use common::Intensity;
     use super::super::WindowFilter;
     use super::*;
     use assert_approx_eq::assert_approx_eq;
@@ -138,13 +137,14 @@ mod tests {
     #[test]
     fn test_minimal() {
         let data = [4, 3];
-        let (i, stats) = data
+        let (i, stats, param) = data
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(SmoothingWindow::new(2))
             .next()
             .unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 1.);
         assert_eq!(stats.value, 3.);
         assert_approx_eq!(stats.mean, 7. / 2.);
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn test_three_data() {
         let data = [4, 3, 1];
-        let (i, stats) = data
+        let (i, stats, param) = data
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
@@ -164,6 +164,7 @@ mod tests {
             .skip(1)
             .next()
             .unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 2.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 2.);
@@ -176,13 +177,14 @@ mod tests {
     #[test]
     fn test_three_data_three_window() {
         let data = [4, 3, 1];
-        let (i, stats) = data
+        let (i, stats, param) = data
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(SmoothingWindow::new(3))
             .next()
             .unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 2.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 8. / 3.);
@@ -203,7 +205,8 @@ mod tests {
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(SmoothingWindow::new(3));
-        let (i, stats) = itr.next().unwrap();
+        let (i, stats, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 2.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 8. / 3.);
@@ -215,7 +218,8 @@ mod tests {
                 / (3. - 1.)
         );
 
-        let (i, stats) = itr.next().unwrap();
+        let (i, stats, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 3.);
         assert_eq!(stats.value, 5.);
         assert_approx_eq!(stats.mean, 9. / 3.);
@@ -227,7 +231,8 @@ mod tests {
                 / (3. - 1.)
         );
 
-        let (i, stats) = itr.next().unwrap();
+        let (i, stats, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 4.);
         assert_eq!(stats.value, 3.);
         assert_approx_eq!(stats.mean, 9. / 3.);

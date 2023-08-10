@@ -1,8 +1,4 @@
-use std::collections::VecDeque;
-
-use crate::{trace_iterators::RealArray, Detector, Integer, Real};
-use common::Intensity;
-use common::Time;
+use crate::Real;
 
 use crate::window::{smoothing_window::SmoothingWindow, Window};
 
@@ -29,6 +25,7 @@ impl NoiseSmoothingWindow {
     }
 }
 impl Window for NoiseSmoothingWindow {
+    type TimeType = Real;
     type InputType = Real;
     type OutputType = Stats;
 
@@ -50,5 +47,5 @@ impl Window for NoiseSmoothingWindow {
         stats.shift(self.position);
         Some(stats)
     }
-    fn get_time_shift(&self) -> Real { self.window.get_time_shift() }
+    fn apply_time_shift(&self, time : Real ) -> Real { self.window.apply_time_shift(time) }
 }

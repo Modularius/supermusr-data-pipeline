@@ -19,6 +19,7 @@ impl Gate {
     }
 }
 impl Window for Gate {
+    type TimeType = Real;
     type InputType = Real;
     type OutputType = Real;
 
@@ -38,7 +39,7 @@ impl Window for Gate {
     fn stats(&self) -> Option<Real> {
         self.value
     }
-    fn get_time_shift(&self) -> Real {0.}
+    fn apply_time_shift(&self, time : Real) -> Real { time }
 }
 
 #[cfg(test)]
@@ -47,7 +48,6 @@ mod tests {
 
     use super::super::WindowFilter;
     use super::*;
-    use assert_approx_eq::assert_approx_eq;
 
     #[test]
     #[should_panic]
@@ -100,39 +100,48 @@ mod tests {
             .map(processing::make_enumerate_real)
             .window(Gate::new(3.0));
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 0.);
         assert_eq!(value, 4.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 1.);
         assert_eq!(value, 4.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 2.);
         assert_eq!(value, 4.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 3.);
         assert_eq!(value, 4.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 4.);
         assert_eq!(value, 4.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 5.);
         assert_eq!(value, 1.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 6.);
         assert_eq!(value, 5.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 7.);
         assert_eq!(value, 5.);
 
-        let (i, value) = itr.next().unwrap();
+        let (i, value, param) = itr.next().unwrap();
+        assert!(param.is_none());
         assert_eq!(i, 8.);
         assert_eq!(value, 2.);
 

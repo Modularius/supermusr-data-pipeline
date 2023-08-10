@@ -1,33 +1,33 @@
-use itertools::Itertools;
 
+use crate::trace_iterators::TraceData;
 use crate::{Real, Detector,
     events::event::Event,
-    detectors,
 };
-use std::{fmt::Display, marker::PhantomData, iter::Peekable};
+use std::fmt::Display;
 use std::fmt::Debug;
-use std::slice;
 
 
 
 //#[derive(Default)]
-pub struct TracePartition<I, Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)>,
-    Det: Detector,
+pub struct TracePartition<I, D> where
+    I : Iterator,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
 {
-    pub event : Event<Det::DataType>,
+    pub event : Event<D::DataType>,
     pub iter : I,
     pub length : usize,
 }
 
-impl<I, Det> TracePartition<I, Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)> + Clone + Debug,
-    Det: Detector,
-    Det::TimeType : Default + Debug + PartialEq,
-    Det::ValueType : Default + Debug,
-    Det::DataType : Clone,
+impl<I, D> TracePartition<I, D> where
+    I : Iterator + Clone + Debug,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Default + Debug + PartialEq,
+    D::ValueType : Default + Debug,
+    D::DataType : Clone,
 {
-    pub fn get_event(&self) -> &Event<Det::DataType> {
+    pub fn get_event(&self) -> &Event<D::DataType> {
         &self.event
     }
     pub fn iter(&self) -> SubPartitionIter<I> {
@@ -35,12 +35,13 @@ impl<I, Det> TracePartition<I, Det> where
     }
 }
 
-impl<I,Det> Clone for TracePartition<I,Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)> + Clone,
-    Det: Detector,
-    Det::TimeType :  Clone,
-    Det::ValueType : Clone,
-    Det::DataType : Clone,
+impl<I,D> Clone for TracePartition<I,D> where
+    I : Iterator + Clone,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType :  Clone,
+    D::ValueType : Clone,
+    D::DataType : Clone,
 {
     fn clone(&self) -> Self {
         Self { event: self.event.clone(), iter: self.iter.clone(), length: self.length.clone() }
@@ -48,23 +49,25 @@ impl<I,Det> Clone for TracePartition<I,Det> where
 }
 
 
-impl<I,Det> Debug for TracePartition<I,Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)> + Debug,
-    Det: Detector,
-    Det::TimeType : Debug,
-    Det::ValueType : Debug,
+impl<I,D> Debug for TracePartition<I,D> where
+    I : Iterator + Debug,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Debug,
+    D::ValueType : Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TracePartition").field("event", &self.event).field("iter", &self.iter).field("length", &self.length).finish()
     }
 }
 
-impl<I, Det> Display for TracePartition<I, Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)> + Clone + Debug,
-    Det: Detector,
-    Det::TimeType : Default + Clone + Debug,
-    Det::ValueType : Default + Clone + Debug,
-    Det::DataType : Clone,
+impl<I, D> Display for TracePartition<I, D> where
+    I : Iterator + Clone + Debug,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Default + Clone + Debug,
+    D::ValueType : Default + Clone + Debug,
+    D::DataType : Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("event:{0}, from {1:?} to {2}",self.event, self.iter, self.length))
@@ -103,41 +106,44 @@ impl<I> Iterator for SubPartitionIter<I> where I : Iterator {
 
 
 #[derive(Clone)]
-pub struct PartitionIter<I, Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)>,
-    Det: Detector,
-    Det::TimeType : Default + Clone + Debug,
-    Det::ValueType : Default + Clone + Debug,
-    Det::DataType : Clone,
+pub struct PartitionIter<I, D> where
+    I : Iterator,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Default + Clone + Debug,
+    D::ValueType : Default + Clone + Debug,
+    D::DataType : Clone,
 {
-    detector: Det,
+    detector: D,
     source: I,
 }
 
-impl<I, Det> PartitionIter<I, Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)>,
-    Det: Detector,
-    Det::TimeType : Default + Clone + Debug,
-    Det::ValueType : Default + Clone + Debug,
-    Det::DataType : Clone,
+impl<I, D> PartitionIter<I, D> where
+    I : Iterator,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Default + Clone + Debug,
+    D::ValueType : Default + Clone + Debug,
+    D::DataType : Clone,
 {
-    pub fn new(source: I, detector: Det) -> Self {
+    pub fn new(source: I, detector: D) -> Self {
         PartitionIter { source, detector }
     }
     #[cfg(test)]
-    pub fn get_detector(&self) -> &Det {
+    pub fn get_detector(&self) -> &D {
         &self.detector
     }
 }
 
-impl<I, Det> Iterator for PartitionIter<I,Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)> + Clone + Debug,
-    Det: Detector,
-    Det::TimeType : Default + Clone + Debug,
-    Det::ValueType : Default + Clone + Debug,
-    Det::DataType : Clone,
+impl<I, D> Iterator for PartitionIter<I,D> where
+    I : Iterator + Clone + Debug,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Default + Clone + Debug,
+    D::ValueType : Default + Clone + Debug,
+    D::DataType : Clone,
 {
-    type Item = TracePartition<I,Det>;
+    type Item = TracePartition<I,D>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let iter = self.source.clone();
@@ -145,31 +151,34 @@ impl<I, Det> Iterator for PartitionIter<I,Det> where
         loop {
             length += 1;
             let val = self.source.next()?;
-            match self.detector.signal(val.0,val.1) {
+            match self.detector.signal(val.get_time(),val.clone_value()) {
                 Some(event) => return Some(TracePartition { event, iter, length }),
                 None => (),
             };
         }
     }
 }
-pub trait PartitionFilter<I,Det> where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)>,
-    Det: Detector,
-    Det::TimeType : Default + Clone + Debug,
-    Det::ValueType : Default + Clone + Debug,
-    Det::DataType : Clone,
+pub trait PartitionFilter<I,D> where
+    I : Iterator,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D::TimeType : Default + Clone + Debug,
+    D::ValueType : Default + Clone + Debug,
+    D::DataType : Clone,
 {
-    fn partition_on_detections(self, detector: Det) -> PartitionIter<I,Det>;
+    fn partition_on_detections(self, detector: D) -> PartitionIter<I,D>;
 }
 
-impl<I, Det> PartitionFilter<I,Det> for I where
-    I : Iterator<Item = (Det::TimeType,Det::ValueType)>,
-    Det: Detector,
-    Det::TimeType : Default + Clone + Debug + 'static,
-    Det::ValueType : Default + Clone + Debug + 'static,
-    Det::DataType : Clone,
+impl<I, D> PartitionFilter<I,D> for I where
+    I : Iterator,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    D: Detector,
+    D: Detector,
+    D::TimeType : Default + Clone + Debug + 'static,
+    D::ValueType : Default + Clone + Debug + 'static,
+    D::DataType : Clone,
 {
-    fn partition_on_detections(self, detector: Det) -> PartitionIter<I,Det> {
+    fn partition_on_detections(self, detector: D) -> PartitionIter<I,D> {
         PartitionIter::new(self, detector)
     }
 }
@@ -182,7 +191,6 @@ mod tests {
 
     use super::{PartitionFilter, Real};
     use common::Intensity;
-    use super::detectors::change_detector::ChangeDetector;
 
     #[test]
     fn sample_data() {

@@ -5,7 +5,7 @@ use crate::window::Window;
 
 use super::trivial::{TrivialWindow, Realisable};
 
-type BoxedDynWindow<O> = Box<dyn Window<InputType = Real, OutputType = O>>;
+type BoxedDynWindow<O> = Box<dyn Window<TimeType = Real, InputType = Real, OutputType = O>>;
 
 pub struct CompositeWindow<const N: usize, O> where O : Realisable {
     windows: [BoxedDynWindow<O>; N],
@@ -22,6 +22,7 @@ impl<const N: usize, O> CompositeWindow<N, O> where O : Realisable + 'static {
     }
 }
 impl<const N: usize, O> Window for CompositeWindow<N, O> where O : Realisable {
+    type TimeType = Real;
     type InputType = RealArray<N>;
     type OutputType = [O; N];
 
@@ -40,5 +41,5 @@ impl<const N: usize, O> Window for CompositeWindow<N, O> where O : Realisable {
             Some(from_fn(|i| self.windows[i].stats().unwrap()))
         }
     }
-    fn get_time_shift(&self) -> Real { 0. }
+    fn apply_time_shift(&self, time : Real) -> Real { time }
 }

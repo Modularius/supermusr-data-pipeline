@@ -1,9 +1,9 @@
 use std::array::{from_fn, from_ref};
 use std::fmt::Display;
 
-use crate::events::{
+use crate::events::event::{
     EventData,
-    event::Event,
+    Event,
 };
 use crate::window::Window;
 use crate::{Detector, Real, RealArray, SmoothingWindow};

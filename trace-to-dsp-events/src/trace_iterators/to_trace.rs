@@ -1,6 +1,6 @@
 use crate::{
-    events::EventData,
-    event_iterators::pulse_formation::{
+    events::event::EventData,
+    detectors::pulse_detector::{
         PulseEvent,
         PulseData,
     },
@@ -20,7 +20,7 @@ impl<'a,I> Iterator for SimulationIter<'a,I> where
 
     fn next(&mut self) -> Option<Self::Item> {
         let (time,_) = self.source.next()?;
-        Some((time,self.events.iter().map(|event|event.get_data().get_intensity_at(time)).sum::<Real>()))
+        Some((time,self.events.iter().map(|event|event.get_data().get_value_at(time)).sum::<Real>()))
     }
 }
 
@@ -42,8 +42,8 @@ impl<'a,I> Iterator for EvaluationIter<'a,I> where
     fn next(&mut self) -> Option<Self::Item> {
         let (time,value) = self.source.next()?;
         Some((time,value,(value - self.events.iter().map(|event| {
-            if event.get_data().get_radius().unwrap_or_default() > 0. {
-                event.get_data().get_intensity_at(time)
+            if event.get_data().get_standard_deviation().unwrap_or_default() > 0. {
+                event.get_data().get_value_at(time)
             } else {
                 0.
             }

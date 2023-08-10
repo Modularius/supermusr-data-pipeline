@@ -1,13 +1,8 @@
-use crate::{Detector};
-use crate::{Integer, Real};
-use common::Intensity;
-use common::Time;
+use crate::Real;
 use std::fmt::Debug;
 use std::fmt::Display;
-use std::slice::Iter;
 
-use super::{EventData};
-
+pub trait EventData: Default + Debug + Clone + Display {}
 
 #[derive(Default, Debug, Clone)]
 pub struct Event<D>

@@ -16,6 +16,7 @@ pub struct TrivialWindow<O> where O : Realisable
 }
 impl<O> Window for TrivialWindow<O> where O : Realisable
 {
+    type TimeType = Real;
     type InputType = Real;
     type OutputType = O;
 
@@ -26,5 +27,5 @@ impl<O> Window for TrivialWindow<O> where O : Realisable
     fn stats(&self) -> Option<Self::OutputType> {
         Some(O::from(self.value))
     }
-    fn get_time_shift(&self) -> Real {0.}
+    fn apply_time_shift(&self, time : Real) -> Real { time }
 }

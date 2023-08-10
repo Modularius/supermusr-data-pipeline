@@ -1,22 +1,22 @@
 use std::collections::VecDeque;
 
-use super::RealArray;
+use super::{RealArray, TraceData};
 use crate::Real;
 use num::integer::binomial;
 
 #[derive(Clone)]
-pub struct FiniteDifferencesIter<I, const N: usize>
-where
-    I: Iterator<Item = (Real, Real)>,
+pub struct FiniteDifferencesIter<I, const N: usize> where
+    I: Iterator,
+    I::Item : TraceData<TimeType = Real, ValueType = Real>,
 {
     coefficients: Vec<Vec<Real>>,
     values: VecDeque<Real>,
     source: I,
 }
 
-impl<I, const N: usize> FiniteDifferencesIter<I, N>
-where
-    I: Iterator<Item = (Real, Real)>,
+impl<I, const N: usize> FiniteDifferencesIter<I, N> where
+    I: Iterator,
+    I::Item : TraceData<TimeType = Real, ValueType = Real>,
 {
     pub fn new(source: I) -> Self {
         FiniteDifferencesIter {
@@ -33,64 +33,58 @@ where
     }
 }
 
-impl<I, const N: usize> FiniteDifferencesIter<I, N>
-where
-    I: Iterator<Item = (Real, Real)>,
+impl<I, const N: usize> FiniteDifferencesIter<I, N> where
+    I: Iterator,
+    I::Item : TraceData<TimeType = Real, ValueType = Real>,
 {
     fn nth_difference(&self, n: usize) -> Real {
         (0..=n)
             .map(|k| self.coefficients[n][k] * self.values[k])
             .sum()
     }
-    fn next_no_index(&mut self, value: Option<Real>) -> Option<RealArray<N>> {
-        match value {
-            Some(v0) => {
-                self.values.push_front(v0);
-                let mut diffs = [Real::default(); N];
-                for n in 0..N {
-                    diffs[n] = self.nth_difference(n);
-                }
-                self.values.pop_back();
-                Some(diffs)
-            }
-            None => None,
+    fn next_no_index(&mut self, value: Real) -> RealArray<N> {
+        self.values.push_front(value);
+        let mut diffs = [Real::default(); N];
+        for n in 0..N {
+            diffs[n] = self.nth_difference(n);
         }
+        self.values.pop_back();
+        diffs
     }
 }
 
-impl<I, const N: usize> Iterator for FiniteDifferencesIter<I, N>
-where
-    I: Iterator<Item = (Real, Real)>,
+impl<I, const N: usize> Iterator for FiniteDifferencesIter<I, N> where
+    I: Iterator,
+    I::Item : TraceData<TimeType = Real, ValueType = Real>,
 {
     type Item = (Real, RealArray<N>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut value = self.source.next();
         while self.values.len() + 1 < self.values.capacity() {
-            match value {
-                Some((_, v)) => {
-                    self.values.push_front(v);
+            match &value {
+                Some(trace) => {
+                    self.values.push_front(trace.get_value().clone());
                     value = self.source.next();
                 }
                 None => return None,
             }
         }
-        let index = value.map_or(Real::default(), |(i, _)| i);
-        self.next_no_index(value.map(|(_, v)| v))
-            .map(|d| (index, d))
+        let trace = value?;
+        Some((trace.get_time(),self.next_no_index(trace.take_value())))
     }
 }
 
-pub trait FiniteDifferencesFilter<I, const N: usize>
-where
-    I: Iterator<Item = (Real, Real)>,
+pub trait FiniteDifferencesFilter<I, const N: usize> where
+    I: Iterator,
+    I::Item : TraceData<TimeType = Real, ValueType = Real>,
 {
     fn finite_differences(self) -> FiniteDifferencesIter<I, N>;
 }
 
-impl<I, const N: usize> FiniteDifferencesFilter<I, N> for I
-where
-    I: Iterator<Item = (Real, Real)>,
+impl<I, const N: usize> FiniteDifferencesFilter<I, N> for I where
+    I: Iterator,
+    I::Item : TraceData<TimeType = Real, ValueType = Real>,
 {
     fn finite_differences(self) -> FiniteDifferencesIter<I, N> {
         FiniteDifferencesIter::new(self)

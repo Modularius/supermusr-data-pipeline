@@ -6,16 +6,14 @@ use itertools::Itertools;
 
 use crate::{
     Real,
-    RealArray,
     events::{
         event::Event,
         EventData,
     },
     detectors::{
-        composite::{CompositeData, CompositeEvent, CompositeTopOnlyEvent},
-        change_detector::{ChangeEvent, ChangeData},
+        composite::CompositeTopOnlyEvent,
+        change_detector::ChangeData,
     },
-    peak_detector,
 };
 
 
@@ -44,54 +42,7 @@ impl Gaussian {
     }
 }
 
-
-#[derive(Default, Debug, Clone)]
-pub struct PulseData {
-    peak_time: Option<Real>,
-    peak_intensity: Option<Real>,
-    //area_under_curve: Option<Real>,
-    radius: Option<Real>,
-    //start: Option<Real>,
-    //end: Option<Real>,
-}
-
-impl PulseData {
-    pub fn new(peak_time: Option<Real>, peak_intensity: Option<Real>, radius: Option<Real>) -> Self {
-        Self { peak_time, peak_intensity, radius }
-    }
-    pub fn get_peak_time(&self) -> Option<Real> { self.peak_time }
-    pub fn get_peak_intensity(&self) -> Option<Real> { self.peak_intensity }
-    pub fn get_radius(&self) -> Option<Real> { self.radius }
-
-    pub fn set_peak_time(&mut self, peak_time: Option<Real>) { self.peak_time = peak_time; }
-    pub fn set_peak_intensity(&mut self, peak_intensity: Option<Real>) { self.peak_intensity = peak_intensity; }
-    pub fn set_radius(&mut self, radius: Option<Real> ) { self.radius = radius; }
-}
-
-impl EventData for PulseData {
-    fn has_influence_at(&self, index: Real) -> bool {
-        true
-    }
-
-    fn get_intensity_at(&self, time: Real) -> Real {
-        Gaussian::new(self.peak_intensity.unwrap_or_default(),self.peak_time.unwrap_or_default(),self.radius.unwrap_or_default()).get_value_at(time)
-    }
-}
-impl Display for PulseData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{},{}",//,{},{},{}",
-            self.peak_intensity.unwrap_or(-1.),
-            self.radius.unwrap_or(-1.),
-            //self.half_peak_full_width.unwrap_or(-1.),
-            //self.start.unwrap_or(-1.),
-            //self.end.unwrap_or(-1.),
-        ))?;
-        Ok(())
-    }
-}
-pub type PulseEvent = Event<PulseData>;
-
+/*
 
 const N : usize = 3;
 
@@ -193,7 +144,7 @@ impl<I> PulseFormationFilter<I> for I where
 
 #[cfg(test)]
 mod tests {
-    use super::{PulseFormationFilter, Real, RealArray};
+    use super::{PulseFormationFilter, Real};
     use common::Intensity;
 
     #[test]
@@ -215,3 +166,4 @@ mod tests {
     }
 }
 
+ */

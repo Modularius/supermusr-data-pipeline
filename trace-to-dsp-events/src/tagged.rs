@@ -1,24 +1,7 @@
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter, Result, Debug};
 
-use crate::{EnumeratedValue, Real};
+use crate::{Real, trace_iterators::TraceData};
 
-pub trait ValueWithTaggedData {
-    type TaggedType : Default + Clone + Display;
-
-    fn get_value(&self) -> &Real;
-    fn get_value_mut(&mut self) -> &mut Real;
-    fn get_tagged_data(&self) -> &Self::TaggedType;
-}
-
-
-impl ValueWithTaggedData for Stats {
-    type TaggedType = Stats;
-
-    fn get_value(&self) -> &Real { &self.value }
-    fn get_value_mut(&mut self) -> &mut Real  { &mut self.value }
-    fn get_tagged_data(&self) -> &Stats  { &self }
-
-}
 
 #[derive(Default, Clone, Debug)]
 pub struct Stats {
@@ -40,30 +23,30 @@ impl Display for Stats {
 
 pub mod extract {
     use super::*;
-    pub fn mean((i, Stats { value, mean, variance, }): (Real,Stats)) -> Real {
-        mean
+    pub fn mean<D>(trace: D) -> Real where D : TraceData<ValueType = Stats> {
+        trace.get_value().mean
     }
-    pub fn enumerated_mean((i, Stats { value, mean, variance, }): (Real,Stats)) -> (Real,Real) {
-        (i, mean)
+    pub fn enumerated_mean<T,D>(trace: D) -> (T,Real) where D : TraceData<TimeType = T, ValueType = Stats> {
+        (trace.get_time(), trace.get_value().mean)
     }
-    pub fn enumerated_variance((i, Stats { value, mean, variance, }): (Real,Stats)) -> EnumeratedValue {
-        (i, variance)
+    pub fn enumerated_variance<T,D>(trace: D) -> (T,Real) where D : TraceData<TimeType = T, ValueType = Stats> {
+        (trace.get_time(), trace.get_value().variance)
     }
-    pub fn enumerated_standard_deviation((i, Stats { value, mean, variance, }): (Real,Stats)) -> EnumeratedValue {
-        (i, variance.sqrt())
+    pub fn enumerated_standard_deviation<T,D>(trace: D) -> (T,Real) where D : TraceData<TimeType = T, ValueType = Stats> {
+        (trace.get_time(), trace.get_value().variance.sqrt())
     }
-    pub fn enumerated_normalised_mean((i, Stats { value, mean, variance, }): (Real,Stats)) -> EnumeratedValue {
-        if variance == 0. {
-            (i, mean)
+    pub fn enumerated_normalised_mean<T,D>(trace: D) -> (T,Real) where D : TraceData<TimeType = T, ValueType = Stats> {
+        if trace.get_value().variance == 0. {
+            (trace.get_time(), trace.get_value().mean)
         } else {
-            (i, mean / variance.sqrt())
+            (trace.get_time(), trace.get_value().mean / trace.get_value().variance.sqrt())
         }
     }
-    pub fn enumerated_normalised_value((i, Stats { value, mean, variance, }): (Real,Stats)) -> (Real,Real) {
-        if variance == 0. {
-            (i, value)
+    pub fn enumerated_normalised_value<T,D>(trace: D) -> (T,Real) where D : TraceData<TimeType = T, ValueType = Stats> {
+        if trace.get_value().variance == 0. {
+            (trace.get_time(), trace.get_value().value)
         } else {
-            (i, (value - mean) / variance.sqrt() + mean)
+            (trace.get_time(), (trace.get_value().value - trace.get_value().mean) / trace.get_value().variance.sqrt())
         }
     }
 }

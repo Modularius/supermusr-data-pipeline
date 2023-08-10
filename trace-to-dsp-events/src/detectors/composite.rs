@@ -4,6 +4,7 @@ use crate::events::{
     EventData,
     event::Event,
 };
+use crate::trace_iterators::feedback::OptFeedParam;
 use crate::{Detector, Real, RealArray};
 
 type ConstituantType<D> = Box<dyn Detector<TimeType = Real, ValueType = Real, DataType = D>>;
@@ -48,15 +49,7 @@ impl<D: EventData, const N : usize> Display for CompositeData<D,N> {
     }
 }
 
-impl<D: EventData, const N : usize> EventData for CompositeData<D,N> {
-    fn has_influence_at(&self, index: Real) -> bool {
-        true
-    }
-
-    fn get_intensity_at(&self, index: Real) -> Real {
-        Real::default()
-    }
-}
+impl<D: EventData, const N : usize> EventData for CompositeData<D,N> {}
 
 
 
@@ -126,15 +119,7 @@ impl<D: EventData, const N : usize> Display for CompositeTopOnlyData<D,N> {
     }
 }
 
-impl<D: EventData, const N : usize> EventData for CompositeTopOnlyData<D,N> {
-    fn has_influence_at(&self, index: Real) -> bool {
-        true
-    }
-
-    fn get_intensity_at(&self, index: Real) -> Real {
-        Real::default()
-    }
-}
+impl<D: EventData, const N : usize> EventData for CompositeTopOnlyData<D,N> {}
 
 
 

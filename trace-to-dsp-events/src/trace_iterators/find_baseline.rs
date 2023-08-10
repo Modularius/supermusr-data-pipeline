@@ -1,12 +1,10 @@
-use std::collections::VecDeque;
-
-use super::RealArray;
+use super::TraceData;
 use crate::Real;
-use num::integer::binomial;
 
 #[derive(Clone)]
 pub struct FindBaselineIter<I> where
-    I: Iterator<Item = (Real, Real)>,
+    I: Iterator,
+    I::Item : TraceData
 {
     warm_up: usize,
     baseline: Real,
@@ -14,7 +12,8 @@ pub struct FindBaselineIter<I> where
 }
 
 impl<I> FindBaselineIter<I> where
-    I: Iterator<Item = (Real, Real)>,
+    I: Iterator,
+    I::Item : TraceData
 {
     pub fn new(source: I, warm_up : usize) -> Self {
         FindBaselineIter { source, warm_up, baseline: Real::MAX }
@@ -23,32 +22,35 @@ impl<I> FindBaselineIter<I> where
 
 impl<I> Iterator for FindBaselineIter<I>
 where
-    I: Iterator<Item = (Real, Real)>,
+    I: Iterator,
+    I::Item : TraceData<ValueType = Real>
 {
-    type Item = (Real, Real);
+    type Item = (<I::Item as TraceData>::TimeType, Real);
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.warm_up > 0 {
             match self.source.next() {
-                Some((_,v)) => self.baseline = Real::min(self.baseline, v),
+                Some(trace) => self.baseline = Real::min(self.baseline, trace.take_value()),
                 None => return None,
             }
             self.warm_up -= 1;
             if self.warm_up == 0 { log::info!("{0}",self.baseline); }
         }
         self.source.next()
-            .map(|(i,v)|(i,v - self.baseline))
+            .map(|trace|(trace.get_time(),trace.take_value() - self.baseline))
     }
 }
 
 pub trait FindBaselineFilter<I> where
-    I: Iterator<Item = (Real, Real)>,
+    I: Iterator,
+    I::Item : TraceData
 {
     fn find_baseline(self, warm_up : usize) -> FindBaselineIter<I>;
 }
 
 impl<I> FindBaselineFilter<I> for I where
-    I: Iterator<Item = (Real, Real)>,
+    I: Iterator,
+    I::Item : TraceData
 {
     fn find_baseline(self, warm_up : usize) -> FindBaselineIter<I> {
         FindBaselineIter::new(self, warm_up)
@@ -57,7 +59,7 @@ impl<I> FindBaselineFilter<I> for I where
 
 #[cfg(test)]
 mod tests {
-    use super::{FindBaselineFilter, Real, RealArray};
+    use super::{FindBaselineFilter, Real};
     use common::Intensity;
 
     #[test]
