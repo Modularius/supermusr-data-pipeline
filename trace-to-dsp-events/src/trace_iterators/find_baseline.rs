@@ -1,5 +1,7 @@
-use super::TraceData;
-use crate::Real;
+use crate::{
+    Real,
+    tracedata::TraceData,
+};
 
 #[derive(Clone)]
 pub struct FindBaselineIter<I> where
@@ -34,7 +36,7 @@ where
                 None => return None,
             }
             self.warm_up -= 1;
-            if self.warm_up == 0 { log::info!("{0}",self.baseline); }
+            //if self.warm_up == 0 { log::info!("{0}",self.baseline); }
         }
         self.source.next()
             .map(|trace|(trace.get_time(),trace.take_value() - self.baseline))

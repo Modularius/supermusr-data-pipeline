@@ -2,7 +2,8 @@ use crate::detectors::{
     Detector,
     FeedbackDetector
 };
-use crate::trace_iterators::TraceData;
+use crate::trace_iterators::feedback::FeedbackParameter;
+use crate::tracedata::TraceData;
 
 use super::event::Event;
 
@@ -101,6 +102,7 @@ impl<I, D> Iterator for EventWithFeedbackIter<I, D> where
     I: Iterator,
     I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType, ParameterType = D::ParameterType>,
     D: FeedbackDetector,
+    FeedbackParameter<D::ParameterType> : Default,
 {
     type Item = Event<D::DataType>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -134,3 +136,6 @@ impl<I, D> EventWithFeedbackFilter<I, D> for I where
         }
     }
 }
+
+
+

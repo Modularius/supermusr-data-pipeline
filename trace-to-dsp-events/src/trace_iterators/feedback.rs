@@ -1,27 +1,26 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{fmt::Debug,cell::Cell, rc::Rc, iter::Map};
 
-use super::TraceData;
-use std::fmt::Debug;
+use crate::tracedata::TraceData;
 
 type FeedbackValueType<I> = <<I as Iterator>::Item as TraceData>::ValueType;
-type FeedbackFunctionType<I> = fn(&FeedbackValueType<I>, &FeedbackValueType<I>)->FeedbackValueType<I>;
+type FeedbackFunctionType<I,P> = fn(&FeedbackValueType<I>, &P)->FeedbackValueType<I>;
 
-#[derive(Debug)]
-pub struct FeedbackParameter<V>(Rc<RefCell<V>>);
+#[derive(Default)]
+pub struct FeedbackParameter<V>(pub Rc<Cell<V>>);
 pub type OptFeedParam<V> = Option<FeedbackParameter<V>>;
 
 impl<V> FeedbackParameter<V> {
     pub fn new(initial : V) -> Self {
-        Self(Rc::new(RefCell::new(initial)))
+        Self(Rc::new(Cell::new(initial)))
     }
     pub fn set(&self, value : V) {
-        *(*self.0).borrow_mut() = value;
+        (*self.0).set(value);
     }
 }
 
 impl<V> Clone for FeedbackParameter<V> {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        Self(Rc::clone(&self.0))
     }
 }
 
@@ -30,36 +29,43 @@ impl<V> Clone for FeedbackParameter<V> {
 
 
 #[derive(Clone)]
-pub struct FeedbackIter<I> where
+pub struct FeedbackIter<I,P> where
     I: Iterator,
     I::Item : TraceData,
 {
-    parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>,
-    modifier: FeedbackFunctionType<I>,
+    parameter: FeedbackParameter<P>,
+    modifier: FeedbackFunctionType<I,P>,
     source: I,
 }
 
-impl<I> FeedbackIter<I> where
+impl<I,P> FeedbackIter<I,P> where
     I: Iterator,
     I::Item : TraceData,
 {
-    fn new(source : I, parameter : FeedbackValueType<I>, modifier : FeedbackFunctionType<I>) -> Self {
-        Self {source, parameter: FeedbackParameter::<<I::Item as TraceData>::ValueType>::new(parameter), modifier }
+    fn new(source : I, parameter : P, modifier : FeedbackFunctionType<I,P>) -> Self {
+        Self {source, parameter: FeedbackParameter::<P>::new(parameter), modifier }
     }
 }
 
-impl<I> Iterator for FeedbackIter<I>
+impl<I,P> Iterator for FeedbackIter<I,P>
 where
     I: Iterator,
     I::Item : TraceData,
+    P : Copy + Debug
 {
-    type Item = (<I::Item as TraceData>::TimeType, <I::Item as TraceData>::ValueType, OptFeedParam<<I::Item as TraceData>::ValueType>);
+    type Item = (<I::Item as TraceData>::TimeType, <I::Item as TraceData>::ValueType, OptFeedParam<P>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let val = self.source.next()?;
         let time = val.get_time();
-        let value = (self.modifier)(&self.parameter.0.borrow(),&val.get_value());
-        Some((time, value, Some(self.parameter.clone())))
+        let value = (self.modifier)(&val.get_value(),&self.parameter.0.get());//val.clone_value();//
+
+        // LOG
+        //log::info!("Applied correction of {0:?}", self.parameter.0.get());
+        //let r = Rc::strong_count(&self.parameter.0);
+        // LOG
+        //log::info!("Number of references: {0:?}",r);
+        Some((time, value, Some(self.parameter.clone())))//
     }
 }
 
@@ -79,19 +85,35 @@ impl<X,Y,Z> TraceData for (X,Y,OptFeedParam<Z>) where X : Copy + Debug, Y: Clone
 
 
 
-pub trait FeedbackFilter<I> where
+pub trait FeedbackFilter<I,P> where
     I: Iterator,
-    I::Item : TraceData
+    I::Item : TraceData,
 {
-    fn feedback(self, modifier: FeedbackFunctionType<I>, parameter: FeedbackValueType<I>) -> FeedbackIter<I>;
+    fn start_feedback(self, modifier: FeedbackFunctionType<I,P>) -> FeedbackIter<I,P>;
 }
 
-impl<I> FeedbackFilter<I> for I where
+impl<I,P> FeedbackFilter<I,P> for I where
     I: Iterator,
-    I::Item : TraceData
+    I::Item : TraceData,
+    P : Default
 {
-    fn feedback(self, modifier: FeedbackFunctionType<I>, parameter: FeedbackValueType<I>) -> FeedbackIter<I> {
-        FeedbackIter::new(self, parameter, modifier)
+    fn start_feedback(self, modifier: FeedbackFunctionType<I,P>) -> FeedbackIter<I,P> {
+        FeedbackIter::new(self, P::default(), modifier)
+    }
+}
+
+
+pub trait EndFeedbackFilter<I,X,Y,Z> where
+    I: Iterator<Item = (X,Y,OptFeedParam<Z>)>,
+{
+    fn end_feedback(self) -> Map<I,fn((X,Y,OptFeedParam<Z>))->(X,Y)>;
+}
+
+impl<I,X,Y,Z> EndFeedbackFilter<I,X,Y,Z> for I where
+    I: Iterator<Item = (X,Y,OptFeedParam<Z>)>,
+{
+    fn end_feedback(self) -> Map<I,fn((X,Y,OptFeedParam<Z>))->(X,Y)> {
+        self.map(|(x,y,_)|(x,y))
     }
 }
 
@@ -108,7 +130,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
-            .feedback(|x,y|x + y,0.)
+            .start_feedback(|x,&y : &Real|x + y)
             .map(|(_, x, _)| x)
             .collect();
 
@@ -128,7 +150,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
-            .feedback(|x,y|x + y,0.)
+            .start_feedback(|x,&y : &Real|x + y)
             .map(|(_, x, m)| {
                 if let Some(mm) = m { mm.set(2.); }
                 x

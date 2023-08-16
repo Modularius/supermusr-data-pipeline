@@ -46,7 +46,7 @@ impl Window for Gate {
 mod tests {
     use crate::processing;
 
-    use super::super::WindowFilter;
+    use super::super::iter::WindowFilter;
     use super::*;
 
     #[test]

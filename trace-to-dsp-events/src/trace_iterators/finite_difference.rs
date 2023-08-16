@@ -1,7 +1,10 @@
 use std::collections::VecDeque;
 
-use super::{RealArray, TraceData};
-use crate::Real;
+use crate::{
+    Real,
+    RealArray,
+    tracedata::TraceData,
+};
 use num::integer::binomial;
 
 #[derive(Clone)]

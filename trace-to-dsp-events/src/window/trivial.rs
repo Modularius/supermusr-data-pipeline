@@ -9,13 +9,11 @@ pub trait Realisable : From<Real> + Default {}
 impl <T> Realisable for T where T : From<Real> + Default {}
 
 #[derive(Default, Clone, Copy)]
-pub struct TrivialWindow<O> where O : Realisable
-{
+pub struct TrivialWindow<O> where O : Realisable {
     value: Real,
     phantom: PhantomData<O>,
 }
-impl<O> Window for TrivialWindow<O> where O : Realisable
-{
+impl<O> Window for TrivialWindow<O> where O : Realisable {
     type TimeType = Real;
     type InputType = Real;
     type OutputType = O;

@@ -11,8 +11,7 @@ use crate::events::{
     TimeValue,
     multiple_events::MultipleEvents
 };
-use crate::window::{Window, smoothing_window};
-use crate::window::smoothing_window::{SmoothingWindow};
+use crate::window::{Window, smoothing_window,smoothing_window::SmoothingWindow};
 use crate::{Detector, Real, RealArray};
 use common::Intensity;
 use fitting::approx::assert_abs_diff_eq;

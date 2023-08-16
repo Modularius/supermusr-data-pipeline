@@ -4,7 +4,6 @@ use crate::events::{
     EventData,
     event::Event,
 };
-use crate::trace_iterators::feedback::OptFeedParam;
 use crate::{Detector, Real, RealArray};
 
 type ConstituantType<D> = Box<dyn Detector<TimeType = Real, ValueType = Real, DataType = D>>;

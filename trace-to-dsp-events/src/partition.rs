@@ -1,6 +1,7 @@
 
 use crate::trace_iterators::TraceData;
-use crate::{Real, Detector,
+use crate::{
+    Detector,
     events::event::Event,
 };
 use std::fmt::Display;
@@ -187,15 +188,18 @@ impl<I, D> PartitionFilter<I,D> for I where
 
 #[cfg(test)]
 mod tests {
-    use crate::peak_detector::PeakDetector;
+    use crate::{
+        Real,
+        peak_detector::PeakDetector
+    };
 
-    use super::{PartitionFilter, Real};
+    use super::*;
     use common::Intensity;
 
     #[test]
     fn sample_data() {
         let input: Vec<Intensity> = vec![0, 6, 2, 1, 3, 1, 0];
-        let output: Vec<_> = input
+        let _output: Vec<_> = input
             .iter()
             .enumerate()
             .map(|(i, v)| (i as Real, *v as Real))

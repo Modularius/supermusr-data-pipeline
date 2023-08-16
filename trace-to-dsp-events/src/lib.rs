@@ -10,32 +10,33 @@ I is an iterator to the enumerated raw trace data, S is the detector signal type
 */
 
 pub mod detectors;
-pub mod event_iterators;
 pub mod events;
-pub mod tagged;
-pub mod partition;
-
-use std::{collections::VecDeque, iter::Peekable};
+pub mod tracedata;
+//pub mod partition;
 
 use common::Intensity;
 
 pub use detectors::{
     peak_detector,
+    pulse_detector,
+    change_detector,
     Detector
 };
 pub use events::{
     EventFilter,
     EventIter,
+    EventWithFeedbackFilter,
+    EventWithFeedbackIter,
 };
 
 pub mod trace_iterators;
-pub use trace_iterators::RealArray;
 
 pub mod window;
 pub use window::smoothing_window::SmoothingWindow;
 
 pub type Real = f64;
 pub type Integer = i16;
+pub type RealArray<const N: usize> = [Real; N];
 
 pub mod processing {
     use super::*;
@@ -47,17 +48,17 @@ pub mod processing {
     }
 }
 
-pub type EnumeratedValue = (Real,Real);
+pub fn log_then_panic_t<T>(string: String) -> T {
+    log::error!("{string}");
+    panic!("{string}");
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::window::composite::CompositeWindow;
-    use crate::window::{WindowFilter,trivial::Realisable};
+    //use crate::window::composite::CompositeWindow;
     use common::Intensity;
 
-    use super::trace_iterators::finite_difference::FiniteDifferencesFilter;
-
-    use super::{EventFilter, Real};
+    use super::*;
 
     #[test]
     fn sample_data() {
@@ -68,16 +69,16 @@ mod tests {
             2.0, 1.0, 1.0, 1.0, 0.9, 1.0, 1.0, 3.0, 2.6, 4.0, 3.0, 3.2, 2.0, 1.0, 1.0, 0.8, 4.0,
             4.0, 2.0, 2.5, 1.0, 1.0, 1.0,
         ];
-        let output: Vec<_> = input
+        let output = input
             .iter()
             .map(|x| (x * 1000.) as Intensity)
             .into_iter()
             .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
-            .finite_differences()
-            .window(CompositeWindow::<1,Real>::trivial())
+            .map(|(i, v)| (i as Real, v as Real));
+            //.finite_differences()
+            //.window(CompositeWindow::<1,Real>::trivial())
             //.events(EventsDetector::new())
-            .collect();
+            //.collect();
         for line in output {
             println!("{line:?}")
         }

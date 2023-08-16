@@ -4,7 +4,7 @@ use crate::Real;
 
 use crate::window::Window;
 
-use crate::tagged::Stats;
+use crate::tracedata::Stats;
 
 #[derive(Default,Clone)]
 pub struct SmoothingWindow {
@@ -68,7 +68,7 @@ impl Window for SmoothingWindow {
             None
         }
     }
-    fn apply_time_shift(&self, time : Real) -> Real { time - self.size/2.0 }
+    fn apply_time_shift(&self, time : Real) -> Real { time } //time - (self.size - 1.)/2.0 }
 }
 
 #[cfg(test)]
@@ -76,7 +76,7 @@ mod tests {
     use crate::processing;
 
     use common::Intensity;
-    use super::super::WindowFilter;
+    use super::super::iter::WindowFilter;
     use super::*;
     use assert_approx_eq::assert_approx_eq;
 

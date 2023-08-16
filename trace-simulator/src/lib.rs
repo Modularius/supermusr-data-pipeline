@@ -1,6 +1,7 @@
 //! This module allows one to simulate instances of DigitizerAnalogTraceMessage
 //! using the FlatBufferBuilder.
 //!
+#![allow(dead_code, unused_variables, unused_imports)]
 
 use anyhow::Error;
 use itertools::Itertools;

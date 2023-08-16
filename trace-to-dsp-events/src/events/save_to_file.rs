@@ -4,12 +4,12 @@ use std::{
     io::{Error, Write},
 };
 
-use tdengine::utils::log_then_panic_t;
+//use tdengine::utils::log_then_panic_t;
 
-use crate::events::{
+use crate::{events::{
     EventData,
     event::Event
-};
+}, log_then_panic_t};
 
 pub trait SaveEventsToFile<I,D> where
     I: Iterator<Item = Event<D>>,

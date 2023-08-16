@@ -1,6 +1,37 @@
 use std::fmt::{Display, Formatter, Result, Debug};
 
-use crate::{Real, trace_iterators::TraceData};
+use crate::{
+    Real,
+    trace_iterators::feedback::OptFeedParam
+};
+
+pub trait TraceData : Clone {
+    type TimeType : Copy + Debug;
+    type ValueType : Clone + Debug;
+    type ParameterType : Clone + Debug;
+
+    fn get_time(&self) -> Self::TimeType;
+    fn get_value(&self) -> &Self::ValueType;
+    fn take_value(self) -> Self::ValueType;
+
+    fn clone_value(&self) -> Self::ValueType { self.get_value().clone() }
+    fn get_parameter(&self) -> OptFeedParam<Self::ParameterType> { None }
+}
+
+impl<X,Y> TraceData for (X,Y) where X : Copy + Debug, Y: Clone + Debug {
+    type TimeType = X;
+    type ValueType = Y;
+    type ParameterType = Y;
+
+    fn get_time(&self) -> Self::TimeType { self.0 }
+    fn get_value(&self) -> &Self::ValueType { &self.1 }
+    fn take_value(self) -> Self::ValueType { self.1 }
+}
+
+
+
+
+
 
 
 #[derive(Default, Clone, Debug)]
@@ -50,10 +81,18 @@ pub mod extract {
         }
     }
 }
+pub mod operation {
+    use super::*;
+
+    pub fn add_real(&value : &Real, param : &Real) -> Real { value + param }
+    pub fn shift_stats(&Stats{value,mean,variance} : &Stats, param : &Real) -> Stats {
+        Stats { value: value + param, mean: mean + param, variance }
+    }
+}
 
 
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone,PartialEq,)]
 pub enum SNRSign {
     Pos,
     Neg,

@@ -2,11 +2,14 @@ use crate::Real;
 use std::fmt::Debug;
 use std::fmt::Display;
 
-pub trait EventData: Default + Debug + Clone + Display {}
+pub trait EventData: Default + Debug + Clone + Display {
+    fn make_event(self, time : Real) -> Event<Self> {
+        Event::<Self> { time, data: self }
+    }
+}
 
 #[derive(Default, Debug, Clone)]
-pub struct Event<D>
-where
+pub struct Event<D> where
     D: EventData,
 {
     pub time: Real,
@@ -47,4 +50,3 @@ where
         f.write_fmt(format_args!("{0},{1};", self.time, self.data))
     }
 }
-

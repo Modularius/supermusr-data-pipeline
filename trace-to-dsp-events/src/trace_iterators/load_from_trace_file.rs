@@ -1,5 +1,5 @@
 use std::{
-    default, env,
+    env,
     fmt::Debug,
     fs::File,
     io::{Error, ErrorKind, Read, Seek, SeekFrom},
@@ -8,9 +8,9 @@ use std::{
 };
 
 use common::Intensity;
-use tdengine::utils::log_then_panic_t;
 
-use crate::{Detector, EventIter};
+use crate::log_then_panic_t;
+//use tdengine::utils::log_then_panic_t;
 
 #[derive(Default, Debug)]
 pub struct TraceFileHeader {
@@ -114,12 +114,10 @@ pub struct TraceFileEvent {
     pub trigger_time: f64,
     pub raw_trace: Vec<Vec<Intensity>>,
     pub normalized_trace: Vec<Vec<f64>>,
-    total_bytes: usize,
+    _total_bytes: usize,
 }
 impl TraceFileEvent {
-    fn get_total_bytes(&self) -> usize {
-        self.total_bytes
-    }
+    //fn get_total_bytes(&self) -> usize { self.total_bytes }
     fn get_size(num_channels: usize, num_samples: usize) -> usize {
         size_of::<i32>() + //pub cur_event : i32,
         size_of::<f64>() + //pub event_runtime : f64,
@@ -153,7 +151,7 @@ impl TraceFileEvent {
                 .map(|_| load_trace(file, num_samples, &mut total_bytes).unwrap())
                 .collect(),
             normalized_trace: (0..num_channels).map(|_| Default::default()).collect(),
-            total_bytes,
+            _total_bytes:total_bytes,
         })
     }
     pub fn build_normalized_trace(
