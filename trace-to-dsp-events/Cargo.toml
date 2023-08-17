@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common"}
+trace-to-pulses = { path = "../trace-to-pulses"}
 #streaming-types = { path = "streaming-types"}
 #smoothed_z_score = "0.1.3"
 #tdengine = { path = "../tdengine" }

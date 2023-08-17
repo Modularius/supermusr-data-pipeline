@@ -2609,6 +2609,7 @@ dependencies = [
  "num 0.4.1",
  "rand",
  "serde",
+ "trace-to-pulses",
 ]
 
 [[package]]
@@ -2628,6 +2629,24 @@ dependencies = [
  "rdkafka 0.31.0",
  "streaming-types",
  "tokio",
+]
+
+[[package]]
+name = "trace-to-pulses"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_approx_eq",
+ "chrono",
+ "clap",
+ "common",
+ "dotenv",
+ "env_logger",
+ "itertools 0.11.0",
+ "log",
+ "num 0.4.1",
+ "rand",
+ "serde",
 ]
 
 [[package]]

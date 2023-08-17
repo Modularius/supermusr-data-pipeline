@@ -2,8 +2,6 @@ use std::collections::VecDeque;
 use std::f64::consts::PI;
 use std::fmt::Display;
 
-use chrono::Local;
-
 use crate::change_detector::{ChangeData, ChangeClass};
 use crate::events::{
     EventData,

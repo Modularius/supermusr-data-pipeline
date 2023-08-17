@@ -10,7 +10,7 @@ fn sum_event_energy_at<'a>(events : &'a [PulseEvent], time: Real) -> Real {
         .map(|event|
             if event.get_data()
                 .get_standard_deviation()
-                .unwrap_or_default() > 0.
+                .unwrap_or_default() >= 0.
             {
                 event.get_data().get_effective_value_at(time)
             } else {

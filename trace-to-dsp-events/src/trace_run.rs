@@ -1,8 +1,9 @@
-use std::time::Instant;
+use std::{time::Instant, fmt::Debug};
 
 use itertools::Itertools;
 
-use trace_to_dsp_events::{
+use rand::{random, seq::SliceRandom};
+use trace_to_pulses::{
     Real,
     trace_iterators::{
         find_baseline::FindBaselineFilter,
@@ -28,16 +29,19 @@ fn time_collect_vec<I : Iterator + Clone>(iter : &I) -> (Vec<I::Item>, Real) {
     (iter.clone().collect_vec(), timer.elapsed().as_micros() as Real*0.001)
 }
 
+#[derive(Debug)]
 pub(crate) struct BasicParameters {
     pub(crate) gate_size : Real,
     pub(crate) smoothing_window_size : usize,
     pub(crate) baseline_length : usize,
 }
+#[derive(Debug)]
 pub(crate) struct AdvancedParameters {
     pub(crate) change_detector_threshold : Real,
     pub(crate) change_detector_bound : Real,
 }
 
+#[derive(Debug)]
 pub(crate) struct TraceRun
 {
     basic_parameters: BasicParameters,
@@ -46,6 +50,33 @@ pub(crate) struct TraceRun
 impl TraceRun {
     pub fn new(basic_parameters : BasicParameters, advanced_parameters : AdvancedParameters) -> Self {
         Self { basic_parameters, advanced_parameters }
+    }
+    pub fn from_random() -> Self {
+        TraceRun {
+            basic_parameters: BasicParameters{
+                gate_size: 2.*random::<Real>() + 1.,
+                smoothing_window_size: (3.*random::<Real>() + 3.) as usize,
+                baseline_length: (4000.*random::<Real>() + 500.) as usize,
+            },
+            advanced_parameters: AdvancedParameters {
+                change_detector_threshold: 1.*random::<Real>() + 0.5,
+                change_detector_bound: 2.*random::<Real>() + 2.5,
+            },
+        }
+    }
+
+    pub fn mutate_from(source : &Self, scale : Real) -> Self {
+        TraceRun {
+            basic_parameters: BasicParameters{
+                gate_size: Real::max(0., source.basic_parameters.gate_size + scale*(2.*random::<Real>() - 1.)),
+                smoothing_window_size: i32::max(2, source.basic_parameters.smoothing_window_size as i32 + [1,0,0,0,-1].choose(&mut rand::thread_rng()).unwrap()) as usize,
+                baseline_length: Real::max(100.0, source.basic_parameters.baseline_length as Real + scale*1000.*(2.*random::<Real>() - 1.)) as usize,
+            },
+            advanced_parameters: AdvancedParameters {
+                change_detector_threshold: Real::max(0.25, source.advanced_parameters.change_detector_threshold + scale*(2.*random::<Real>() - 1.)),
+                change_detector_bound: Real::max(1.5, source.advanced_parameters.change_detector_bound + scale*(2.*random::<Real>() - 1.)),
+            },
+        }
     }
     pub fn baselined_from_trace<'a>(&self, trace: &'a Vec<u16>) -> (impl Iterator<Item = (Real,Real)> + Clone + 'a, impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)> + Clone + 'a) {
         let baselined = trace.iter()
@@ -64,7 +95,7 @@ impl TraceRun {
         (baselined,smoothed)
     }
 
-    pub fn run_basic_detection<'a>(&mut self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
+    pub fn run_basic_detection<'a>(&self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
         smoothed
             .map(tracedata::extract::enumerated_mean)
             .events(LocalExtremumDetector::new())
@@ -74,18 +105,21 @@ impl TraceRun {
             .collect_vec()
     }
 
-    pub fn run_advanced_detection<'a>(&mut self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
+    pub fn run_advanced_detection<'a>(&self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
         smoothed
             //.events_with_feedback(PulseDetector::new(LocalExtremeDetector::new()))
-            .events_with_feedback(PulseDetector::new(ChangeDetector::new(1.), 4.))
+            .events_with_feedback(PulseDetector::new(ChangeDetector::new(self.advanced_parameters.change_detector_threshold), self.advanced_parameters.change_detector_bound))
             .collect_vec()
     }
-
-    pub fn run_evaluation<'a>(&self, name : &str, trace_baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) {
-        println!("[{name} Evaluation]");
-        let (v,d) = trace_baselined
+    pub fn run_evaluation<'a>(&self, name : &str, baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) -> (Real,Real) {
+        baselined
             .evaluate_events(pulse_events)
-            .fold((0.,0.),|(full_v,full_d), (_,v,d)|(full_v + v.abs(), full_d + d.abs()));
+            .fold((0.,0.),|(full_v,full_d), (_,v,d)|(full_v + v.abs(), full_d + d.abs()))
+    }
+
+    pub fn run_and_print_evaluation<'a>(&self, name : &str, baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) {
+        println!("[{name} Evaluation]");
+        let (v,d) = self.run_evaluation(name, baselined, pulse_events);
         println!("Area under trace curve:        {0:.2}", v);
         println!("Area under trace - simulation: {0:.2}", d);
         println!("[Evaluation Finished]");

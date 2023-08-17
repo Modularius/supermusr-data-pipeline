@@ -11,4 +11,5 @@ members = [
   "trace-simulator",
   "tdengine",
   "trace-to-dsp-events",
+  "trace-to-pulses",
 ]

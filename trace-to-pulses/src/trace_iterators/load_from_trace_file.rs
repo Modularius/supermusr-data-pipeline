@@ -191,6 +191,7 @@ impl TraceFile {
             ))
         }
     }
+    pub fn get_num_event(&self) -> usize { self.num_events }
 }
 
 pub fn load_trace_file(name: &str) -> Result<TraceFile, Error> {

@@ -5,9 +5,12 @@ use std::{
     io::Write
 };
 
-use trace_to_dsp_events::{
+use num::Integer;
+use rand::random;
+use trace_to_pulses::{
     log_then_panic_t,
-    trace_iterators::load_from_trace_file::load_trace_file,
+    trace_iterators::load_from_trace_file::{load_trace_file, TraceFile},
+    Real,
 };
 
 use crate::{
@@ -73,8 +76,60 @@ pub fn run_file_mode(params: FileParameters, detection_type : Option<DetectionTy
     let mut trace_file = load_trace_file(&file_name).unwrap();
     let event_index = 243;
     let channel_index = 0;
-    let run = trace_file.get_event(event_index).unwrap();
-    run_trace(run.normalized_channel_trace(channel_index), save_file_name, detection_type, benchmark, evaluate);
+    //let run = trace_file.get_event(event_index).unwrap();
+    //run_trace(run.normalized_channel_trace(channel_index), save_file_name, detection_type, benchmark, evaluate);
+    run_experiment(trace_file, detection_type);
+    return;
+}
+fn run_experiment(mut trace_file : TraceFile, detection_type : Option<DetectionType>) {
+    let results : Vec<TraceResult> = (0..50000).map(|i| {
+        if i.mod_floor(&200) == 0 { println!("{i}"); }
+        let num_events = trace_file.get_num_event();
+        let run = trace_file.get_event(random::<usize>() % num_events).unwrap();
+        run_trace_eval(run.normalized_channel_trace(random::<usize>() % 4), detection_type.clone())
+    }).collect();
+    match results.iter().max_by_key(|result| (-1_000_000_000_000.0*result.score) as i64 ) {
+        Some(TraceResult{ trace_run, score, num_pulses }) => println!("Found optimal: {trace_run:#?} with score {score} and {num_pulses} pulses."),
+        None => println!("No optimum found"),
+    }
+
+}
+
+struct TraceResult {
+    trace_run : TraceRun,
+    score : Real,
+    num_pulses : usize,
+}
+
+fn run_trace_eval(trace: &Vec<u16>, detection_type : Option<DetectionType>) -> TraceResult {
+    let mut trace_run = TraceRun::new (
+        BasicParameters{
+            gate_size: 2.*random::<Real>() + 1.,
+            smoothing_window_size: (3.*random::<Real>() + 3.) as usize,
+            baseline_length: (4000.*random::<Real>() + 500.) as usize,
+        },
+        AdvancedParameters {
+            change_detector_threshold: 1.*random::<Real>() + 0.5,
+            change_detector_bound: 2.*random::<Real>() + 2.5,
+        },
+    );
+    let (baselined, smoothed) = trace_run.baselined_from_trace(trace);
+
+    let det_type = detection_type.unwrap_or(DetectionType::Advanced);
+    let name = match det_type {
+        DetectionType::Basic => "Basic Mode",
+        DetectionType::Advanced => "Advanced Mode",
+    };
+    let pulse_events = match det_type {
+        DetectionType::Basic => trace_run.run_basic_detection(smoothed.clone()),
+        DetectionType::Advanced => trace_run.run_advanced_detection(smoothed.clone()),
+    };
+    let (v,d) = trace_run.run_evaluation(name, baselined.clone(), &pulse_events);
+    TraceResult{
+        trace_run,
+        score: d/v,
+        num_pulses: pulse_events.len(),
+    }
 }
 
 fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<DetectionType>, benchmark : bool, evaluate : bool) {
@@ -101,7 +156,7 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<D
         DetectionType::Advanced => trace_run.run_advanced_detection(smoothed.clone()),
     };
     if evaluate {
-        trace_run.run_evaluation(name, baselined.clone(), &pulse_events);
+        trace_run.run_and_print_evaluation(name, baselined.clone(), &pulse_events);
     }
     if benchmark {
         trace_run.run_benchmark(smoothed.clone());
