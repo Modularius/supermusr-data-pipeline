@@ -192,6 +192,7 @@ impl TraceFile {
         }
     }
     pub fn get_num_event(&self) -> usize { self.num_events }
+    pub fn get_num_channels(&self) -> usize { self.header.number_of_channels as usize }
 }
 
 pub fn load_trace_file(name: &str) -> Result<TraceFile, Error> {

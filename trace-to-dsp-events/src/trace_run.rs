@@ -47,6 +47,7 @@ pub(crate) struct TraceRun
     basic_parameters: BasicParameters,
     advanced_parameters: AdvancedParameters,
 }
+
 impl TraceRun {
     pub fn new(basic_parameters : BasicParameters, advanced_parameters : AdvancedParameters) -> Self {
         Self { basic_parameters, advanced_parameters }
@@ -183,4 +184,13 @@ impl TraceRun {
         }
         println!("[Benchmarks Finished]");
     }
+}
+
+
+
+
+pub struct TraceResult {
+    pub trace_run : TraceRun,
+    pub highest_score : Real,
+    pub lowest_score : Real,
 }

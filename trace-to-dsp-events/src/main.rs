@@ -14,6 +14,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 
 mod commands;
 mod trace_run;
+mod min_max_run;
 
 //use tdengine::tdengine::TDEngine;
 
