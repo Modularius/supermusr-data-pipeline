@@ -1,31 +1,116 @@
 use std::fmt::{Display, Formatter, Result, Debug};
 
+use common::Intensity;
+
 use crate::{
     Real,
-    trace_iterators::feedback::OptFeedParam
+    trace_iterators::feedback::{OptFeedParam, FeedbackParameter}
 };
 
+pub trait Temporal : Default + Copy + Debug + Display {}
+impl Temporal for Intensity {}
+impl Temporal for Real {}
+
+pub trait TraceValue : Default + Clone + Debug + Display {
+    type ContentType : Default + Clone + Debug + Display;
+    type FeedbackType : Default + Copy + Debug + Display;
+
+    fn get_value(&self) -> &Self::ContentType;
+    fn take_value(self) -> Self::ContentType;
+
+    fn get_parameter(&self) -> OptFeedParam<<<Self as TraceValue>::ContentType as TraceValue>::FeedbackType> { None }
+}
+impl<V> TraceValue for V where V : From<Real> {
+    type ContentType = V;
+    type FeedbackType = V;
+
+    fn get_value(&self) -> &Self::ContentType { &self }
+    fn take_value(self) -> Self::ContentType { self }
+}
+impl<V> TraceValue for (V,FeedbackParameter<Real>) where V : From<Real> {
+    type ContentType = V;
+    type FeedbackType = Real;
+
+    fn get_value(&self) -> &Self::ContentType { &self.0 }
+    fn take_value(self) -> Self::ContentType { self.0 }
+
+    fn get_parameter(&self) -> OptFeedParam<<<(V, FeedbackParameter<Real>) as TraceValue>::ContentType as TraceValue>::FeedbackType> { Some(self.1.clone()) }
+}
+
+
+
+pub trait TraceEventData : Default + Clone + Debug + Display {}
+
+#[derive(Default, Clone,Copy,Debug)]
+pub struct Empty {}
+impl Display for Empty {fn fmt(&self, _f: &mut Formatter<'_>) -> Result {Ok(())}}
+impl TraceEventData for Empty {}
+
+//impl<T> Eventy for T where T : Scalar {}
+
+/// An abstraction of the types that are processed by the various filters
+/// To implement TraceData a type must contain time data, a value,
+/// and a parameter (which is used for applying feedback).
+/// Optionally, the type can contain a data type, into which event data can be encoded.
+/// *Associated Types
+/// - TimeType: the type which represents the time of the data point.
+/// This should be trivially copyable (usually a scalar).
+/// - ValueType: the type which contains the value of the data point.
+/// - ParameterType: when the data point expects to implement feedback
+/// from later filters, this type represents the data needed to apply it.
+/// Often this is the same as the ValueType but doesn't need to be.
+/// * Methods
+/// - get_time(): returns the time of the data point.
+/// - get_value(): returns an immutable reference to the value of the data point.
+/// - take_value(): destructs the data point and gives the caller ownership of the value.
+/// - clone_value(): allows the user to take ownership of a clone of the value without 
+/// destructing the data point.
+/// - get_parameter(): returns an OptFeedParam instance which abstracts the feedback
+/// parameter. If feedback is not intended for this type, this method has a default implementation
+/// which should be used.
 pub trait TraceData : Clone {
-    type TimeType : Copy + Debug;
-    type ValueType : Clone + Debug;
-    type ParameterType : Clone + Debug;
+    type TimeType : Temporal;
+    type ValueType : TraceValue;
+    type DataType : TraceEventData;
 
     fn get_time(&self) -> Self::TimeType;
     fn get_value(&self) -> &Self::ValueType;
     fn take_value(self) -> Self::ValueType;
 
     fn clone_value(&self) -> Self::ValueType { self.get_value().clone() }
-    fn get_parameter(&self) -> OptFeedParam<Self::ParameterType> { None }
+
+    fn get_data(&self) -> Option<&Self::DataType> { None }
 }
 
-impl<X,Y> TraceData for (X,Y) where X : Copy + Debug, Y: Clone + Debug {
+/// This is the most basic non-trivial TraceData type.
+/// The first element is the TimeType and the second the ValueType.
+/// The ParameterType is the same as the ValueType, but as there is no
+/// implementation of ```rust get_parameter()```, the type does not support
+/// feedback.
+impl<X,Y> TraceData for (X,Y) where X : Temporal, Y: TraceValue {
     type TimeType = X;
     type ValueType = Y;
-    type ParameterType = Y;
+    type DataType = Empty;
 
     fn get_time(&self) -> Self::TimeType { self.0 }
     fn get_value(&self) -> &Self::ValueType { &self.1 }
     fn take_value(self) -> Self::ValueType { self.1 }
+}
+
+/// This is the most basic non-trivial TraceData type.
+/// The first element is the TimeType and the second the ValueType.
+/// The ParameterType is the same as the ValueType, but as there is no
+/// implementation of ```rust get_parameter()```, the type does not support
+/// feedback.
+impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D : TraceEventData {
+    type TimeType = X;
+    type ValueType = Y;
+    type DataType = D;
+
+    fn get_time(&self) -> Self::TimeType { self.0 }
+    fn get_value(&self) -> &Self::ValueType { &self.1 }
+    fn take_value(self) -> Self::ValueType { self.1 }
+    fn get_data(&self) -> Option<&Self::DataType> { self.2.as_ref() }
 }
 
 

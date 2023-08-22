@@ -1,5 +1,5 @@
 use crate::{
-    tracedata::TraceData,
+    tracedata::{TraceData, TraceValue},
     trace_iterators::feedback::OptFeedParam,
 };
 
@@ -38,7 +38,7 @@ impl<I, W> Iterator for WindowIter<I, W> where
         InputType = <I::Item as TraceData>::ValueType
     >,
 {
-    type Item = (W::TimeType, W::OutputType, OptFeedParam<<I::Item as TraceData>::ParameterType>);
+    type Item = (W::TimeType, W::OutputType, OptFeedParam<<<<I as Iterator>::Item as TraceData>::ValueType as TraceValue>::FeedbackType>);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {

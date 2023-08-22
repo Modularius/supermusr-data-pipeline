@@ -4,6 +4,7 @@ use crate::events::{
     EventData, 
     event::Event,
 };
+use crate::tracedata::TraceEventData;
 use crate::{Detector, Real};
 
 #[derive(Default, Debug, Clone,PartialEq)]
@@ -28,7 +29,7 @@ impl LocalExtremumData {
     pub fn get_class(&self) -> LocalExtremumClass { self.class.clone() }
     pub fn get_value(&self) -> Option<Real> { self.value }
 }
-impl EventData for LocalExtremumData {}
+impl TraceEventData for LocalExtremumData {}
 
 impl Display for LocalExtremumData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -103,7 +104,7 @@ impl PeakData {
     pub fn get_time_since_start(&self) -> Option<Real> { self.time_since_start }
     pub fn get_time_till_end(&self) -> Option<Real> { self.time_till_end }
 }
-impl EventData for PeakData {}
+impl TraceEventData for PeakData {}
 
 impl Display for PeakData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

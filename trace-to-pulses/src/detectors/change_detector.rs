@@ -4,6 +4,7 @@ use crate::events::event::{
     EventData,
     Event,
 };
+use crate::tracedata::{TraceEventData, Stats};
 use crate::{Detector, Real};
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -32,7 +33,7 @@ impl ChangeData {
     pub fn get_value_from(&self) -> Option<Real> { self.from }
     pub fn get_value_to(&self) -> Option<Real> { self.to }
 }
-impl EventData for ChangeData {}
+impl TraceEventData for ChangeData {}
 pub type ChangeEvent = Event<ChangeData>;
 
 impl Display for ChangeData {
@@ -54,23 +55,20 @@ pub struct ChangeDetector {
 }
 impl ChangeDetector {
     pub fn new(threshold: Real) -> Self {
-        Self {
-            threshold,
-            ..Default::default()
-        }
+        Self { threshold, ..Default::default() }
     }
 }
 impl Detector for ChangeDetector {
     type TimeType = Real;
-    type ValueType = Real;
+    type ValueType = Stats;
     type DataType = ChangeData;
 
-    fn signal(&mut self, time: Real, value: Real) -> Option<ChangeEvent> {
+    fn signal(&mut self, time: Real, value: Stats) -> Option<ChangeEvent> {
         if let Some(prev_value) = self.prev {
             let new_mode = {
-                if (value - prev_value).abs() <= self.threshold {
+                if (value.mean - prev_value).abs() <= self.threshold {
                     ChangeClass::Flat
-                } else if value > prev_value {
+                } else if value.mean > prev_value {
                     ChangeClass::Rising
                 } else {
                     ChangeClass::Falling
@@ -83,16 +81,20 @@ impl Detector for ChangeDetector {
                 Some(new_mode.clone())
             };
             self.mode = new_mode;
-            self.prev = Some(value);
-            event_class.map(|e| ChangeData::with_values(e.clone(), value, prev_value).make_event(time))
+            self.prev = Some(value.mean);
+            event_class.map(|e| ChangeData::with_values(e.clone(), value.mean, prev_value).make_event(time))
         } else {
-            self.prev = Some(value);
+            self.prev = Some(value.mean);
             None
         }
     }
 }
 
-
+/*
+Modelling using skew gaussian
+Histogramming
+Adaptive binning
+*/
 
 
 
@@ -110,7 +112,7 @@ mod tests {
         let results = data.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
-            .map(|(i,v)|detector.signal(i,v))
+            .map(|(i,v)|detector.signal(i,v.into()))
             .collect_vec();
 
         assert!(results.is_empty());
@@ -125,7 +127,7 @@ mod tests {
         let results = data.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
-            .map(|(i,v)|detector.signal(i,v))
+            .map(|(i,v)|detector.signal(i,v.into()))
             .collect_vec();
 
         assert_eq!(results.len(),data.len());

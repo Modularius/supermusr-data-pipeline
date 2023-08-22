@@ -1,3 +1,6 @@
+/// This find the baseline of a trace stream by reading through the first warm_up values
+/// and setting the baseline to the minimum of these. From hereon, all subsequent values
+/// 
 use crate::{
     Real,
     tracedata::TraceData,

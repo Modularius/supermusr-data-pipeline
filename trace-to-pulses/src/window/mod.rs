@@ -3,6 +3,7 @@ pub mod iter;
 pub mod gate;
 pub mod noise_smoothing_window;
 pub mod smoothing_window;
+pub mod weighted_smoothing_window;
 pub mod trivial;
 
 pub use iter::{

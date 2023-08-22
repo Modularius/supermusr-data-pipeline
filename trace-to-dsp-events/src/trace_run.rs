@@ -21,27 +21,28 @@ use trace_to_pulses::{
     peak_detector::{self, LocalExtremumDetector},
     change_detector::ChangeDetector,
     EventWithFeedbackFilter,
-    EventFilter, events::SaveEventsToFile,
+    EventFilter, events::iter::TraceWithEventWithFeedbackFilter,
+    //events::SaveEventsToFile,
 };
 
-fn time_collect_vec<I : Iterator + Clone>(iter : &I) -> (Vec<I::Item>, Real) {
+fn time_collect_vec<I : Iterator + Clone>(iter : I) -> (Vec<I::Item>, Real) {
     let timer = Instant::now();
-    (iter.clone().collect_vec(), timer.elapsed().as_micros() as Real*0.001)
+    (iter.collect_vec(), timer.elapsed().as_micros() as Real*0.001)
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub(crate) struct BasicParameters {
     pub(crate) gate_size : Real,
     pub(crate) smoothing_window_size : usize,
     pub(crate) baseline_length : usize,
 }
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub(crate) struct AdvancedParameters {
     pub(crate) change_detector_threshold : Real,
     pub(crate) change_detector_bound : Real,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub(crate) struct TraceRun
 {
     basic_parameters: BasicParameters,
@@ -69,7 +70,7 @@ impl TraceRun {
     pub fn mutate_from(source : &Self, scale : Real) -> Self {
         TraceRun {
             basic_parameters: BasicParameters{
-                gate_size: Real::max(0., source.basic_parameters.gate_size + scale*(2.*random::<Real>() - 1.)),
+                gate_size: Real::max(0.1, source.basic_parameters.gate_size + scale*(2.*random::<Real>() - 1.)),
                 smoothing_window_size: i32::max(2, source.basic_parameters.smoothing_window_size as i32 + [1,0,0,0,-1].choose(&mut rand::thread_rng()).unwrap()) as usize,
                 baseline_length: Real::max(100.0, source.basic_parameters.baseline_length as Real + scale*1000.*(2.*random::<Real>() - 1.)) as usize,
             },
@@ -79,15 +80,18 @@ impl TraceRun {
             },
         }
     }
+
+
+
+
     pub fn baselined_from_trace<'a>(&self, trace: &'a Vec<u16>) -> (impl Iterator<Item = (Real,Real)> + Clone + 'a, impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)> + Clone + 'a) {
         let baselined = trace.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
-            .map(|(i,v)| (i,-v))                                        // The trace should be positive
-            .find_baseline(self.basic_parameters.baseline_length)            // We find the baseline of the trace from the first 1000 points, which are discarded.
+            .map(|(i,v)| (i,-v))                                            // The trace should be positive
+            .find_baseline(self.basic_parameters.baseline_length)           // We find the baseline of the trace from the first 1000 points, which are discarded.
         ;
-        let smoothed = baselined
-            .clone()
+        let smoothed = baselined.clone()
             .window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
             //.start_feedback(tracedata::operation::add_real)                           //  We apply the feedback here
             .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
@@ -109,7 +113,8 @@ impl TraceRun {
     pub fn run_advanced_detection<'a>(&self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
         smoothed
             //.events_with_feedback(PulseDetector::new(LocalExtremeDetector::new()))
-            .events_with_feedback(PulseDetector::new(ChangeDetector::new(self.advanced_parameters.change_detector_threshold), self.advanced_parameters.change_detector_bound))
+            .trace_with_events_with_feedback(ChangeDetector::new(self.advanced_parameters.change_detector_threshold))
+            .events_with_feedback(PulseDetector::new(self.advanced_parameters.change_detector_bound))
             .collect_vec()
     }
     pub fn run_evaluation<'a>(&self, name : &str, baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) -> (Real,Real) {
@@ -117,6 +122,11 @@ impl TraceRun {
             .evaluate_events(pulse_events)
             .fold((0.,0.),|(full_v,full_d), (_,v,d)|(full_v + v.abs(), full_d + d.abs()))
     }
+
+
+
+
+
 
     pub fn run_and_print_evaluation<'a>(&self, name : &str, baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) {
         println!("[{name} Evaluation]");
@@ -156,18 +166,19 @@ impl TraceRun {
         println!("[Running Benchmarks]");
         //  Timing of trace_smoothed
         {
-            let (_, time) = time_collect_vec(&trace_smoothed);
+            let (_, time) = time_collect_vec(trace_smoothed.clone());
             println!(" - Trace preprocessed in {0} ms", time);
         };
 
         let pulse_events = trace_smoothed
             .clone()
             //.events_with_feedback(PulseDetector::new(LocalExtremeDetector::new()));
-            .events_with_feedback(PulseDetector::new(ChangeDetector::new(self.advanced_parameters.change_detector_threshold), self.advanced_parameters.change_detector_bound));
+            .trace_with_events_with_feedback(ChangeDetector::new(self.advanced_parameters.change_detector_threshold))
+            .events_with_feedback(PulseDetector::new(self.advanced_parameters.change_detector_bound));
 
         //  Timing of pulse_events
         let pulse_events_realised = {
-            let (vec, time) = time_collect_vec(&pulse_events);
+            let (vec, time) = time_collect_vec(pulse_events.clone());
             println!(" - {0} pulses detected in {1:.3} ms, {2:.3} us/pulse", vec.len(), time, 1000.*time/vec.len() as Real);
             vec
         };
@@ -179,7 +190,7 @@ impl TraceRun {
             .to_trace(pulse_events_realised.as_slice());
         //  Timing of trace_simulated
         {
-            let (_, time) = time_collect_vec(&trace_simulated);
+            let (_, time) = time_collect_vec(trace_simulated.clone());
             println!(" - Simulation created in {0} ms", time);
         }
         println!("[Benchmarks Finished]");
@@ -187,10 +198,3 @@ impl TraceRun {
 }
 
 
-
-
-pub struct TraceResult {
-    pub trace_run : TraceRun,
-    pub highest_score : Real,
-    pub lowest_score : Real,
-}

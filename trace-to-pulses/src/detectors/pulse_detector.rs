@@ -7,12 +7,12 @@ use crate::events::{
     EventData,
     Event,
 };
-use crate::peak_detector::{PeakData};
-use crate::tracedata::Stats;
+use crate::peak_detector::PeakData;
+use crate::tracedata::{Stats, TraceEventData};
 use crate::trace_iterators::feedback::OptFeedParam;
 use crate::{Detector, Real};
 
-use super::FeedbackDetector;
+use super::{FeedbackDetector, EventValuedDetector};
 
 
 #[derive(Default, Debug, Clone)]
@@ -110,7 +110,7 @@ impl PulseData{
     pub fn set_standard_deviation(&mut self, standard_deviation: Option<Real> ) { self.standard_deviation = standard_deviation; }
 }
 
-impl EventData for PulseData {}
+impl TraceEventData for PulseData {}
 impl Display for PulseData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{0},{1}", self.amplitude.unwrap_or_default(), self.standard_deviation.unwrap_or_default()))
@@ -133,19 +133,24 @@ impl From<Event<PeakData>> for PulseEvent {
 
 
 
+
+
+
+
+
+
+
 #[derive(Clone)]
-pub struct PulseDetector<D> where D : Detector
+pub struct PulseDetector
 {
-    detector: D,
     area_under_curve: Real,
     prev_pulses : VecDeque<PulseData>,
     bound : Real,
 }
 
-impl<D> PulseDetector<D> where D : Detector {
-    pub fn new(detector: D, bound: Real) -> PulseDetector<D> {
+impl PulseDetector {
+    pub fn new(bound: Real) -> PulseDetector {
         PulseDetector {
-            detector,
             area_under_curve: Real::default(),
             prev_pulses: VecDeque::<PulseData>::default(),
             bound
@@ -172,37 +177,17 @@ impl<D> PulseDetector<D> where D : Detector {
     }
 }
 
-impl<D> Detector for PulseDetector<D> where D : Detector<TimeType = Real, ValueType = Real, DataType = ChangeData> {
+impl Detector for PulseDetector {
     type TimeType = Real;
     type ValueType = Stats;
     type DataType = PulseData;
 
-    fn signal(&mut self, time: Real, value: Self::ValueType) -> Option<PulseEvent> {
+    fn signal(&mut self, _time: Real, value: Self::ValueType) -> Option<PulseEvent> {
         self.area_under_curve += value.mean;
-        let _event = self.detector.signal(time, value.mean)?;
-        if _event.get_data().get_class() == ChangeClass::Rising {
-            self.area_under_curve = 0.;
-            return None;
-        }
-        if _event.get_data().get_class() == ChangeClass::Flat {
-            return None;
-        }
-        let sigma = self.estimate_standard_deviation(value.mean);
-        self.area_under_curve = 0.;
-        let data = PulseData::with_cache(Some(time),Some(value.mean),Some(sigma),
-            Some(value.variance.sqrt()), None,
-            Some((time - self.bound*sigma,time + self.bound*sigma)),
-        );
-        // LOG
-        //log::info!("{time}: Pulse data created {data} with window {0}",3.*sigma);
-        self.prev_pulses.push_back(data.clone());
-        self.area_under_curve = 0.;
-        Some(data.make_event(time))
+        None
     }
 }
-impl<D> FeedbackDetector for PulseDetector<D> where D : Detector<TimeType = Real, ValueType = Real, DataType = ChangeData> {
-    type ParameterType = Real;
-
+impl FeedbackDetector for PulseDetector {
     fn modify_parameter(&mut self, time : Real, param : OptFeedParam<Self::ParameterType>) {
         self.remove_distant_pulses(time);
         //let r = Rc::strong_count(&param.clone().unwrap().0);
@@ -215,6 +200,30 @@ impl<D> FeedbackDetector for PulseDetector<D> where D : Detector<TimeType = Real
     }
 }
 
+impl EventValuedDetector for PulseDetector {
+    type DataValueType = ChangeData;
+
+    fn on_event(&mut self, event: Event<Self::DataValueType>) -> Option<Event<PulseData>> {
+        if event.get_data().get_class() == ChangeClass::Rising {
+            self.area_under_curve = 0.;
+            return None;
+        }
+        if event.get_data().get_class() == ChangeClass::Flat {
+            return None;
+        }
+        let sigma = self.estimate_standard_deviation(event.get_data().get_value_from()?);
+        self.area_under_curve = 0.;
+        let data = PulseData::with_cache(Some(event.get_time()),Some(event.get_data().get_value_from()?),Some(sigma),
+            None, None,
+            Some((event.get_time() - self.bound*sigma,event.get_time() + self.bound*sigma)),
+        );
+        // LOG
+        //log::info!("{time}: Pulse data created {data} with window {0}",3.*sigma);
+        self.prev_pulses.push_back(data.clone());
+        self.area_under_curve = 0.;
+        Some(data.make_event(event.get_time()))
+    }
+}
 
 
 

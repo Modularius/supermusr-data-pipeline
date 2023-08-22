@@ -1,13 +1,19 @@
-// Code from https://github.com/swizard0/smoothed_z_score/blob/master/README.md
+//! This crate provides tools for converting raw trace data into
+//! a stream of events which represent pulses in the trace stream.
+//! 
+//! A raw trace takes the form of a Vec (or some other similar container)
+//! of scalar values. Typical usage of this crate may look like:
+//! ```rust
+//! let events = trace.iter()
+//!     .enumerate()
+//!     .map(make_real_enumerate)                       // converts to (Real,Real) format
+//!     .window(SmoothedWindow(4))                      // A moving average window of length 4
+//!     .events(PulseDetector(ChangeDetector(0.5),1))   // Registers an event when the averaged
+//!                                                     // signal changes by 0.5*sigma, where sigma is
+//!                                                     // the standard deviation from the moving
+//!                                                     //average window
+//! ```
 
-/*
-iterators of raw trace data have the trait EventFilter<I,S,D> implemented
-The events method consumes a raw trace iterator and emits an EventIter iterator
-A detector is a struct that
-
-I is an iterator to the enumerated raw trace data, S is the detector signal type and D is the detector.
-
-*/
 
 pub mod detectors;
 pub mod events;

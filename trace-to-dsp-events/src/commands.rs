@@ -25,7 +25,7 @@ use crate::{
         TraceRun,
         BasicParameters,
         AdvancedParameters,
-    }
+    }, min_max_run::optimize
 };
 //use trace_simulator;
 /*
@@ -78,12 +78,16 @@ pub fn run_file_mode(params: FileParameters, detection_type : Option<DetectionTy
     let save_file_name = params.save_file_name.unwrap_or("Saves/output".to_owned());
 
     let mut trace_file = load_trace_file(&file_name).unwrap();
-    let event_index = 243;
-    let channel_index = 0;
-    //let run = trace_file.get_event(event_index).unwrap();
-    //run_trace(run.normalized_channel_trace(channel_index), save_file_name, detection_type, benchmark, evaluate);
     
-    run_min_max_experiment(trace_file, detection_type);
+    {
+        let event_index = 243;
+        let channel_index = 0;
+    
+        //let run = trace_file.get_event(event_index).unwrap();
+        //run_trace(run.normalized_channel_trace(channel_index), save_file_name, detection_type, benchmark, evaluate);
+    }
+    
+    optimize(trace_file, detection_type, 10);
 }
 
 fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<DetectionType>, benchmark : bool, evaluate : bool) {
@@ -100,16 +104,17 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<D
     );
     let (baselined, smoothed) = trace_run.baselined_from_trace(trace);
 
-    let det_type = detection_type.unwrap_or(DetectionType::Basic);
-    let name = match det_type {
-        DetectionType::Basic => "Basic Mode",
-        DetectionType::Advanced => "Advanced Mode",
-    };
+    let  det_type = detection_type.unwrap_or(DetectionType::Advanced);
     let pulse_events = match det_type {
         DetectionType::Basic => trace_run.run_basic_detection(smoothed.clone()),
         DetectionType::Advanced => trace_run.run_advanced_detection(smoothed.clone()),
     };
+    
     if evaluate {
+        let name = match det_type {
+            DetectionType::Basic => "Basic Mode",
+            DetectionType::Advanced => "Advanced Mode",
+        };
         trace_run.run_and_print_evaluation(name, baselined.clone(), &pulse_events);
     }
     if benchmark {
