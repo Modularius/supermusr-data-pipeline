@@ -1,3 +1,4 @@
+pub mod iter;
 pub mod finite_difference;
 pub mod find_baseline;
 

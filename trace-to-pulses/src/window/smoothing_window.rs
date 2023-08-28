@@ -137,14 +137,13 @@ mod tests {
     #[test]
     fn test_minimal() {
         let data = [4, 3];
-        let (i, stats, param) = data
+        let (i, stats) = data
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(SmoothingWindow::new(2))
             .next()
             .unwrap();
-        assert!(param.is_none());
         assert_eq!(i, 1.);
         assert_eq!(stats.value, 3.);
         assert_approx_eq!(stats.mean, 7. / 2.);
@@ -156,7 +155,7 @@ mod tests {
     #[test]
     fn test_three_data() {
         let data = [4, 3, 1];
-        let (i, stats, param) = data
+        let (i, stats) = data
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
@@ -164,7 +163,6 @@ mod tests {
             .skip(1)
             .next()
             .unwrap();
-        assert!(param.is_none());
         assert_eq!(i, 2.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 2.);
@@ -177,14 +175,13 @@ mod tests {
     #[test]
     fn test_three_data_three_window() {
         let data = [4, 3, 1];
-        let (i, stats, param) = data
+        let (i, stats) = data
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(SmoothingWindow::new(3))
             .next()
             .unwrap();
-        assert!(param.is_none());
         assert_eq!(i, 2.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 8. / 3.);
@@ -205,8 +202,7 @@ mod tests {
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(SmoothingWindow::new(3));
-        let (i, stats, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, stats) = itr.next().unwrap();
         assert_eq!(i, 2.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 8. / 3.);
@@ -218,8 +214,7 @@ mod tests {
                 / (3. - 1.)
         );
 
-        let (i, stats, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, stats) = itr.next().unwrap();
         assert_eq!(i, 3.);
         assert_eq!(stats.value, 5.);
         assert_approx_eq!(stats.mean, 9. / 3.);
@@ -231,8 +226,7 @@ mod tests {
                 / (3. - 1.)
         );
 
-        let (i, stats, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, stats) = itr.next().unwrap();
         assert_eq!(i, 4.);
         assert_eq!(stats.value, 3.);
         assert_approx_eq!(stats.mean, 9. / 3.);

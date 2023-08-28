@@ -4,7 +4,7 @@ use common::Intensity;
 
 use crate::{
     Real,
-    trace_iterators::feedback::{OptFeedParam, FeedbackParameter}
+    trace_iterators::feedback::FeedbackParameter
 };
 
 pub trait Temporal : Default + Copy + Debug + Display {}
@@ -17,25 +17,15 @@ pub trait TraceValue : Default + Clone + Debug + Display {
 
     fn get_value(&self) -> &Self::ContentType;
     fn take_value(self) -> Self::ContentType;
-
-    fn get_parameter(&self) -> OptFeedParam<<<Self as TraceValue>::ContentType as TraceValue>::FeedbackType> { None }
 }
-impl<V> TraceValue for V where V : From<Real> {
-    type ContentType = V;
-    type FeedbackType = V;
+impl TraceValue for Real {
+    type ContentType = Real;
+    type FeedbackType = Real;
 
     fn get_value(&self) -> &Self::ContentType { &self }
     fn take_value(self) -> Self::ContentType { self }
 }
-impl<V> TraceValue for (V,FeedbackParameter<Real>) where V : From<Real> {
-    type ContentType = V;
-    type FeedbackType = Real;
 
-    fn get_value(&self) -> &Self::ContentType { &self.0 }
-    fn take_value(self) -> Self::ContentType { self.0 }
-
-    fn get_parameter(&self) -> OptFeedParam<<<(V, FeedbackParameter<Real>) as TraceValue>::ContentType as TraceValue>::FeedbackType> { Some(self.1.clone()) }
-}
 
 
 
@@ -112,8 +102,6 @@ impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D :
     fn take_value(self) -> Self::ValueType { self.1 }
     fn get_data(&self) -> Option<&Self::DataType> { self.2.as_ref() }
 }
-
-
 
 
 
@@ -203,4 +191,12 @@ impl Stats {
         self.value += delta;
         self.mean += delta;
     }
+}
+
+impl TraceValue for Stats where {
+    type ContentType = Stats;
+    type FeedbackType = Real;
+
+    fn get_value(&self) -> &Self::ContentType { &self }
+    fn take_value(self) -> Self::ContentType { self }
 }

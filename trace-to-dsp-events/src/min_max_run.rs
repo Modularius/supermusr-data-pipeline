@@ -65,17 +65,15 @@ impl MinMaxExperiment {
     }
 
     fn run_trace_eval(&self, trace_run : &TraceRun, trace: &Vec<u16>) -> Real {
-        let (baselined, smoothed) = trace_run.baselined_from_trace(trace);
-
         let name = match self.detection_type {
             DetectionType::Basic => "Basic Mode",
             DetectionType::Advanced => "Advanced Mode",
         };
         let pulse_events = match self.detection_type {
-            DetectionType::Basic => trace_run.run_basic_detection(smoothed.clone()),
-            DetectionType::Advanced => trace_run.run_advanced_detection(smoothed.clone()),
+            DetectionType::Basic => trace_run.run_basic_detection(trace),
+            DetectionType::Advanced => trace_run.run_advanced_detection(trace),
         };
-        let (v,d) = trace_run.run_evaluation(name, baselined.clone(), &pulse_events);
+        let (v,d) = trace_run.run_evaluation(name, trace);
         d/v
     }
 }

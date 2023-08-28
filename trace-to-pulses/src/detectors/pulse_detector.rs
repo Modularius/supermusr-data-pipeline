@@ -8,8 +8,8 @@ use crate::events::{
     Event,
 };
 use crate::peak_detector::PeakData;
-use crate::tracedata::{Stats, TraceEventData};
-use crate::trace_iterators::feedback::OptFeedParam;
+use crate::tracedata::{Stats, TraceEventData, TraceValue};
+use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::{Detector, Real};
 
 use super::{FeedbackDetector, EventValuedDetector};
@@ -188,7 +188,7 @@ impl Detector for PulseDetector {
     }
 }
 impl FeedbackDetector for PulseDetector {
-    fn modify_parameter(&mut self, time : Real, param : OptFeedParam<Self::ParameterType>) {
+    fn modify_parameter(&mut self, time : Real, param : &FeedbackParameter<Self::ValueType>) {
         self.remove_distant_pulses(time);
         //let r = Rc::strong_count(&param.clone().unwrap().0);
         // LOG
@@ -196,7 +196,7 @@ impl FeedbackDetector for PulseDetector {
         let val = self.prev_pulses.iter().map(|pulse|pulse.get_effective_value_at(time + 1.)).sum::<Real>();
         // LOG
         //log::info!("New correction calculated: {val:?} from {0} pulses", self.prev_pulses.len());
-        param.unwrap().set(-val);
+        param.set(-val);
     }
 }
 

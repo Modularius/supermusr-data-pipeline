@@ -11,8 +11,11 @@ pub use event::{
 pub use iter::{
     EventIter,
     EventFilter,
-    EventWithFeedbackIter,
-    EventWithFeedbackFilter,
+    EventsWithTraceFilter,
+    Standard,
+    WithFeedback,
+    WithTrace,
+    WithTraceAndFeedback,
 };
 
 pub use save_to_file::SaveEventsToFile;

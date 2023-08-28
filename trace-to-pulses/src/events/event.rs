@@ -1,6 +1,5 @@
 use crate::Real;
 use crate::trace_iterators::feedback::FeedbackParameter;
-use crate::trace_iterators::feedback::OptFeedParam;
 use crate::tracedata::Empty;
 use crate::tracedata::TraceEventData;
 use crate::tracedata::TraceValue;
@@ -41,12 +40,13 @@ impl<D> Display for Event<D> where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_fmt(format_args!("{0},{1};", self.time, self.data)) }
 }
+/*
 
 impl<D> TraceData for Event<D> where
     D: EventData,
 {
     type TimeType = Real;
-    type ValueType = D;
+    type ValueType = Real;
     type DataType = D;
 
     fn get_time(&self) -> Self::TimeType { self.get_time() }
@@ -54,8 +54,7 @@ impl<D> TraceData for Event<D> where
     fn take_value(self) -> Self::ValueType { self.take_data() }
     fn get_data(&self) -> Option<&Self::DataType> { Some(self.get_value()) }
 }
-
-
+ */
 
 
 
@@ -77,7 +76,7 @@ pub struct EventWithFeedback<D,V> where
     V : TraceValue,
 {
     pub event: Event<D>,
-    pub parameter: OptFeedParam<V>,
+    pub parameter: FeedbackParameter<V>,
 }
 impl<D,V> EventWithFeedback<D,V> where
     D: EventData,
@@ -106,6 +105,7 @@ impl<D,V> Display for EventWithFeedback<D,V> where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { std::fmt::Display::fmt(&self.event, f) }
 }
 
+/*
 impl<D,V> TraceData for EventWithFeedback<D,V> where
     D: EventData,
     V : TraceValue,
@@ -118,3 +118,4 @@ impl<D,V> TraceData for EventWithFeedback<D,V> where
     fn get_value(&self) -> &Self::ValueType { self.get_data() }
     fn take_value(self) -> Self::ValueType { self.take_data() }
 }
+*/

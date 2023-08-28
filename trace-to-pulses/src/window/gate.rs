@@ -100,48 +100,39 @@ mod tests {
             .map(processing::make_enumerate_real)
             .window(Gate::new(3.0));
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 0.);
         assert_eq!(value, 4.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 1.);
         assert_eq!(value, 4.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 2.);
         assert_eq!(value, 4.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 3.);
         assert_eq!(value, 4.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 4.);
         assert_eq!(value, 4.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 5.);
         assert_eq!(value, 1.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 6.);
         assert_eq!(value, 5.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 7.);
         assert_eq!(value, 5.);
 
-        let (i, value, param) = itr.next().unwrap();
-        assert!(param.is_none());
+        let (i, value) = itr.next().unwrap();
         assert_eq!(i, 8.);
         assert_eq!(value, 2.);
 

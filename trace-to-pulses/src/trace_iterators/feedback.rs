@@ -12,31 +12,28 @@
 ///             ChangeDetector(0.5),1   // the value of y in the function given to ```rust start_feedback```.
 ///     ))
 ///```
-use std::{fmt::Debug,cell::Cell, rc::Rc, iter::Map};
+use std::{cell::Cell, rc::Rc, iter::Map, fmt::{Display, Formatter, self}};
 
-use crate::tracedata::{TraceData, Temporal, Empty, TraceValue, TraceEventData};
+use crate::tracedata::{TraceData, TraceValue};
 
-type FeedbackValueType<I> = <<I as Iterator>::Item as TraceData>::ValueType;
-
-type FeedbackFunctionTypeValue<I> = <FeedbackValueType<I> as TraceValue>::ContentType;
-type FeedbackFunctionTypeFeedback<I> = <FeedbackValueType<I> as TraceValue>::FeedbackType;
-type FeedbackFunctionType<I> = fn(&FeedbackFunctionTypeValue<I>, &FeedbackFunctionTypeFeedback<I>)->FeedbackFunctionTypeValue<I>;
-
+use super::iter::{
+    TraceIter,
+    TraceIterType
+};
 
 /// This is a wrapper for the pointer to the feedback parameter.
 /// Instances of this can be cloned and passed around and modified.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FeedbackParameter<V>(pub Rc<Cell<V::FeedbackType>>) where V : TraceValue;
-pub type OptFeedParam<V> = Option<FeedbackParameter<V>>;
 
 /// #Methods
 /// - new(initial : V): Creates a new Cell and Rc in which to store the feedback parameter.
 /// - set(value : V): Dereferences the Rc and changes the value of the cell.
 impl<V> FeedbackParameter<V> where V : TraceValue {
-    pub fn new(initial : V) -> Self {
-        Self(Rc::new(Cell::new(initial)))
+    pub fn new() -> Self {
+        Self(Rc::new(Cell::new(V::FeedbackType::default())))
     }
-    pub fn set(&self, value : V) {
+    pub fn set(&self, value : V::FeedbackType) {
         (*self.0).set(value);
     }
 }
@@ -50,50 +47,68 @@ impl<V> Clone for FeedbackParameter<V> where V : TraceValue {
     }
 }
 
+impl<V> Display for FeedbackParameter<V> where V : TraceValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{self:?}"))
+    }
+}
+
+
+
+pub struct FeedbackFunction<V> where V : TraceValue {
+    parameter: FeedbackParameter<V>,
+    modifier: fn(&V::ContentType,&V::FeedbackType)->V,
+}
+
+impl<V> FeedbackFunction<V> where V: TraceValue {
+    fn new(modifier : fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
+        Self { parameter: FeedbackParameter::new(), modifier: modifier }
+    }
+    /// Clone creates a new instance and clones the Rc contained within it.
+    /// This creates a new pointer to the Cell containing the parameter.
+    /// Note this does not clone the parameter itself.
+    fn clone_parameter(&self) -> FeedbackParameter<V> {
+        self.parameter.clone()
+    }
+}
 
 
 
 
 #[derive(Clone)]
-pub struct FeedbackIter<I> where
-    I: Iterator,
-    I::Item : TraceData,
-{
-    parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>,
-    modifier: FeedbackFunctionType<I>,
-    source: I,
+pub struct Feedback<V> where V: TraceValue, {
+    parameter: FeedbackParameter<V>,
+    modifier: fn(&V::ContentType,&V::FeedbackType)->V,
 }
 
-impl<I> FeedbackIter<I> where
-    I: Iterator,
-    I::Item : TraceData,
-{
-    fn new(source : I, parameter : P, modifier : FeedbackFunctionType<I>) -> Self {
-        Self {source, parameter: FeedbackParameter::<P>::new(parameter), modifier }
+impl<V> Feedback<V> where V: TraceValue {
+    fn new(parameter : FeedbackParameter<V>, modifier: fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
+        Self { parameter, modifier }
     }
 }
 
-impl<I> Iterator for FeedbackIter<I>
-where
+impl<V> TraceIterType for Feedback<V> where V: TraceValue {}
+
+impl<I> Iterator for TraceIter<Feedback<<I::Item as TraceData>::ValueType>,I> where
     I: Iterator,
     I::Item : TraceData,
 {
-    type Item = (<I::Item as TraceData>::TimeType, <I::Item as TraceData>::ValueType, OptFeedParam<P>);
+    type Item = (<I::Item as TraceData>::TimeType, <I::Item as TraceData>::ValueType);
 
     fn next(&mut self) -> Option<Self::Item> {
         let val = self.source.next()?;
         let time = val.get_time();
-        let value = (self.modifier)(&val.get_value(),&self.parameter.0.get());//val.clone_value();//
+        let value = (self.child.modifier)(&val.get_value().get_value(),&self.child.parameter.0.get());
 
         // LOG
         //log::info!("Applied correction of {0:?}", self.parameter.0.get());
         //let r = Rc::strong_count(&self.parameter.0);
         // LOG
         //log::info!("Number of references: {0:?}",r);
-        Some((time, value, Some(self.parameter.clone())))//
+        Some((time, value))//
     }
 }
-
+/*
 /// This is the simplest non-trivial implementation which includes flexible feedback
 /// The first and second elements are the time and value respectively,
 /// whilst the third contains an OptFeedParam instance, essentially a pointer to the
@@ -102,7 +117,7 @@ where
 /// ```rust
 /// get_parameter()
 /// ```
-impl<X,Y,Z> TraceData for (X,Y,OptFeedParam<Z>) where X : Temporal, Y: TraceValue {
+impl<X,Y> TraceData for (X,Y) where X : Temporal, Y: TraceValue {
     type TimeType = X;
     type ValueType = Y;
     type DataType = Empty;
@@ -131,10 +146,15 @@ impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D :
 
     fn get_data(&self) -> Option<&Self::DataType> { self.3.as_ref() }
 }
+ */
 
 
+ type FeedbackValueType<I> = <<I as Iterator>::Item as TraceData>::ValueType;
 
-
+ type FeedbackFunctionTypeValue<I> = <FeedbackValueType<I> as TraceValue>::ContentType;
+ type FeedbackFunctionTypeFeedback<I> = <FeedbackValueType<I> as TraceValue>::FeedbackType;
+ type FeedbackFunctionType<I> = fn(&FeedbackFunctionTypeValue<I>, &FeedbackFunctionTypeFeedback<I>)->FeedbackValueType<I>;
+ 
 /// This trait is implemented for any iterator that contains TraceData.
 /// #Methods
 /// - start_feedback(modifier): from hereon, all trace values have the modifier function
@@ -147,15 +167,15 @@ pub trait FeedbackFilter<I> where
     I: Iterator,
     I::Item : TraceData,
 {
-    fn start_feedback(self, modifier: FeedbackFunctionType<I>) -> FeedbackIter<I>;
+    fn start_feedback(self, parameter: &FeedbackParameter<FeedbackValueType<I>>, modifier: FeedbackFunctionType<I>) -> TraceIter<Feedback<FeedbackValueType<I>>,I>;
 }
 
-impl<I,P> FeedbackFilter<I> for I where
+impl<I> FeedbackFilter<I> for I where
     I: Iterator,
     I::Item : TraceData,
 {
-    fn start_feedback(self, modifier: FeedbackFunctionType<I>) -> FeedbackIter<I> {
-        FeedbackIter::new(self, P::default(), modifier)
+    fn start_feedback(self, parameter: &FeedbackParameter<FeedbackValueType<I>>, modifier: FeedbackFunctionType<I>) -> TraceIter<Feedback<FeedbackValueType<I>>,I> {
+        TraceIter::new(Feedback::new(parameter.clone(), modifier), self)
     }
 }
 
@@ -169,19 +189,6 @@ impl<I,P> FeedbackFilter<I> for I where
 /// #Methods
 /// - end_feedback(): removes the feedback parameter from the data stream.
 /// This is useful if you want to implement more than one non-intersecting feedback parameter
-pub trait EndFeedbackFilter<I,X,Y,Z> where
-    I: Iterator<Item = (X,Y)>,
-{
-    fn end_feedback(self) -> Map<I,fn((X,Y,OptFeedParam<Z>))->(X,Y)>;
-}
-
-impl<I,X,Y,Z> EndFeedbackFilter<I,X,Y,Z> for I where
-    I: Iterator<Item = (X,Y,OptFeedParam<Z>)>,
-{
-    fn end_feedback(self) -> Map<I,fn((X,Y,OptFeedParam<Z>))->(X,Y)> {
-        self.map(|(x,y,_)|(x,y))
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -191,13 +198,14 @@ mod tests {
 
     #[test]
     fn sample_data_zero() {
+        let feedback_parameter = FeedbackParameter::new();
         let input: Vec<Intensity> = vec![1, 6, 2, 1, 3, 1, 0];
         let output: Vec<Real> = input
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
-            .start_feedback(|x,&y : &Real|x + y)
-            .map(|(_, x, _)| x)
+            .start_feedback(&feedback_parameter, |x,&y : &Real|x + y)
+            .map(|(_, x)| x)
             .collect();
 
         assert_eq!(output[0], 1.);
@@ -211,14 +219,15 @@ mod tests {
 
     #[test]
     fn sample_data_update() {
+        let feedback_parameter = FeedbackParameter::new();
         let input: Vec<Intensity> = vec![1, 6, 2, 1, 3, 1, 0];
         let output: Vec<Real> = input
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
-            .start_feedback(|x,&y : &Real|x + y)
-            .map(|(_, x, m)| {
-                if let Some(mm) = m { mm.set(2.); }
+            .start_feedback(&feedback_parameter, |x,&y : &Real|x + y)
+            .map(|(_, x)| {
+                feedback_parameter.set(2.);
                 x
             })
             .collect::<Vec<_>>();

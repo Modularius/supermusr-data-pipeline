@@ -7,7 +7,6 @@ use crate::events::{
 };
 use crate::peak_detector::PeakData;
 use crate::tracedata::{Stats, TraceEventData};
-use crate::trace_iterators::feedback::OptFeedParam;
 use crate::{Detector, Real};
 
 use super::FeedbackDetector;

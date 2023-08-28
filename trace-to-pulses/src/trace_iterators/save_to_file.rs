@@ -9,8 +9,10 @@ use std::{
 
 use crate::{
     tracedata::TraceData,
-    EventIter, detectors::FeedbackDetector, log_then_panic_t
+    EventIter, detectors::FeedbackDetector, log_then_panic_t, events::{Event, EventData}
 };
+
+use super::iter::{TraceIterType, TraceIter};
 
 
 fn create_file(name: &str) -> File {
@@ -41,18 +43,18 @@ impl<I> SaveToFile<I> for I where
         Ok(())
     }
 }
-
-impl<I, D> SaveToFile<I> for EventIter<I, D> where
-    I: Iterator,
-    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType, ParameterType = D::ParameterType>,
-    D: FeedbackDetector,
+/* 
+impl<I,D> SaveToFile<I> for I where
+    I: Iterator<Item = Event<D>>,
+    D : EventData,
 {
     fn save_to_file(self, name: &str) -> Result<(), Error> {
         let mut file = create_file(name);
-        for event in self {
+        for event in self.source {
             writeln!(&mut file, "{event}")
                 .unwrap_or_else(|e| log_then_panic_t(format!("Cannot write to {name} file : {e}")))
         }
         Ok(())
     }
 }
+*/

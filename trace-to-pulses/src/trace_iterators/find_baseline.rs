@@ -6,59 +6,57 @@ use crate::{
     tracedata::TraceData,
 };
 
-#[derive(Clone)]
-pub struct FindBaselineIter<I> where
-    I: Iterator,
-    I::Item : TraceData
-{
+use super::iter::TraceIterType;
+use super::iter::TraceIter;
+
+#[derive(Default, Clone)]
+pub struct FindBaseline {
     warm_up: usize,
     baseline: Real,
-    source: I,
 }
 
-impl<I> FindBaselineIter<I> where
-    I: Iterator,
-    I::Item : TraceData
-{
-    pub fn new(source: I, warm_up : usize) -> Self {
-        FindBaselineIter { source, warm_up, baseline: Real::MAX }
+impl FindBaseline {
+    pub fn new(warm_up : usize) -> Self {
+        FindBaseline { warm_up, baseline: Real::MAX }
     }
 }
 
-impl<I> Iterator for FindBaselineIter<I>
-where
+impl TraceIterType for FindBaseline {}
+
+impl<I> Iterator for TraceIter<FindBaseline,I> where
     I: Iterator,
     I::Item : TraceData<ValueType = Real>
 {
     type Item = (<I::Item as TraceData>::TimeType, Real);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.warm_up > 0 {
+        while self.child.warm_up > 0 {
             match self.source.next() {
-                Some(trace) => self.baseline = Real::min(self.baseline, trace.take_value()),
+                Some(trace) => self.child.baseline = Real::min(self.child.baseline, trace.take_value()),
                 None => return None,
             }
-            self.warm_up -= 1;
+            self.child.warm_up -= 1;
             //if self.warm_up == 0 { log::info!("{0}",self.baseline); }
         }
         self.source.next()
-            .map(|trace|(trace.get_time(),trace.take_value() - self.baseline))
+            .map(|trace|(trace.get_time(),trace.take_value() - self.child.baseline))
     }
 }
+
 
 pub trait FindBaselineFilter<I> where
     I: Iterator,
     I::Item : TraceData
 {
-    fn find_baseline(self, warm_up : usize) -> FindBaselineIter<I>;
+    fn find_baseline(self, warm_up : usize) -> TraceIter<FindBaseline, I>;
 }
 
 impl<I> FindBaselineFilter<I> for I where
     I: Iterator,
     I::Item : TraceData
 {
-    fn find_baseline(self, warm_up : usize) -> FindBaselineIter<I> {
-        FindBaselineIter::new(self, warm_up)
+    fn find_baseline(self, warm_up : usize) -> TraceIter<FindBaseline, I> {
+        TraceIter::new(FindBaseline::new(warm_up), self)
     }
 }
 

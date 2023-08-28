@@ -31,8 +31,7 @@ pub use detectors::{
 pub use events::{
     EventFilter,
     EventIter,
-    EventWithFeedbackFilter,
-    EventWithFeedbackIter,
+    EventsWithTraceFilter,
 };
 
 pub mod trace_iterators;

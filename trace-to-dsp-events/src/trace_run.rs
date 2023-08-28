@@ -7,7 +7,7 @@ use trace_to_pulses::{
     Real,
     trace_iterators::{
         find_baseline::FindBaselineFilter,
-        feedback::{FeedbackFilter, EndFeedbackFilter, OptFeedParam},
+        feedback::{FeedbackFilter, FeedbackParameter},
         to_trace::ToTrace, save_to_file::SaveToFile
     },
     processing,
@@ -20,9 +20,8 @@ use trace_to_pulses::{
     pulse_detector::{PulseDetector, PulseEvent},
     peak_detector::{self, LocalExtremumDetector},
     change_detector::ChangeDetector,
-    EventWithFeedbackFilter,
-    EventFilter, events::iter::TraceWithEventWithFeedbackFilter,
-    //events::SaveEventsToFile,
+    EventFilter, EventsWithTraceFilter,
+    events::SaveEventsToFile,
 };
 
 fn time_collect_vec<I : Iterator + Clone>(iter : I) -> (Vec<I::Item>, Real) {
@@ -84,7 +83,7 @@ impl TraceRun {
 
 
 
-    pub fn baselined_from_trace<'a>(&self, trace: &'a Vec<u16>) -> (impl Iterator<Item = (Real,Real)> + Clone + 'a, impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)> + Clone + 'a) {
+    pub fn run_basic_detection<'a>(&self, trace: &'a Vec<u16>) -> Vec<PulseEvent> {
         let baselined = trace.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
@@ -93,14 +92,8 @@ impl TraceRun {
         ;
         let smoothed = baselined.clone()
             .window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
-            //.start_feedback(tracedata::operation::add_real)                           //  We apply the feedback here
             .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
-            .start_feedback(tracedata::operation::shift_stats)                          
         ;
-        (baselined,smoothed)
-    }
-
-    pub fn run_basic_detection<'a>(&self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
         smoothed
             .map(tracedata::extract::enumerated_mean)
             .events(LocalExtremumDetector::new())
@@ -110,15 +103,32 @@ impl TraceRun {
             .collect_vec()
     }
 
-    pub fn run_advanced_detection<'a>(&self, smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) -> Vec<PulseEvent> {
-        smoothed
+    pub fn run_advanced_detection<'a>(&self, trace: &'a Vec<u16>) -> Vec<PulseEvent> {
+        let baselined = trace.iter()
+            .enumerate()
+            .map(processing::make_enumerate_real)
+            .map(|(i,v)| (i,-v))                                            // The trace should be positive
+            .find_baseline(self.basic_parameters.baseline_length)           // We find the baseline of the trace from the first 1000 points, which are discarded.
+        ;
+
+        let feedback_parameter_real = FeedbackParameter::new();
+        let feedback_parameter_stats = FeedbackParameter::new();
+        baselined.clone()
+            .window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
+            .start_feedback(&feedback_parameter_real, tracedata::operation::add_real)                                //  We apply the feedback here
+            .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
+            .start_feedback(&feedback_parameter_stats, tracedata::operation::shift_stats)                           //  We apply the feedback here
             //.events_with_feedback(PulseDetector::new(LocalExtremeDetector::new()))
-            .trace_with_events_with_feedback(ChangeDetector::new(self.advanced_parameters.change_detector_threshold))
-            .events_with_feedback(PulseDetector::new(self.advanced_parameters.change_detector_bound))
+            .trace_with_events(ChangeDetector::new(self.advanced_parameters.change_detector_threshold))
+            .events_with_feedback(feedback_parameter_stats, PulseDetector::new(self.advanced_parameters.change_detector_bound))
             .collect_vec()
     }
-    pub fn run_evaluation<'a>(&self, name : &str, baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) -> (Real,Real) {
-        baselined
+    pub fn run_evaluation<'a>(&self, name : &str, trace: &'a Vec<u16>, pulse_events : &[PulseEvent]) -> (Real,Real) {
+        trace.iter()
+            .enumerate()
+            .map(processing::make_enumerate_real)
+            .map(|(i,v)| (i,-v))                                            // The trace should be positive
+            .find_baseline(self.basic_parameters.baseline_length)           // We find the baseline of the trace from the first 1000 points, which are discarded.
             .evaluate_events(pulse_events)
             .fold((0.,0.),|(full_v,full_d), (_,v,d)|(full_v + v.abs(), full_d + d.abs()))
     }
@@ -128,9 +138,9 @@ impl TraceRun {
 
 
 
-    pub fn run_and_print_evaluation<'a>(&self, name : &str, baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) {
+    pub fn run_and_print_evaluation<'a>(&self, name : &str, trace: &'a Vec<u16>, pulse_events : &[PulseEvent]) {
         println!("[{name} Evaluation]");
-        let (v,d) = self.run_evaluation(name, baselined, pulse_events);
+        let (v,d) = self.run_evaluation(name, trace, pulse_events);
         println!("Area under trace curve:        {0:.2}", v);
         println!("Area under trace - simulation: {0:.2}", d);
         println!("[Evaluation Finished]");
@@ -141,12 +151,10 @@ impl TraceRun {
             .save_to_file(&(save_file_name + "_baselined" + ".csv")).unwrap();
     }
 
-    pub fn save_smoothed(&self, save_file_name: String, trace_smoothed : impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)>) {
+    pub fn save_smoothed(&self, save_file_name: String, trace_smoothed : impl Iterator<Item = (Real,Stats)>) {
         trace_smoothed
-            .end_feedback()
             .map(tracedata::extract::enumerated_mean)
             .save_to_file(&(save_file_name + "_smoothed" + ".csv")).unwrap();
-        
     }
 
     pub fn save_pulse_simulation(&self, save_file_name: String, trace_baselined: impl Iterator<Item = (Real,Real)> + Clone, pulse_events : &[PulseEvent]) {
@@ -155,26 +163,41 @@ impl TraceRun {
             .to_trace(pulse_events)
             .save_to_file(&(save_file_name.clone() + "_simulated" + ".csv")).unwrap();
     }
-        
 
     pub fn save_pulse_events(&self, save_file_name: String, pulse_events : Vec<PulseEvent>) {
         pulse_events.into_iter().save_to_file(&(save_file_name + "_pulses" + ".csv")).unwrap();
     }
 
-    pub fn run_benchmark<'a>(&self, trace_smoothed: impl Iterator<Item = (Real,Stats,OptFeedParam<Real>)> + Clone) {
+    pub fn run_benchmark<'a>(&self, trace: &'a Vec<u16>) {
         
         println!("[Running Benchmarks]");
+        
+        let baselined = trace.iter()
+            .enumerate()
+            .map(processing::make_enumerate_real)
+            .map(|(i,v)| (i,-v))                                            // The trace should be positive
+            .find_baseline(self.basic_parameters.baseline_length)           // We find the baseline of the trace from the first 1000 points, which are discarded.
+        ;
+
+        let feedback_parameter_real = FeedbackParameter::new();
+        let feedback_parameter_stats = FeedbackParameter::new();
+        let trace_smoothed = baselined.clone()
+            .window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
+            .start_feedback(&feedback_parameter_real, tracedata::operation::add_real)                                //  We apply the feedback here
+            .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
+            .start_feedback(&feedback_parameter_stats, tracedata::operation::shift_stats)                           //  We apply the feedback here
+        ;
         //  Timing of trace_smoothed
         {
             let (_, time) = time_collect_vec(trace_smoothed.clone());
             println!(" - Trace preprocessed in {0} ms", time);
         };
-
+    
         let pulse_events = trace_smoothed
             .clone()
             //.events_with_feedback(PulseDetector::new(LocalExtremeDetector::new()));
-            .trace_with_events_with_feedback(ChangeDetector::new(self.advanced_parameters.change_detector_threshold))
-            .events_with_feedback(PulseDetector::new(self.advanced_parameters.change_detector_bound));
+            .trace_with_events(ChangeDetector::new(self.advanced_parameters.change_detector_threshold))
+            .events_with_feedback(feedback_parameter_stats, PulseDetector::new(self.advanced_parameters.change_detector_bound));
 
         //  Timing of pulse_events
         let pulse_events_realised = {
@@ -185,7 +208,6 @@ impl TraceRun {
 
         let trace_simulated = trace_smoothed
             .clone()
-            .end_feedback()
             .map(tracedata::extract::enumerated_mean)
             .to_trace(pulse_events_realised.as_slice());
         //  Timing of trace_simulated
