@@ -2,11 +2,13 @@ use std::marker::PhantomData;
 
 use crate::detectors::{
     Detector,
-    FeedbackDetector
+    FeedbackDetector, EventValuedDetector
 };
 use crate::trace_iterators::feedback::FeedbackParameter;
+use crate::trace_iterators::iter::{TraceIter, TraceIterType};
 use crate::tracedata::{TraceData, TraceValue};
 
+use crate::tracedata::EventData;
 use super::event::Event;
 
 pub trait EventIterType : Default + Clone {}
@@ -50,7 +52,7 @@ impl<I, D> Iterator for EventIter<Standard, I, D> where
     I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
     D: Detector,
 {
-    type Item = Event<D::DataType>;
+    type Item = Event<D::TimeType, D::DataType>;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let trace = self.source.next()?;
@@ -67,7 +69,7 @@ impl<I, D> Iterator for EventIter<WithFeedback<<I::Item as TraceData>::ValueType
     I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
     D: FeedbackDetector,
 {
-    type Item = Event<D::DataType>;
+    type Item = Event<D::TimeType, D::DataType>;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let trace = self.source.next()?;
@@ -82,7 +84,7 @@ impl<I, D> Iterator for EventIter<WithFeedback<<I::Item as TraceData>::ValueType
 
 impl<I, D> Iterator for EventIter<WithTrace,I, D> where
     I: Iterator,
-    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType> + std::fmt::Debug,
     D: Detector,
 {
     type Item = (D::TimeType, D::ValueType, Option<D::DataType>);
@@ -95,14 +97,24 @@ impl<I, D> Iterator for EventIter<WithTrace,I, D> where
 
 impl<I, D> Iterator for EventIter<WithTraceAndFeedback<<I::Item as TraceData>::ValueType>, I, D> where
     I: Iterator,
-    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
-    D: Detector,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType, DataType = D::DataValueType> + std::fmt::Debug,
+    D: EventValuedDetector + FeedbackDetector,
 {
-    type Item = (D::TimeType, D::ValueType, Option<D::DataType>);
+    type Item = Event<D::TimeType, D::DataType>;
     fn next(&mut self) -> Option<Self::Item> {
-        let trace = self.source.next()?;
-        let event = self.detector.signal(trace.get_time(), trace.clone_value());
-        Some((trace.get_time(), trace.take_value(), event.map(|e|e.take_data())))
+        loop {
+            let trace = self.source.next()?;
+            let time = trace.get_time();
+            let value = trace.clone_value();
+            self.detector.signal(time, value);
+            self.detector.modify_parameter(time, &self.child.0);
+            if let Some(data) = trace.take_data() {
+                if let Some(event) = self.detector.on_event(data.make_event(time)) {
+                    return Some(event)
+                }
+            }
+        }
+        //Some((trace.get_time(), trace.take_value(), event.map(|e|e.take_data())))
     }
 }
 
@@ -145,16 +157,16 @@ impl<I, D> EventFilter<I, D> for I where
 
 
 
-pub trait EventsWithTraceFilter<I, D> where
+pub trait EventsWithFeedbackFilter<I, D> where
     I: Iterator,
     I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
     D: Detector,
 {
     fn events_with_feedback(self, parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>, detector: D) -> EventIter<WithFeedback<<I::Item as TraceData>::ValueType>, I, D>;
-    fn trace_with_events_with_feedback(self, parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>, detector: D) -> EventIter<WithTraceAndFeedback<<I::Item as TraceData>::ValueType>, I, D>;
+    fn events_from_events_with_feedback(self, parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>, detector: D) -> EventIter<WithTraceAndFeedback<<I::Item as TraceData>::ValueType>, I, D>;
 }
 
-impl<I, D> EventsWithTraceFilter<I, D> for I where
+impl<I, D> EventsWithFeedbackFilter<I, D> for I where
     I: Iterator,
     I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
     D: FeedbackDetector,
@@ -167,7 +179,7 @@ impl<I, D> EventsWithTraceFilter<I, D> for I where
         }
     }
 
-    fn trace_with_events_with_feedback(self, parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>, detector: D) -> EventIter<WithTraceAndFeedback<<I::Item as TraceData>::ValueType>, I, D> {
+    fn events_from_events_with_feedback(self, parameter: FeedbackParameter<<I::Item as TraceData>::ValueType>, detector: D) -> EventIter<WithTraceAndFeedback<<I::Item as TraceData>::ValueType>, I, D> {
         EventIter {
             source: self,
             detector,

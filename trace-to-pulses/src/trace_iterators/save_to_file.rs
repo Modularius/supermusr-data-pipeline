@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     tracedata::TraceData,
-    EventIter, detectors::FeedbackDetector, log_then_panic_t, events::{Event, EventData}
+    EventIter, detectors::FeedbackDetector, log_then_panic_t, events::Event
 };
 
 use super::iter::{TraceIterType, TraceIter};

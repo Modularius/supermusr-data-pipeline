@@ -1,10 +1,7 @@
 use std::fmt::Display;
 
-use crate::events::event::{
-    EventData,
-    Event,
-};
-use crate::tracedata::{TraceEventData, Stats};
+use crate::events::Event;
+use crate::tracedata::{EventData, Stats};
 use crate::{Detector, Real};
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -33,8 +30,8 @@ impl ChangeData {
     pub fn get_value_from(&self) -> Option<Real> { self.from }
     pub fn get_value_to(&self) -> Option<Real> { self.to }
 }
-impl TraceEventData for ChangeData {}
-pub type ChangeEvent = Event<ChangeData>;
+impl EventData for ChangeData {}
+pub type ChangeEvent = Event<Real, ChangeData>;
 
 impl Display for ChangeData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -82,7 +79,7 @@ impl Detector for ChangeDetector {
             };
             self.mode = new_mode;
             self.prev = Some(value.mean);
-            event_class.map(|e| ChangeData::with_values(e.clone(), value.mean, prev_value).make_event(time))
+            event_class.map(|e| ChangeData::with_values(e.clone(), prev_value, value.mean).make_event(time))
         } else {
             self.prev = Some(value.mean);
             None

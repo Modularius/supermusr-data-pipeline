@@ -1,12 +1,9 @@
 use std::fmt::Display;
 
 use crate::change_detector::{ChangeData, ChangeClass};
-use crate::events::{
-    EventData,
-    Event,
-};
+use crate::events::Event;
 use crate::peak_detector::PeakData;
-use crate::tracedata::{Stats, TraceEventData};
+use crate::tracedata::{Stats, EventData};
 use crate::{Detector, Real};
 
 use super::FeedbackDetector;
@@ -39,7 +36,7 @@ impl Display for ThresholdData {
         f.write_fmt(format_args!("{0},{1},{2}", self.peak.unwrap_or_default(), self.start.unwrap_or_default(), self.end.unwrap_or_default()))
     }
 }
-impl TraceEventData for ThresholdData {}
+impl EventData for ThresholdData {}
 
 
 
@@ -54,7 +51,7 @@ impl ThresholdDetector {
     pub fn new(threshold : Real) -> Self { Self { threshold, ..Default::default() } }
 }
 
-pub type ThresholdEvent = Event<ThresholdData>;
+pub type ThresholdEvent = Event<Real, ThresholdData>;
 
 impl Detector for ThresholdDetector {
     type TimeType = Real;

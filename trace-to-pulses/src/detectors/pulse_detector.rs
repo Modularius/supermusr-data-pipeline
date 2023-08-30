@@ -3,12 +3,9 @@ use std::f64::consts::PI;
 use std::fmt::Display;
 
 use crate::change_detector::{ChangeData, ChangeClass};
-use crate::events::{
-    EventData,
-    Event,
-};
+use crate::events::Event;
 use crate::peak_detector::PeakData;
-use crate::tracedata::{Stats, TraceEventData, TraceValue};
+use crate::tracedata::{Stats, EventData, TraceValue};
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::{Detector, Real};
 
@@ -110,16 +107,16 @@ impl PulseData{
     pub fn set_standard_deviation(&mut self, standard_deviation: Option<Real> ) { self.standard_deviation = standard_deviation; }
 }
 
-impl TraceEventData for PulseData {}
+impl EventData for PulseData {}
 impl Display for PulseData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{0},{1}", self.amplitude.unwrap_or_default(), self.standard_deviation.unwrap_or_default()))
     }
 }
-pub type PulseEvent = Event<PulseData>;
+pub type PulseEvent = Event<Real, PulseData>;
 
-impl From<Event<PeakData>> for PulseEvent {
-    fn from(value: Event<PeakData>) -> Self {
+impl From<Event<Real, PeakData>> for PulseEvent {
+    fn from(value: Event<Real, PeakData>) -> Self {
         PulseData::new_basic(value.time, value.data.get_value().unwrap_or_default())
             .make_event(value.time)
     }
@@ -203,7 +200,7 @@ impl FeedbackDetector for PulseDetector {
 impl EventValuedDetector for PulseDetector {
     type DataValueType = ChangeData;
 
-    fn on_event(&mut self, event: Event<Self::DataValueType>) -> Option<Event<PulseData>> {
+    fn on_event(&mut self, event: Event<Self::TimeType, Self::DataValueType>) -> Option<Event<Self::TimeType, PulseData>> {
         if event.get_data().get_class() == ChangeClass::Rising {
             self.area_under_curve = 0.;
             return None;

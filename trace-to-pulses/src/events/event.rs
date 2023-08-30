@@ -1,43 +1,35 @@
 use crate::Real;
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::tracedata::Empty;
-use crate::tracedata::TraceEventData;
+use crate::tracedata::EventData;
+use crate::tracedata::Temporal;
 use crate::tracedata::TraceValue;
 use crate::tracedata::TraceData;
 use std::fmt::Debug;
 use std::fmt::Display;
 
-pub trait EventData: TraceEventData {
-    fn make_event(self, time : Real) -> Event<Self> {
-        Event::<Self> { time, data: self }
-    }
-}
-
-impl<D> EventData for D where D : TraceEventData {}
-
 #[derive(Default, Debug, Clone)]
-pub struct Event<D> where
+pub struct Event<T, D> where
+    T: Temporal,
     D: EventData,
 {
-    pub time: Real,
+    pub time: T,
     pub data: D,
 }
-impl<D> Event<D> where D: EventData,
+impl<T, D> Event<T, D> where D: EventData, T: Temporal, D: EventData
 {
-    pub fn new(time: Real, data: D) -> Self { Self { time, data } }
-    pub fn get_time(&self) -> Real { self.time }
+    pub fn new(time: T, data: D) -> Self { Self { time, data } }
+    pub fn get_time(&self) -> T { self.time }
     pub fn get_data(&self) -> &D { &self.data }
     pub fn get_data_mut(&mut self) -> &mut D { &mut self.data }
     pub fn take_data(self) -> D { self.data }
 }
 
-impl<D> PartialEq for Event<D> where D: EventData {
+impl<T, D> PartialEq for Event<T, D> where T: Temporal, D: EventData {
     fn eq(&self, other: &Self) -> bool { self.time == other.time }
 }
 
-impl<D> Display for Event<D> where
-    D: EventData,
-{
+impl<T, D> Display for Event<T, D> where T: Temporal, D: EventData, {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_fmt(format_args!("{0},{1};", self.time, self.data)) }
 }
 /*
@@ -71,34 +63,38 @@ impl<D> TraceData for Event<D> where
 
 
 #[derive(Default, Debug, Clone)]
-pub struct EventWithFeedback<D,V> where
+pub struct EventWithFeedback<T,D,V> where
+    T: Temporal,
     D: EventData,
     V : TraceValue,
 {
-    pub event: Event<D>,
+    pub event: Event<T, D>,
     pub parameter: FeedbackParameter<V>,
 }
-impl<D,V> EventWithFeedback<D,V> where
+impl<T,D,V> EventWithFeedback<T,D,V> where
+    T: Temporal,
     D: EventData,
     V : TraceValue,
 {
-    pub fn new(time: Real, data: D) -> Self {
-        Self { event: Event::<D>::new(time, data),..Default::default() }
+    pub fn new(time: T, data: D) -> Self {
+        Self { event: Event::<T,D>::new(time, data),..Default::default() }
     }
-    pub fn get_time(&self) -> Real { self.event.get_time() }
+    pub fn get_time(&self) -> T { self.event.get_time() }
     pub fn get_data(&self) -> &D { self.event.get_data() }
     pub fn get_data_mut(&mut self) -> &mut D { self.event.get_data_mut() }
     pub fn take_data(self) -> D { self.event.take_data() }
 }
 
-impl<D,V> PartialEq for EventWithFeedback<D,V> where
+impl<T,D,V> PartialEq for EventWithFeedback<T,D,V> where
+    T: Temporal,
     D: EventData,
     V : TraceValue,
 {
     fn eq(&self, other: &Self) -> bool { self.event == other.event }
 }
 
-impl<D,V> Display for EventWithFeedback<D,V> where
+impl<T,D,V> Display for EventWithFeedback<T,D,V> where
+    T: Temporal,
     D: EventData,
     V : TraceValue,
 {

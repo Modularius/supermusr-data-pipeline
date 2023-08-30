@@ -29,7 +29,7 @@ pub(crate) struct Cli {
     #[clap(long, short = 'e', default_value = "true")]
     evaluate: bool,
 
-    #[clap(long, short = 'f', help = "Basic: Finds time/intensitites of events, Advanced: Finds time/intensities/widths and applies feedback corrections")]
+    #[clap(long, short = 'd', help = "Basic: Finds time/intensitites of events, Advanced: Finds time/intensities/widths and applies feedback corrections")]
     detection_type: Option<DetectionType>,
     
     #[command(subcommand)]

@@ -6,20 +6,19 @@ use std::{
 
 //use tdengine::utils::log_then_panic_t;
 
-use crate::{events::{
-    EventData,
-    event::Event
-}, log_then_panic_t};
+use crate::{events::Event, log_then_panic_t, tracedata::{EventData, Temporal}};
 
-pub trait SaveEventsToFile<I,D> where
-    I: Iterator<Item = Event<D>>,
+pub trait SaveEventsToFile<T,I,D> where
+    T: Temporal,
+    I: Iterator<Item = Event<T,D>>,
     D : EventData
 {
     fn save_to_file(self, name: &str) -> Result<(), Error>;
 }
 
-impl<I, D> SaveEventsToFile<I, D> for I where
-    I: Iterator<Item = Event<D>>,
+impl<T,I,D> SaveEventsToFile<T,I,D> for I where
+    T: Temporal,
+    I: Iterator<Item = Event<T,D>>,
     D : EventData
 {
     fn save_to_file(self, name: &str) -> Result<(), Error> {

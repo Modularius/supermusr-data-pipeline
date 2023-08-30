@@ -5,13 +5,12 @@ pub mod save_to_file;
 
 pub use event::{
     Event,
-    EventData,
 };
 
 pub use iter::{
     EventIter,
     EventFilter,
-    EventsWithTraceFilter,
+    EventsWithFeedbackFilter,
     Standard,
     WithFeedback,
     WithTrace,

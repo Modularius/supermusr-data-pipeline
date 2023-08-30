@@ -83,11 +83,11 @@ pub fn run_file_mode(params: FileParameters, detection_type : Option<DetectionTy
         let event_index = 243;
         let channel_index = 0;
     
-        //let run = trace_file.get_event(event_index).unwrap();
-        //run_trace(run.normalized_channel_trace(channel_index), save_file_name, detection_type, benchmark, evaluate);
+        let run = trace_file.get_event(event_index).unwrap();
+        run_trace(run.normalized_channel_trace(channel_index), save_file_name, detection_type, benchmark, evaluate);
     }
     
-    optimize(trace_file, detection_type, 10);
+    //optimize(trace_file, detection_type, 10);
 }
 
 fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<DetectionType>, benchmark : bool, evaluate : bool) {
@@ -102,12 +102,12 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<D
             change_detector_bound: 4.,
         },
     );
-    let (baselined, smoothed) = trace_run.baselined_from_trace(trace);
+    let baselined = trace_run.run_baselined(trace);
 
     let  det_type = detection_type.unwrap_or(DetectionType::Advanced);
     let pulse_events = match det_type {
-        DetectionType::Basic => trace_run.run_basic_detection(smoothed.clone()),
-        DetectionType::Advanced => trace_run.run_advanced_detection(smoothed.clone()),
+        DetectionType::Basic => trace_run.run_basic_detection(baselined.clone()),
+        DetectionType::Advanced => trace_run.run_advanced_detection(baselined.clone()),
     };
     
     if evaluate {
@@ -118,10 +118,10 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<D
         trace_run.run_and_print_evaluation(name, baselined.clone(), &pulse_events);
     }
     if benchmark {
-        trace_run.run_benchmark(smoothed.clone());
+        trace_run.run_benchmark(baselined.clone());
         trace_run.save_baselined        (save_file_name.clone(), baselined.clone());
-        trace_run.save_smoothed         (save_file_name.clone(), smoothed.clone());
-        trace_run.save_pulse_simulation (save_file_name.clone(), baselined.clone(), &pulse_events);
+        //trace_run.save_smoothed         (save_file_name.clone(), trace);
+        trace_run.save_pulse_simulation (save_file_name.clone(), baselined, &pulse_events);
         trace_run.save_pulse_events     (save_file_name, pulse_events);
     }
 }

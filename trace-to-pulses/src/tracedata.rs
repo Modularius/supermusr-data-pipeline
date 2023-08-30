@@ -4,10 +4,10 @@ use common::Intensity;
 
 use crate::{
     Real,
-    trace_iterators::feedback::FeedbackParameter
+    events::event::Event
 };
 
-pub trait Temporal : Default + Copy + Debug + Display {}
+pub trait Temporal : Default + Copy + Debug + Display + PartialEq {}
 impl Temporal for Intensity {}
 impl Temporal for Real {}
 
@@ -29,12 +29,15 @@ impl TraceValue for Real {
 
 
 
-pub trait TraceEventData : Default + Clone + Debug + Display {}
+pub trait EventData : Default + Clone + Debug + Display {
+    fn make_event<T>(self, time : T) -> Event<T, Self> where T : Temporal {
+        Event::<T,Self> { time, data: self }
+    }}
 
-#[derive(Default, Clone,Copy,Debug)]
+#[derive(Default, Clone,Copy, Debug, PartialEq)]
 pub struct Empty {}
 impl Display for Empty {fn fmt(&self, _f: &mut Formatter<'_>) -> Result {Ok(())}}
-impl TraceEventData for Empty {}
+impl EventData for Empty {}
 
 //impl<T> Eventy for T where T : Scalar {}
 
@@ -61,7 +64,7 @@ impl TraceEventData for Empty {}
 pub trait TraceData : Clone {
     type TimeType : Temporal;
     type ValueType : TraceValue;
-    type DataType : TraceEventData;
+    type DataType : EventData;
 
     fn get_time(&self) -> Self::TimeType;
     fn get_value(&self) -> &Self::ValueType;
@@ -70,6 +73,7 @@ pub trait TraceData : Clone {
     fn clone_value(&self) -> Self::ValueType { self.get_value().clone() }
 
     fn get_data(&self) -> Option<&Self::DataType> { None }
+    fn take_data(self) -> Option<Self::DataType> { None }
 }
 
 /// This is the most basic non-trivial TraceData type.
@@ -92,7 +96,7 @@ impl<X,Y> TraceData for (X,Y) where X : Temporal, Y: TraceValue {
 /// The ParameterType is the same as the ValueType, but as there is no
 /// implementation of ```rust get_parameter()```, the type does not support
 /// feedback.
-impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D : TraceEventData {
+impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D : EventData {
     type TimeType = X;
     type ValueType = Y;
     type DataType = D;
@@ -101,6 +105,7 @@ impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D :
     fn get_value(&self) -> &Self::ValueType { &self.1 }
     fn take_value(self) -> Self::ValueType { self.1 }
     fn get_data(&self) -> Option<&Self::DataType> { self.2.as_ref() }
+    fn take_data(self) -> Option<Self::DataType> { self.2 }
 }
 
 
