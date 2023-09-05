@@ -22,10 +22,11 @@ use trace_to_pulses::{
     peak_detector::{self, LocalExtremumDetector},
     change_detector::{ChangeDetector, ChangeClass, ChangeEvent},
     EventFilter, EventsWithFeedbackFilter,
-    events::SaveEventsToFile, detectors::threshold_detector::ThresholdDetector, TraceArray,
+    events::SaveEventsToFile, detectors::{threshold_detector::ThresholdDetector, muon_detector::MuonDetector}, TraceArray, RealArray,
 };
 
 type PulseEvent = trace_to_pulses::pulse_detector::PulseEvent<Biexponential>;
+type PulseEvent2 = trace_to_pulses::detectors::muon_detector::MuonEvent;
 
 fn time_collect_vec<I : Iterator + Clone>(iter : I) -> (Vec<I::Item>, Real) {
     let timer = Instant::now();
@@ -119,7 +120,7 @@ impl TraceRun {
         -> (impl Iterator<Item = (Real,Real)> + Clone + 'a, FeedbackParameter) {
         let feedback_parameter = FeedbackParameter::new();
         let smoothed = baselined
-            //.window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
+            .window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
             .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
             .map(tracedata::extract::enumerated_mean)
             //.window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
@@ -127,25 +128,23 @@ impl TraceRun {
         ;
         (smoothed, feedback_parameter)
     }
-    pub fn run_diff<'a>(&self, smoothed : impl Iterator<Item = (Real,Real)> + Clone + 'a) -> impl Iterator<Item = (Real,Real)> + Clone + 'a {
+    pub fn run_diff<'a>(&self, smoothed : impl Iterator<Item = (Real,Real)> + Clone + 'a) -> impl Iterator<Item = (Real,RealArray<2>)> + Clone + 'a {
         smoothed
             .window(FiniteDifferences::<2>::new())
-            .map(|(i,v)|(i,v.0[1]))
-            .window(ExponentialSmoothingWindow::new(0.75))       //  We smooth the trace
     }
     /*pub fn run_cuts<'a>(&self, smoothed : impl Iterator<Item = (Real,Real)> + Clone + 'a) -> impl Iterator<Item = (Option<ChangeEvent>,impl Iterator<Item = (Real,Real)> + Clone + 'a)> + Clone + 'a {
         smoothed
             .trace_partition_by_events(ThresholdDetector::new(self.advanced_parameters.change_detector_bound))
             .filter(|(event, iter)|event.as_ref().map(|event|event.get_data().get_class() != ChangeClass::Flat).unwrap_or(true))
     }*/
-    pub fn run_pulses<'a>(&self, smoothed : impl Iterator<Item = (Real,Stats)> + Clone + 'a, feedback_parameter : FeedbackParameter) -> Vec<PulseEvent> {
+    pub fn run_pulses<'a>(&self, smoothed : impl Iterator<Item = (Real,RealArray<2>)> + Clone + 'a, feedback_parameter : FeedbackParameter) -> Vec<PulseEvent2> {
         let pulses = smoothed
-            .clone()
-            .trace_with_events(LocalExtremumDetector::new())
-            .events_from_events_with_feedback(
-                feedback_parameter,
-                PulseDetector::<Biexponential, LocalExtremumDetector>::new(self.advanced_parameters.change_detector_bound)
-            )
+            .events(MuonDetector::new(3.,0.2))
+            //.trace_with_events(LocalExtremumDetector::new())
+            //.events_from_events_with_feedback(
+            //    feedback_parameter,
+            //    PulseDetector::<Biexponential, LocalExtremumDetector>::new(self.advanced_parameters.change_detector_bound)
+            //)
             .collect_vec();
         pulses
     }
@@ -198,7 +197,7 @@ impl TraceRun {
             .save_to_file(&(save_file_name.clone() + "_simulated" + ".csv")).unwrap();
     }
 
-    pub fn save_pulse_events(&self, save_file_name: String, pulse_events : Vec<PulseEvent>) {
+    pub fn save_pulse_events(&self, save_file_name: String, pulse_events : Vec<PulseEvent2>) {
         pulse_events.into_iter().save_to_file(&(save_file_name + "_pulses" + ".csv")).unwrap();
     }
 

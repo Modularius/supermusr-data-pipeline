@@ -3,6 +3,7 @@ pub mod change_detector;
 pub mod pulse_detector;
 pub mod threshold_detector;
 pub mod peak_detector;
+pub mod muon_detector;
 
 use crate::{events::Event, tracedata::{EventData, TraceValue, Temporal}, trace_iterators::feedback::FeedbackParameter};
 

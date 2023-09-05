@@ -104,10 +104,10 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<D
     );
     let baselined = trace_run.run_baselined(trace);
     let (smoothed, feedback_parameter) = trace_run.run_smoothed(baselined.clone());
-    let diff = trace_run.run_diff(baselined.clone());
+    let diff = trace_run.run_diff(smoothed.clone());
     //let cuts = trace_run.run_cuts(smoothed.clone());
     //println!("{0}", cuts.clone().enumerate().map(|(i,_)|i).last().unwrap_or(0));
-    //let pulses = trace_run.run_pulses(smoothed.clone(),feedback_parameter);
+    let pulses = trace_run.run_pulses(diff.clone(),feedback_parameter);
 
 
     if evaluate {
@@ -117,9 +117,9 @@ fn run_trace(trace: &Vec<u16>, save_file_name: String, detection_type : Option<D
         //trace_run.run_benchmark(baselined.clone());
         trace_run.save_baselined        (save_file_name.clone(), baselined.clone());
         trace_run.save_smoothed         (save_file_name.clone(), smoothed.clone());
-        trace_run.save_diff             (save_file_name.clone(), diff.clone());
+        //trace_run.save_diff             (save_file_name.clone(), diff.clone());
         //trace_run.save_cuts             (save_file_name.clone(), cuts.clone());
         //trace_run.save_pulse_simulation (save_file_name.clone(), baselined, &pulses);
-        //trace_run.save_pulse_events     (save_file_name, pulses);
+        trace_run.save_pulse_events     (save_file_name, pulses);
     }
 }
