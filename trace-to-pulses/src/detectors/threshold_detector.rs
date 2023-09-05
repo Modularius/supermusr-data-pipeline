@@ -1,13 +1,8 @@
 use std::fmt::Display;
 
-use crate::change_detector::{ChangeData, ChangeClass};
+use crate::{Real, Detector};
 use crate::events::Event;
-use crate::peak_detector::PeakData;
-use crate::tracedata::{Stats, EventData};
-use crate::{Detector, Real};
-
-use super::FeedbackDetector;
-
+use crate::tracedata::EventData;
 
 #[derive(Default, Debug, Clone)]
 pub struct ThresholdData {

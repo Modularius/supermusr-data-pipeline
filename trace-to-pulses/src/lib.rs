@@ -20,6 +20,8 @@ pub mod events;
 pub mod tracedata;
 //pub mod partition;
 
+use std::fmt::{Debug, Display};
+
 use common::Intensity;
 
 pub use detectors::{
@@ -41,7 +43,23 @@ pub use window::smoothing_window::SmoothingWindow;
 
 pub type Real = f64;
 pub type Integer = i16;
-pub type RealArray<const N: usize> = [Real; N];
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TraceArray<const N: usize, T>(pub [T; N]) where T : Default + Clone + Debug + Display;
+impl<const N: usize, T> TraceArray<N,T> where T : Default + Clone + Debug + Display {
+    pub fn new(value : [T; N]) -> Self { Self(value) }
+}
+impl<const N: usize,T> Display for TraceArray<N,T> where T : Default + Clone + Debug + Display {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{self}")
+    }
+}
+impl<const N: usize,T> Default for TraceArray<N,T> where T : Default + Copy + Debug + Display {
+    fn default() -> Self {
+        Self([T::default(); N])
+    }
+}
+pub type RealArray<const N: usize> = TraceArray<N,Real>;
+
 
 pub mod processing {
     use super::*;

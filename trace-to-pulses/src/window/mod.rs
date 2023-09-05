@@ -3,7 +3,8 @@ pub mod iter;
 pub mod gate;
 pub mod noise_smoothing_window;
 pub mod smoothing_window;
-pub mod weighted_smoothing_window;
+pub mod exponential_smoothing_window;
+pub mod finite_differences;
 pub mod trivial;
 
 pub use iter::{
@@ -11,9 +12,11 @@ pub use iter::{
     WindowIter
 };
 
+use crate::tracedata::Temporal;
 
-pub trait Window {
-    type TimeType: Copy;
+
+pub trait Window : Clone {
+    type TimeType: Temporal;
     type InputType: Copy;
     type OutputType;
 

@@ -1,9 +1,9 @@
 use std::fmt::Display;
 
 use crate::events::{
-    EventData,
     event::Event,
 };
+use crate::tracedata::EventData;
 use crate::{Detector, Real, RealArray};
 
 type ConstituantType<D> = Box<dyn Detector<TimeType = Real, ValueType = Real, DataType = D>>;
@@ -31,7 +31,7 @@ impl<D: EventData, const N : usize> Default for CompositeData<D,N> {
         }
     }
 }
-pub type CompositeEvent<D,const N : usize> = Event<CompositeData<D,N>>;
+pub type CompositeEvent<D,const N : usize> = Event<Real,CompositeData<D,N>>;
 
 impl<D: EventData, const N : usize> CompositeData<D,N> {
     pub fn get_value(&self) -> &RealArray<N> {
@@ -104,7 +104,7 @@ impl<D: EventData, const N : usize> Default for CompositeTopOnlyData<D,N> {
         }
     }
 }
-pub type CompositeTopOnlyEvent<D,const N : usize> = Event<CompositeTopOnlyData<D,N>>;
+pub type CompositeTopOnlyEvent<D,const N : usize> = Event<Real,CompositeTopOnlyData<D,N>>;
 
 impl<D: EventData, const N : usize> CompositeTopOnlyData<D,N> {
     pub fn get_value(&self) -> &RealArray<N> { &self.value }

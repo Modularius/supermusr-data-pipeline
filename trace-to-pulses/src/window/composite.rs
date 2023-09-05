@@ -1,4 +1,4 @@
-use crate::{trace_iterators::RealArray, Real};
+use crate::{RealArray, Real};
 use core::array::from_fn;
 
 use crate::window::Window;
@@ -29,7 +29,7 @@ impl<const N: usize, O> Window for CompositeWindow<N, O> where O : Realisable {
     fn push(&mut self, value: RealArray<N>) -> bool {
         let mut full = true;
         for i in 0..N {
-            full = full && self.windows[i].push(value[i])
+            full = full && self.windows[i].push(value.0[i])
         }
         full
     }

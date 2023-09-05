@@ -5,8 +5,8 @@ use crate::Real;
 use super::Window;
 
 
-pub trait Realisable : From<Real> + Default {}
-impl <T> Realisable for T where T : From<Real> + Default {}
+pub trait Realisable : From<Real> + Default + Clone {}
+impl <T> Realisable for T where T : From<Real> + Default + Clone {}
 
 #[derive(Default, Clone, Copy)]
 pub struct TrivialWindow<O> where O : Realisable {

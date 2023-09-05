@@ -1,3 +1,4 @@
+use std::iter::Take;
 use std::marker::PhantomData;
 
 use crate::detectors::{
@@ -21,6 +22,9 @@ impl<V> EventIterType for WithFeedback<V> where V : TraceValue {}
 #[derive(Default, Clone)]
 pub struct WithTrace;
 impl EventIterType for WithTrace {}
+#[derive(Default, Clone)]
+pub struct WithTracePartition;
+impl EventIterType for WithTracePartition {}
 #[derive(Default, Clone)]
 pub struct WithTraceAndFeedback<V>(FeedbackParameter<V>) where V : TraceValue;
 impl<V> EventIterType for WithTraceAndFeedback<V> where V : TraceValue {}
@@ -120,6 +124,29 @@ impl<I, D> Iterator for EventIter<WithTraceAndFeedback<<I::Item as TraceData>::V
 
 
 
+impl<'a, I, D> Iterator for EventIter<WithTracePartition, I, D> where
+    I: Iterator + Clone,
+    I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType> + std::fmt::Debug + 'a,
+    D: Detector,
+{
+    type Item = (Option<Event<D::TimeType, D::DataType>>, Take<I>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut n = usize::default();
+        let start = self.source.clone();
+        while let Some(trace) = self.source.next() {
+            n += 1;
+            let time = trace.get_time();
+            let value = trace.clone_value();
+            if let Some(event) = self.detector.signal(time, value) {
+                return Some((Some(event), start.take(n)))
+            }
+        }
+        Some((None, start.take(n)))
+        //Some((trace.get_time(), trace.take_value(), event.map(|e|e.take_data())))
+    }
+}
+
 
 
 pub trait EventFilter<I, D> where
@@ -129,6 +156,7 @@ pub trait EventFilter<I, D> where
 {
     fn events(self, detector: D) -> EventIter<Standard, I, D>;
     fn trace_with_events(self, detector: D) -> EventIter<WithTrace, I, D>;
+    fn trace_partition_by_events(self, detector: D) -> EventIter<WithTracePartition, I, D>;
 }
 
 impl<I, D> EventFilter<I, D> for I where
@@ -149,6 +177,14 @@ impl<I, D> EventFilter<I, D> for I where
             source: self,
             detector,
             child: WithTrace
+        }
+    }
+
+    fn trace_partition_by_events(self, detector: D) -> EventIter<WithTracePartition, I, D> {
+        EventIter {
+            source: self,
+            detector,
+            child: WithTracePartition
         }
     }
 }

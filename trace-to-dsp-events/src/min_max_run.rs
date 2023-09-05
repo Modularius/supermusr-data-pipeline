@@ -71,8 +71,8 @@ impl MinMaxExperiment {
         };
         let baselined = trace_run.run_baselined(trace);
         let pulse_events = match self.detection_type {
-            DetectionType::Basic => trace_run.run_basic_detection(baselined.clone()),
-            DetectionType::Advanced => trace_run.run_advanced_detection(baselined.clone()),
+            DetectionType::Basic => trace_run.run_basic_detection(baselined.clone()).1,
+            DetectionType::Advanced => trace_run.run_advanced_detection(baselined.clone()).1,
         };
         let (v,d) = trace_run.run_evaluation(name, baselined, &pulse_events);
         d/v

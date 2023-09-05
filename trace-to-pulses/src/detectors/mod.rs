@@ -17,7 +17,7 @@ pub trait EventValuedDetector : Detector {
     fn on_event(&mut self, event : Event<Self::TimeType, Self::DataValueType>) -> Option<Event<Self::TimeType, Self::DataType>>;
 }
 
-pub trait Detector : Clone {
+pub trait Detector : Default + Clone {
     type TimeType : Temporal;
     type ValueType : TraceValue;
     type DataType : EventData;

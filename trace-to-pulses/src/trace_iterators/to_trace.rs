@@ -1,21 +1,21 @@
 use crate::{
-    detectors::pulse_detector::PulseEvent,
+    detectors::pulse_detector::{PulseModel, PulseEvent},
     Real,
     tracedata::TraceData,
 };
 
 
-fn sum_event_energy_at<'a>(events : &'a [PulseEvent], time: Real) -> Real {
+fn sum_event_energy_at<'a, Model: PulseModel>(events : &'a [PulseEvent<Model>], time: Real) -> Real {
     let sum = events.iter()
         .map(|event|
-            if event.get_data()
+            event.get_data().get_effective_value_at(time)
+            /*if event.get_data()
                 .get_standard_deviation()
                 .unwrap_or_default() >= 0.
             {
-                event.get_data().get_effective_value_at(time)
             } else {
                 0.
-            }
+            }*/
         ).sum::<Real>();
     sum
 }
@@ -24,18 +24,20 @@ fn sum_event_energy_at<'a>(events : &'a [PulseEvent], time: Real) -> Real {
 
 
 #[derive(Clone)]
-pub struct SimulationIter<'a, I> where
+pub struct SimulationIter<'a, I, Model> where
     I: Iterator,
     I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    Model : PulseModel,
 {
     source : I,
-    events : &'a [PulseEvent],
+    events : &'a [PulseEvent<Model>],
 }
 
 
-impl<'a,I> Iterator for SimulationIter<'a,I> where
+impl<'a,I,Model> Iterator for SimulationIter<'a,I,Model> where
     I: Iterator,
     I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    Model : PulseModel,
 {
     type Item = (Real,Real);
 
@@ -53,16 +55,18 @@ impl<'a,I> Iterator for SimulationIter<'a,I> where
 
 
 #[derive(Clone)]
-pub struct EvaluationIter<'a, I> where
+pub struct EvaluationIter<'a, I, Model> where
     I: Iterator,
     I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    Model : PulseModel,
 {
     source : I,
-    events : &'a [PulseEvent],
+    events : &'a [PulseEvent<Model>],
 }
-impl<'a,I> Iterator for EvaluationIter<'a,I> where
+impl<'a,I,Model> Iterator for EvaluationIter<'a,I,Model> where
     I: Iterator,
     I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    Model : PulseModel,
 {
     type Item = (Real,Real,Real);
 
@@ -79,23 +83,25 @@ impl<'a,I> Iterator for EvaluationIter<'a,I> where
 
 
 
-pub trait ToTrace<'a,I> where
+pub trait ToTrace<'a,I,Model> where
     I: Iterator<Item = (Real,Real)>,
+    Model : PulseModel,
 {
-    fn to_trace(self, events : &'a [PulseEvent]) -> SimulationIter<'a,I>;
-    fn evaluate_events(self, events : &'a [PulseEvent]) -> EvaluationIter<'a,I>;
+    fn to_trace(self, events : &'a [PulseEvent<Model>]) -> SimulationIter<'a,I,Model>;
+    fn evaluate_events(self, events : &'a [PulseEvent<Model>]) -> EvaluationIter<'a,I,Model>;
 }
 
-impl<'a,I> ToTrace<'a,I> for I where
+impl<'a,I,Model> ToTrace<'a,I,Model> for I where
     I: Iterator<Item = (Real,Real)> + Clone,
+    Model : PulseModel,
 {
-    fn to_trace(self, events : &'a [PulseEvent]) -> SimulationIter<'a,I> {
+    fn to_trace(self, events : &'a [PulseEvent<Model>]) -> SimulationIter<'a,I,Model> {
         SimulationIter {
             source: self,
             events
         }
     }
-    fn evaluate_events(self, events : &'a [PulseEvent]) -> EvaluationIter<'a,I> {
+    fn evaluate_events(self, events : &'a [PulseEvent<Model>]) -> EvaluationIter<'a,I,Model> {
         EvaluationIter {
             source: self,
             events
