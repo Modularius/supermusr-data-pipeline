@@ -14,7 +14,7 @@ use trace_to_pulses::{
     processing,
     window::{
         gate::Gate,
-        WindowFilter, finite_differences::{self, FiniteDifferences}, exponential_smoothing_window::ExponentialSmoothingWindow
+        WindowFilter, finite_differences::{self, FiniteDifferences}, exponential_smoothing_window::ExponentialSmoothingWindow, composite::{CompositeWindow, DoublingWindow}, trivial::TrivialWindow
     },
     SmoothingWindow,
     tracedata::{self, Stats, TraceData},
@@ -22,11 +22,11 @@ use trace_to_pulses::{
     peak_detector::{self, LocalExtremumDetector},
     change_detector::{ChangeDetector, ChangeClass, ChangeEvent},
     EventFilter, EventsWithFeedbackFilter,
-    events::SaveEventsToFile, detectors::{threshold_detector::ThresholdDetector, muon_detector::MuonDetector}, TraceArray, RealArray,
+    events::SaveEventsToFile, detectors::{threshold_detector::ThresholdDetector, muon_detector::MuonDetector}, TraceArray, RealArray, TracePair,
 };
 
 type PulseEvent = trace_to_pulses::pulse_detector::PulseEvent<Biexponential>;
-type PulseEvent2 = trace_to_pulses::detectors::muon_detector::MuonEvent;
+type PulseEvent2 = trace_to_pulses::detectors::muon_detector::BiexpEvent;
 
 fn time_collect_vec<I : Iterator + Clone>(iter : I) -> (Vec<I::Item>, Real) {
     let timer = Instant::now();
@@ -117,34 +117,18 @@ impl TraceRun {
             .find_baseline(self.basic_parameters.baseline_length)           // We find the baseline of the trace from the first 1000 points, which are discarded.
     }
     pub fn run_smoothed<'a>(&self, baselined : impl Iterator<Item = (Real,Real)> + Clone + 'a)
-        -> (impl Iterator<Item = (Real,Real)> + Clone + 'a, FeedbackParameter) {
+        -> (impl Iterator<Item = (Real,RealArray<3>)> + Clone + 'a, FeedbackParameter) {
         let feedback_parameter = FeedbackParameter::new();
         let smoothed = baselined
-            .window(Gate::new(self.basic_parameters.gate_size))                              //  We apply the gate filter first
-            .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
+            .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))
             .map(tracedata::extract::enumerated_mean)
-            //.window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))       //  We smooth the trace
-            //.start_feedback(&feedback_parameter, tracedata::operation::add_real)                           //  We apply the feedback here
+            .window(FiniteDifferences::<3>::new())
         ;
         (smoothed, feedback_parameter)
     }
-    pub fn run_diff<'a>(&self, smoothed : impl Iterator<Item = (Real,Real)> + Clone + 'a) -> impl Iterator<Item = (Real,RealArray<2>)> + Clone + 'a {
-        smoothed
-            .window(FiniteDifferences::<2>::new())
-    }
-    /*pub fn run_cuts<'a>(&self, smoothed : impl Iterator<Item = (Real,Real)> + Clone + 'a) -> impl Iterator<Item = (Option<ChangeEvent>,impl Iterator<Item = (Real,Real)> + Clone + 'a)> + Clone + 'a {
-        smoothed
-            .trace_partition_by_events(ThresholdDetector::new(self.advanced_parameters.change_detector_bound))
-            .filter(|(event, iter)|event.as_ref().map(|event|event.get_data().get_class() != ChangeClass::Flat).unwrap_or(true))
-    }*/
-    pub fn run_pulses<'a>(&self, smoothed : impl Iterator<Item = (Real,RealArray<2>)> + Clone + 'a, feedback_parameter : FeedbackParameter) -> Vec<PulseEvent2> {
+    pub fn run_pulses<'a>(&self, smoothed : impl Iterator<Item = (Real,RealArray<3>)> + Clone + 'a, feedback_parameter : FeedbackParameter) -> Vec<PulseEvent2> {
         let pulses = smoothed
-            .events(MuonDetector::new(3.,0.2))
-            //.trace_with_events(LocalExtremumDetector::new())
-            //.events_from_events_with_feedback(
-            //    feedback_parameter,
-            //    PulseDetector::<Biexponential, LocalExtremumDetector>::new(self.advanced_parameters.change_detector_bound)
-            //)
+            .events(MuonDetector::new(3.,0.5))
             .collect_vec();
         pulses
     }

@@ -1,5 +1,5 @@
 pub mod iter;
-//pub mod composite;
+pub mod composite;
 pub mod gate;
 pub mod noise_smoothing_window;
 pub mod smoothing_window;

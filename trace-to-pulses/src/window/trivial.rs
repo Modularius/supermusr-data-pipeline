@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::Real;
+use crate::{Real, tracedata::{Temporal, TraceValue}};
 
 use super::Window;
 
@@ -9,21 +9,21 @@ pub trait Realisable : From<Real> + Default + Clone {}
 impl <T> Realisable for T where T : From<Real> + Default + Clone {}
 
 #[derive(Default, Clone, Copy)]
-pub struct TrivialWindow<O> where O : Realisable {
-    value: Real,
-    phantom: PhantomData<O>,
+pub struct TrivialWindow<T,V> where T : Temporal, V : TraceValue {
+    value: V,
+    phantom: PhantomData<T>,
 }
-impl<O> Window for TrivialWindow<O> where O : Realisable {
-    type TimeType = Real;
-    type InputType = Real;
-    type OutputType = O;
+impl<T,V> Window for TrivialWindow<T,V> where T : Temporal, V : TraceValue + Copy {
+    type TimeType = T;
+    type InputType = V;
+    type OutputType = V;
 
-    fn push(&mut self, value: Real) -> bool {
+    fn push(&mut self, value: V) -> bool {
         self.value = value;
         true
     }
     fn stats(&self) -> Option<Self::OutputType> {
-        Some(O::from(self.value))
+        Some(self.value)
     }
-    fn apply_time_shift(&self, time : Real) -> Real { time }
+    fn apply_time_shift(&self, time : T) -> T { time }
 }

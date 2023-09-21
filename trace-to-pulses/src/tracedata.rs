@@ -5,7 +5,7 @@ use common::Intensity;
 use crate::{
     Real,
     RealArray,
-    events::event::Event, TraceArray
+    events::event::Event, TraceArray, TracePair
 };
 
 pub trait Temporal : Default + Copy + Debug + Display + PartialEq {}
@@ -30,6 +30,13 @@ impl TraceValue for Real {
 impl<const N : usize,T : TraceValue + Copy> TraceValue for TraceArray<N,T> {
     type ContentType = TraceArray<N,T>;
     type FeedbackType = TraceArray<N,T>;
+
+    fn get_value(&self) -> &Self::ContentType { &self }
+    fn take_value(self) -> Self::ContentType { self }
+}
+impl<T1 : TraceValue + Copy, T2 : TraceValue + Copy> TraceValue for TracePair<T1,T2> {
+    type ContentType = TracePair<T1,T2>;
+    type FeedbackType = TracePair<T1::FeedbackType,T2::FeedbackType>;
 
     fn get_value(&self) -> &Self::ContentType { &self }
     fn take_value(self) -> Self::ContentType { self }

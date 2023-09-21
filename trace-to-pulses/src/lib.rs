@@ -18,9 +18,10 @@
 pub mod detectors;
 pub mod events;
 pub mod tracedata;
+pub mod ode;
 //pub mod partition;
 
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}, ops::Index};
 
 use common::Intensity;
 
@@ -58,7 +59,28 @@ impl<const N: usize,T> Default for TraceArray<N,T> where T : Default + Copy + De
         Self([T::default(); N])
     }
 }
+impl<const N: usize,T> Index<usize> for TraceArray<N,T> where T : Default + Copy + Debug + Display {
+    type Output = T;
+
+    fn index(&self, idx: usize) -> &T {
+        &self.0[idx]
+    }
+}
 pub type RealArray<const N: usize> = TraceArray<N,Real>;
+
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TracePair<T1,T2>(pub T1, pub T2) where T1 : Default + Clone + Debug + Display, T2 : Default + Clone + Debug + Display;
+impl<T1,T2> Display for TracePair<T1,T2> where T1 : Default + Clone + Debug + Display, T2 : Default + Clone + Debug + Display {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"({0},{1})", self.0,self.1)
+    }
+}
+impl<T1,T2> Default for TracePair<T1,T2> where T1 : Default + Clone + Debug + Display, T2 : Default + Clone + Debug + Display {
+    fn default() -> Self {
+        Self(T1::default(),T2::default())
+    }
+}
 
 
 pub mod processing {
