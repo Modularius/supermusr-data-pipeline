@@ -26,7 +26,7 @@ use trace_to_pulses::{
 };
 
 type PulseEvent = trace_to_pulses::pulse_detector::PulseEvent<Biexponential>;
-type PulseEvent2 = trace_to_pulses::detectors::muon_detector::BiexpEvent;
+type PulseEvent2 = trace_to_pulses::detectors::muon_detector::ODEEvent;
 
 fn time_collect_vec<I : Iterator + Clone>(iter : I) -> (Vec<I::Item>, Real) {
     let timer = Instant::now();
