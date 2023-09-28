@@ -9,34 +9,36 @@ use anyhow::{Result,anyhow};
 use crate::{Real, RealArray};
 
 #[derive(Default)]
-struct MonicQuadratic {
+pub struct MonicQuadratic {
+    quadratic : Real,
     linear : Real,
     constant : Real,
 }
 
 impl MonicQuadratic {
-    pub fn new(linear : Real, constant : Real) -> Self { Self { linear, constant } }
+    pub fn new(quadratic : Real, linear : Real, constant : Real) -> Self { Self { quadratic, linear, constant } }
+    pub fn get_coefficients(&self) -> (Real,Real,Real) { (self.quadratic, self.linear, self.constant) }
     pub fn discriminant(&self) -> Real {
-        self.linear*self.linear - 4.*self.constant
+        self.linear*self.linear - 4.*self.constant*self.quadratic
     }
     pub fn calc_solutions(&self) -> (Real,Real) {
         let discr_sqrt = self.discriminant().sqrt();
-        ((-self.linear + discr_sqrt)/2., (-self.linear - discr_sqrt)/2.)
+        ((-self.linear + discr_sqrt)*0.5/self.quadratic, (-self.linear - discr_sqrt)*0.5/self.quadratic)
     }
     pub fn calc_complex_solutions(&self) -> ((Real,Real),(Real,Real)) {
         let discr = self.discriminant();
         if discr < 0. {
             let discr_sqrt = (-discr).sqrt();
-            ((-self.linear/2., discr_sqrt/2.), (-self.linear/2., -discr_sqrt/2.))
+            ((-self.linear*0.5/self.quadratic, discr_sqrt*0.5/self.quadratic), (-self.linear*0.5/self.quadratic, -discr_sqrt*0.5/self.quadratic))
         } else {
             let discr_sqrt = discr.sqrt();
-            (((-self.linear + discr_sqrt)/2.,0.), ((-self.linear - discr_sqrt)/2.,0.))
+            (((-self.linear + discr_sqrt)*0.5/self.quadratic,0.), ((-self.linear - discr_sqrt)*0.5/self.quadratic,0.))
         }
     }
 }
 
 pub enum Status {
-    Ok(((Real,Real),(Real,Real),Real)),
+    Ok((MonicQuadratic,Real)),
     TooShort,
     DiscriminantNonPositive(Real),
     ParameterNonPositive(Real),
@@ -60,7 +62,7 @@ impl ParameterEstimator {
     pub fn push(&mut self, y: Real, dy: Real, dy2 : Real) {
         self.y.push(y);
         self.dy.push(dy);
-        self.dy2.push(-dy2);
+        self.dy2.push(dy2);
     }
     pub fn clear(&mut self) {
         self.y.clear();
@@ -73,24 +75,16 @@ impl ParameterEstimator {
         }
         let a_y = OVector::<f64, na::Dyn>::from_row_slice(self.y.as_slice());
         let a_dy = OVector::<f64, na::Dyn>::from_row_slice(self.dy.as_slice());
-        let a = OMatrix::<Real, na::Dyn, U2>::from_columns(&[a_y,a_dy]);
-
         let a_dy2 = OVector::<f64, na::Dyn>::from_row_slice(self.dy2.as_slice());
+        let a = OMatrix::<Real, na::Dyn, U3>::from_columns(&[a_y, a_dy, a_dy2]);
+
+        let b = OVector::<f64, na::Dyn>::from_row_slice(&vec![1.0; self.y.len()]);
         
         let epsilon = 1e-16;
         // -y'' = x.0 y + x.1 y'
-        let sol = lstsq::lstsq(&a, &a_dy2, epsilon).map_err(|s|anyhow!(s))?;
-        let x = MonicQuadratic::new(sol.solution[1],sol.solution[0]);
-        let residual = sol.residuals;
-        if x.discriminant() <= epsilon {
-            //println!("Discriminant non-positive {0} {1:?} {2}.",x.discriminant(), x.calc_complex_solutions(), self.b.len());
-            return Ok(Status::DiscriminantNonPositive(residual));
-        }
-        let (kappa_inv,rho_inv) = x.calc_solutions();
-        if kappa_inv < 0.0 || rho_inv < 0.0 {
-            return Ok(Status::ParameterNonPositive(residual));
-        }
-        Ok(Status::Ok(((1./rho_inv, 1./kappa_inv),(sol.solution[1],sol.solution[0]),residual)))
+        let sol = lstsq::lstsq(&a, &b, epsilon).map_err(|s|anyhow!(s))?;
+        let x = MonicQuadratic::new(sol.solution[2], sol.solution[1], sol.solution[0]);
+        Ok(Status::Ok((x,sol.residuals)))
     }
 }
 
