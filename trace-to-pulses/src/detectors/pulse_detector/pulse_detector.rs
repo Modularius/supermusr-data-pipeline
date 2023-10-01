@@ -212,6 +212,9 @@ impl<Model : PulseModel, Input : Detector> Detector for PulseDetector<Model, Inp
     }
 }
 impl<Model : PulseModel, Input : Detector> FeedbackDetector for PulseDetector<Model, Input> {
+    fn is_active(&self) -> bool {
+        self.mode == Mode::Started
+    }
     fn modify_parameter(&mut self, time : Real, param : &FeedbackParameter<Self::ValueType>) {
         self.remove_distant_pulses(time);
         //let r = Rc::strong_count(&param.clone().unwrap().0);

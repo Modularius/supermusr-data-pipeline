@@ -8,6 +8,81 @@ use anyhow::{Result,anyhow};
 
 use crate::{Real, RealArray};
 
+/*
+#[derive(Default, Debug, Clone)]
+pub enum ODESolution {
+    #[default]Trivial,
+    BiExp{
+        amp_1 : Real,
+        amp_2 : Real,
+        lambda_1 : Real,
+        lambda_2 : Real,
+        baseline : Real,
+    },
+    SinCos{
+        amp_1 : Real,
+        amp_2 : Real,
+        lambda : Real,
+        theta : Real,
+        baseline : Real,
+    }
+}
+impl ODESolution {
+    pub fn value(&self, t : Real) -> Real {
+        match self {
+            ODESolution::BiExp { amp_1, amp_2, lambda_1, lambda_2, baseline } => 
+                amp_1*Real::exp(lambda_1*t) + amp_2*Real::exp(lambda_2*t) + baseline,
+            ODESolution::SinCos { amp_1, amp_2, lambda, theta, baseline } => 
+                Real::exp(lambda*t)*(amp_1*Real::cos(theta*t) + amp_2*Real::sin(theta*t)) + baseline,
+            _ => Real::default(),
+        }
+
+    }
+    fn calc_solution(&mut self, peak : (Real,Real), max_slope : (Real,Real,Real)) -> bool {
+        match self {
+            ODESolution::BiExp { amp_1, amp_2, lambda_1, lambda_2, baseline } => false,
+            ODESolution::SinCos { amp_1, amp_2, lambda, theta, baseline } => {
+                // 0 = amp_1*(lambda*lambda - theta*theta - 2*lambda*theta*max_slope.0) + amp_2*((lambda*lambda - theta*theta)*max_slope.0 + 2*lambda*theta)
+                // max_slope.1*Real::exp(-lambda*max_slope.0) =
+                //  amp_1*((lambda*lambda - theta*theta)*Real::cos(theta*max_slope.0) - 2*lambda*theta*Real::sin(theta*max_slope.0))
+                // + amp_2*(2*lambda*theta*Real::cos(theta*max_slope.0) + (lambda*lambda - theta*theta)*Real::sin(theta*max_slope.0))
+                
+                // amp_1 = amp_2*((lambda*lambda - theta*theta)*max_slope.0 + 2*lambda*theta)/(-lambda*lambda + theta*theta + 2*lambda*theta*max_slope.0)
+
+                // max_slope.1*Real::exp(-lambda*max_slope.0)/[
+                //    ((lambda*lambda - theta*theta)*Real::cos(theta*max_slope.0) - 2*lambda*theta*Real::sin(theta*max_slope.0))*((lambda*lambda - theta*theta)*max_slope.0 + 2*lambda*theta)/(-lambda*lambda + theta*theta + 2*lambda*theta*max_slope.0)
+                // + (2*lambda*theta*Real::cos(theta*max_slope.0) + (lambda*lambda - theta*theta)*Real::sin(theta*max_slope.0))
+                // ] =
+                //  amp_2
+                let l = *lambda;
+                let t = *theta;
+                let d = Real::powi(l,2) - Real::powi(t,2);
+                let e = 2.0*l*t;
+                let (max_dy_t,_,max_dy) = max_slope;
+                let max_y_t = peak.0;
+                let cos = Real::cos(t*max_dy_t);
+                let sin = Real::sin(t*max_dy_t);
+                *amp_2 = max_dy*Real::exp(-l*max_dy_t)*(e*max_dy_t - d)/((d*d + e*e)*(cos*max_dy_t - sin));
+                *amp_1 = -max_dy*Real::exp(-l*max_dy_t)*(d*max_dy_t + e)/((d*d + e*e)*(cos*max_dy_t - sin));
+                *baseline = peak.1 - Real::exp(l*max_y_t)*(*amp_1*Real::cos(t*max_y_t) + *amp_2*Real::sin(t*max_y_t));
+                Real::is_infinite(*baseline) || Real::is_infinite(*amp_1) || Real::is_infinite(*amp_2)
+            },
+            _ => false,
+        }
+    }
+}
+impl Display for ODESolution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ODESolution::BiExp { amp_1, amp_2, lambda_1, lambda_2, baseline } => 
+                f.write_fmt(format_args!("1,{amp_1},{amp_2},{lambda_1},{lambda_2},{baseline}")),
+            ODESolution::SinCos { amp_1, amp_2, lambda, theta, baseline } => 
+                f.write_fmt(format_args!("-1,{amp_1},{amp_2},{lambda},{theta},{baseline}")),
+            _ => f.write_fmt(format_args!("")),
+        }
+    }
+}*/
+
 #[derive(Default)]
 pub struct MonicQuadratic {
     quadratic : Real,
@@ -37,13 +112,6 @@ impl MonicQuadratic {
     }
 }
 
-pub enum Status {
-    Ok((MonicQuadratic,Real)),
-    TooShort,
-    DiscriminantNonPositive(Real),
-    ParameterNonPositive(Real),
-}
-
 #[derive(Default, Clone)]
 pub struct ParameterEstimator {
     y: Vec<Real>,
@@ -69,22 +137,32 @@ impl ParameterEstimator {
         self.dy.clear();
         self.dy2.clear();
     }
-    pub fn get_parameters(&self) -> Result<Status> {
+    pub fn get_parameters(&self) -> Result<((Real,Real),(Real,Real,Real),Real)> {
         if self.y.len() < 5 {
-            return Ok(Status::TooShort);
+            return Err(anyhow!("Insufficient Data {}", self.y.len()));
         }
         let a_y = OVector::<f64, na::Dyn>::from_row_slice(self.y.as_slice());
         let a_dy = OVector::<f64, na::Dyn>::from_row_slice(self.dy.as_slice());
         let a_dy2 = OVector::<f64, na::Dyn>::from_row_slice(self.dy2.as_slice());
-        let a = OMatrix::<Real, na::Dyn, U3>::from_columns(&[a_y, a_dy, a_dy2]);
+        let a = OMatrix::<Real, na::Dyn, U3>::from_columns(&[a_y.clone(), a_dy, a_dy2]);
 
         let b = OVector::<f64, na::Dyn>::from_row_slice(&vec![1.0; self.y.len()]);
         
         let epsilon = 1e-16;
         // -y'' = x.0 y + x.1 y'
         let sol = lstsq::lstsq(&a, &b, epsilon).map_err(|s|anyhow!(s))?;
+        let residuals = sol.residuals;
         let x = MonicQuadratic::new(sol.solution[2], sol.solution[1], sol.solution[0]);
-        Ok(Status::Ok((x,sol.residuals)))
+        let (root,_) = x.calc_complex_solutions();
+
+        let cos : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)*Real::cos(0.5*root.1*i as Real)).collect();
+        let sin : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)*Real::sin(0.5*root.1*i as Real)).collect();
+        let exp : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)).collect();
+
+        let a = OMatrix::<Real, na::Dyn, U3>::from_columns(&[cos.into(), sin.into(), b]);
+        let sol = lstsq::lstsq(&a, &a_y, epsilon).map_err(|s|anyhow!(s))?;
+
+        Ok((root,(sol.solution[0],sol.solution[1],sol.solution[2]),residuals/self.y.len() as Real))
     }
 }
 
@@ -122,7 +200,7 @@ mod tests {
                 peak = (i as Real * dt, y[i]);
             }
         }
-        if let Status::Ok(((xrho, xkappa),(xa,xb),res)) = pe.get_parameters().unwrap() {
+        /*if let Status::Ok(((xrho, xkappa),(xa,xb),res)) = pe.get_parameters().unwrap() {
             println!("{:?}",(xrho, xkappa));
             println!("{:?}",(xa, xb));
             println!("{:?}",(((y[0] + y[2] - 2.0*y[1])/dt)/(y[1] - y[0]), 1./xrho + 1./xkappa, 1./rho + 1./kappa));
@@ -130,6 +208,6 @@ mod tests {
             println!("{peak:?}");
             println!("{0},{1}",biexp_peak_time(kappa,rho),biexp_value(biexp_peak_time(kappa,rho),kappa,rho));
             println!("{0},{1}",biexp_peak_time(xkappa,xrho),biexp_value(biexp_peak_time(xkappa,xrho),xkappa,xrho));       
-        }
+        }*/
     }
 }

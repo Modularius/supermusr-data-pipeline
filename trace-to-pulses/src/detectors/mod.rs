@@ -9,6 +9,7 @@ use crate::{events::Event, tracedata::{EventData, TraceValue, Temporal}, trace_i
 
 
 pub trait FeedbackDetector : Detector {
+    fn is_active(&self) -> bool;
     fn modify_parameter(&mut self, _time: Self::TimeType, _param : &FeedbackParameter<Self::ValueType>);
 }
 

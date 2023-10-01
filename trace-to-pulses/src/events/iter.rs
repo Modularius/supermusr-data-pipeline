@@ -69,7 +69,7 @@ impl<I, D> Iterator for EventIter<Standard, I, D> where
 
 
 impl<I, D> Iterator for EventIter<WithFeedback<<I::Item as TraceData>::ValueType>, I, D> where
-    I: Iterator,
+    I: Iterator + Clone,
     I::Item : TraceData<TimeType = D::TimeType, ValueType = D::ValueType>,
     D: FeedbackDetector,
 {
@@ -78,8 +78,18 @@ impl<I, D> Iterator for EventIter<WithFeedback<<I::Item as TraceData>::ValueType
         loop {
             let trace = self.source.next()?;
             self.detector.modify_parameter(trace.get_time(), &self.child.0);
-            if let Some(event) = self.detector.signal(trace.get_time(), trace.clone_value()) {
-                return Some(event);
+            let event = self.detector.signal(trace.get_time(), trace.clone_value());
+            if event.is_some() {
+                return event;
+            }
+            if self.detector.is_active() {
+                let mut temp_source = self.source.clone();
+                let trace = temp_source.next()?;
+                while self.detector.is_active() {
+                    if let Some(event) = self.detector.signal(trace.get_time(), trace.clone_value()) {
+                        return Some(event);
+                    }
+                }
             }
         }
     }

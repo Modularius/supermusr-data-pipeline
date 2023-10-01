@@ -1,4 +1,4 @@
-use std::{time::Instant, fmt::Debug, rc::Rc};
+use std::{time::Instant, fmt::Debug, rc::Rc, collections::VecDeque};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -9,7 +9,7 @@ use trace_to_pulses::{
     trace_iterators::{
         find_baseline::FindBaselineFilter,
         feedback::{FeedbackFilter, FeedbackParameter as FP},
-        to_trace::ToTrace, save_to_file::SaveToFile
+        to_trace::ToTrace, save_to_file::SaveToFile, memory::MemoryFilter
     },
     processing,
     window::{
@@ -117,18 +117,20 @@ impl TraceRun {
             .find_baseline(self.basic_parameters.baseline_length)           // We find the baseline of the trace from the first 1000 points, which are discarded.
     }
     pub fn run_smoothed<'a>(&self, baselined : impl Iterator<Item = (Real,Real)> + Clone + 'a)
-        -> (impl Iterator<Item = (Real,RealArray<3>)> + Clone + 'a, FeedbackParameter) {
-        let feedback_parameter = FeedbackParameter::new();
+        -> (impl Iterator<Item = (Real,RealArray<3>)> + Clone + 'a, FP<RealArray<3>>) {
+        let feedback_parameter = FP::<RealArray<3>>::new();
         let smoothed = baselined
             .window(SmoothingWindow::new(self.basic_parameters.smoothing_window_size))
             .map(tracedata::extract::enumerated_mean)
             .window(FiniteDifferences::<3>::new())
+            .start_feedback(&feedback_parameter, |a,b|RealArray::<3>::new([a[0] + b[0],a[1] + b[1],a[2] + b[2]]))
         ;
         (smoothed, feedback_parameter)
     }
-    pub fn run_pulses<'a>(&self, smoothed : impl Iterator<Item = (Real,RealArray<3>)> + Clone + 'a, feedback_parameter : FeedbackParameter) -> Vec<PulseEvent2> {
+    pub fn run_pulses<'a>(&self, smoothed : impl Iterator<Item = (Real,RealArray<3>)> + Clone + 'a, feedback_parameter : FP<RealArray<3>>) -> Vec<PulseEvent2> {
         let pulses = smoothed
-            .events(MuonDetector::new(3.,0.5))
+            .events(MuonDetector::new())
+            //.events_with_feedback(feedback_parameter, MuonDetector::new(3.,0.5))
             .collect_vec();
         pulses
     }
