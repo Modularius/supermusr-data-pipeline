@@ -4,7 +4,6 @@
 #![allow(warnings)]
 #![warn(missing_docs)]
 
-
 use common::Intensity;
 
 use anyhow::Result;
@@ -29,9 +28,13 @@ pub(crate) struct Cli {
     #[clap(long, short = 'e', default_value = "true")]
     evaluate: bool,
 
-    #[clap(long, short = 'd', help = "Basic: Finds time/intensitites of events, Advanced: Finds time/intensities/widths and applies feedback corrections")]
+    #[clap(
+        long,
+        short = 'd',
+        help = "Basic: Finds time/intensitites of events, Advanced: Finds time/intensities/widths and applies feedback corrections"
+    )]
     detection_type: Option<DetectionType>,
-    
+
     #[command(subcommand)]
     mode: Option<Mode>,
 }
@@ -115,10 +118,19 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.mode {
-        Some(Mode::Simulation(npm)) => run_simulated_mode(npm, cli.detection_type, cli.benchmark, cli.evaluate),
+        Some(Mode::Simulation(npm)) => {
+            run_simulated_mode(npm, cli.detection_type, cli.benchmark, cli.evaluate)
+        }
         Some(Mode::Database(dpm)) => (),
-        Some(Mode::File(fpm)) => run_file_mode(fpm, cli.detection_type, cli.benchmark, cli.evaluate),
-        None => run_file_mode(FileParameters::parse(), cli.detection_type, cli.benchmark, cli.evaluate),
+        Some(Mode::File(fpm)) => {
+            run_file_mode(fpm, cli.detection_type, cli.benchmark, cli.evaluate)
+        }
+        None => run_file_mode(
+            FileParameters::parse(),
+            cli.detection_type,
+            cli.benchmark,
+            cli.evaluate,
+        ),
     }
 
     Ok(())

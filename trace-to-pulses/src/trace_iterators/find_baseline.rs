@@ -13,11 +13,13 @@ use super::iter::TraceIter;
 pub struct FindBaseline {
     warm_up: usize,
     baseline: Real,
+    smoothing_factor : Real,
+    mean: Real,
 }
 
 impl FindBaseline {
     pub fn new(warm_up : usize) -> Self {
-        FindBaseline { warm_up, baseline: Real::MAX }
+        FindBaseline { warm_up, baseline: Real::MAX, smoothing_factor: 0.25, mean: Real::default() }
     }
 }
 
@@ -32,14 +34,17 @@ impl<I> Iterator for TraceIter<FindBaseline,I> where
     fn next(&mut self) -> Option<Self::Item> {
         while self.child.warm_up > 0 {
             match self.source.next() {
-                Some(trace) => self.child.baseline = Real::min(self.child.baseline, trace.take_value()),
+                Some(trace) => {
+                    self.child.mean = trace.clone_value()*self.child.smoothing_factor + self.child.mean*(1. - self.child.smoothing_factor);
+                    self.child.baseline = Real::min(self.child.baseline, trace.take_value())
+                },
                 None => return None,
             }
             self.child.warm_up -= 1;
             //if self.warm_up == 0 { log::info!("{0}",self.baseline); }
         }
         self.source.next()
-            .map(|trace|(trace.get_time(),trace.take_value() - self.child.baseline))
+            .map(|trace|(trace.get_time(),trace.take_value() - self.child.mean))
     }
 }
 

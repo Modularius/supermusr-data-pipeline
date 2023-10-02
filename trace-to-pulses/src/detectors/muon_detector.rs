@@ -166,12 +166,6 @@ impl Detector for MuonDetector {
                 self.active = false;
                 self.new_event(time)
             } else {
-                /*if diff[0] > self.peak.1 {
-                    self.peak = (time - self.start,diff[0]);
-                }
-                if diff[1] > self.max_slope.2 {
-                    self.max_slope = (time - self.start,diff[0],diff[1]);
-                }*/
                 self.estimator.push(
                     diff[0],
                     diff[1],
@@ -181,9 +175,6 @@ impl Detector for MuonDetector {
             }
         } else {
             if self.mode == Mode::Rising {
-                //let event = self.change_finder.signal(time, diff[0].into())?;
-                //use change_detector::ChangeClass as CC;
-                //if event.get_data().get_class() == CC::Rising {
                 self.init(time);
             }
             None
