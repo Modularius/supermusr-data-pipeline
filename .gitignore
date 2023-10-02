@@ -8,3 +8,5 @@ target
 *.traces
 perf.*
 *.svg
+.direnv/
+.vscode/

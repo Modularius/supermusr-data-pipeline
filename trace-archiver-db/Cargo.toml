@@ -17,7 +17,7 @@ anyhow = "1.0"
 chrono = "0.4.22"
 clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.10"
-flatbuffers = "22.9.29"
+flatbuffers = "23.5.26"
 kagiyama = "0.3.0"
 log = "0.4"
 taos = { version = "0.8.15", default_features = false, features = ["native"] }
