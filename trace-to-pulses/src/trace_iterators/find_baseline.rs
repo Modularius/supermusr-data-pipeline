@@ -14,12 +14,11 @@ pub struct FindBaseline {
     warm_up: usize,
     baseline: Real,
     smoothing_factor : Real,
-    mean: Real,
 }
 
 impl FindBaseline {
     pub fn new(warm_up : usize) -> Self {
-        FindBaseline { warm_up, baseline: Real::MAX, smoothing_factor: 0.25, mean: Real::default() }
+        FindBaseline { warm_up, baseline: Real::default(), smoothing_factor: 0.1 }
     }
 }
 
@@ -35,8 +34,8 @@ impl<I> Iterator for TraceIter<FindBaseline,I> where
         while self.child.warm_up > 0 {
             match self.source.next() {
                 Some(trace) => {
-                    self.child.mean = trace.clone_value()*self.child.smoothing_factor + self.child.mean*(1. - self.child.smoothing_factor);
-                    self.child.baseline = Real::min(self.child.baseline, trace.take_value())
+                    self.child.baseline = trace.take_value()*self.child.smoothing_factor + self.child.baseline*(1. - self.child.smoothing_factor);
+                    //self.child.baseline = Real::min(self.child.baseline, trace.take_value())
                 },
                 None => return None,
             }
@@ -44,7 +43,7 @@ impl<I> Iterator for TraceIter<FindBaseline,I> where
             //if self.warm_up == 0 { log::info!("{0}",self.baseline); }
         }
         self.source.next()
-            .map(|trace|(trace.get_time(),trace.take_value() - self.child.mean))
+            .map(|trace|(trace.get_time(),trace.take_value() - self.child.baseline))
     }
 }
 

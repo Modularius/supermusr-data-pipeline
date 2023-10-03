@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, fmt::Debug, rc::Rc, time::Instant};
 
 use anyhow::{anyhow, Result};
+use common::Intensity;
 use itertools::Itertools;
 
 use rand::{random, seq::SliceRandom};
@@ -120,7 +121,7 @@ impl TraceRun {
 type FeedbackParameter = FP<Stats>;
 
 impl TraceRun {
-    pub fn run_basic_detection<'a>(
+    /*pub fn run_basic_detection<'a>(
         &self,
         baselined: impl Iterator<Item = (Real, Real)> + Clone + 'a,
     ) -> (
@@ -135,22 +136,22 @@ impl TraceRun {
         let pulses = smoothed
             .clone()
             //.map(tracedata::extract::enumerated_mean)
-            .events(LocalExtremumDetector::new())
+            .events(LocalExtremumDetector::<RealArray<2>>::new())
             .tuple_windows()
             .filter_map(peak_detector::local_extrema_to_peaks)
             .map(PulseEvent::from)
             .collect_vec();
         (smoothed, pulses)
-    }
+    }*/
     pub fn run_baselined<'a>(
         &self,
-        trace: &'a Vec<u16>,
+        trace: &'a Vec<Intensity>,
     ) -> impl Iterator<Item = (Real, Real)> + Clone + 'a {
         trace
             .iter()
             .enumerate()
             .map(processing::make_enumerate_real)
-            .map(|(i, v)| (i, -v)) // The trace should be positive
+            .map(|(i, v)| (i as Real, -v)) // The trace should be positive
             .find_baseline(self.basic_parameters.baseline_length) // We find the baseline of the trace from the first 1000 points, which are discarded.
     }
     pub fn run_smoothed<'a>(
@@ -288,17 +289,7 @@ impl TraceRun {
             let (_, time) = time_collect_vec(trace_smoothed.clone());
             println!(" - Trace preprocessed in {0} ms", time);
         };
-
-        let pulse_events = trace_smoothed
-            .clone()
-            //.events_with_feedback(PulseDetector::new(LocalExtremeDetector::new()));
-            .trace_with_events(LocalExtremumDetector::new()) //self.advanced_parameters.change_detector_threshold))
-            .events_from_events_with_feedback(
-                feedback_parameter_stats,
-                PulseDetector::<Gaussian, LocalExtremumDetector>::new(
-                    self.advanced_parameters.change_detector_bound,
-                ),
-            );
+/*
 
         //  Timing of pulse_events
         let pulse_events_realised = {
@@ -321,6 +312,6 @@ impl TraceRun {
             let (_, time) = time_collect_vec(trace_simulated.clone());
             println!(" - Simulation created in {0} ms", time);
         }
-        println!("[Benchmarks Finished]");
+        println!("[Benchmarks Finished]");*/
     }
 }

@@ -132,11 +132,11 @@ impl TraceFileEvent {
     pub fn channel_trace(&self, channel: usize) -> &Vec<Intensity> {
         &self.raw_trace[channel]
     }
-    pub fn clone_normalized_channel_trace(&self, channel: usize) -> Vec<Intensity> {
-        self.raw_trace[channel].clone()
+    pub fn clone_normalized_channel_trace(&self, channel: usize) -> Vec<f64> {
+        self.normalized_trace[channel].clone()
     }
-    pub fn normalized_channel_trace(&self, channel: usize) -> &Vec<Intensity> {
-        &self.raw_trace[channel]
+    pub fn normalized_channel_trace(&self, channel: usize) -> &Vec<f64> {
+        &self.normalized_trace[channel]
     }
 
     pub fn load(file: &mut File, num_channels: usize, num_samples: usize) -> Result<Self, Error> {
@@ -153,6 +153,17 @@ impl TraceFileEvent {
             normalized_trace: (0..num_channels).map(|_| Default::default()).collect(),
             _total_bytes:total_bytes,
         })
+    }
+    pub fn extract_normalized_trace(
+        &self,
+        channel: usize,
+        scale: f64,
+        offset: f64,
+    ) -> Vec<f64> {
+        self.raw_trace[channel]
+            .iter()
+            .map(|v| *v as f64 * scale + offset)
+            .collect()
     }
     pub fn build_normalized_trace(
         mut self,

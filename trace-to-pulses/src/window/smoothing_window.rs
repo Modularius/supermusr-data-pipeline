@@ -68,7 +68,7 @@ impl Window for SmoothingWindow {
             None
         }
     }
-    fn apply_time_shift(&self, time : Real) -> Real { time } //time - (self.size - 1.)/2.0 }
+    fn apply_time_shift(&self, time : Real) -> Real { time - (self.size - 1.)/2.0 }
 }
 
 #[cfg(test)]

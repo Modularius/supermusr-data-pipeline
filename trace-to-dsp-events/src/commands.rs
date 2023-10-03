@@ -1,12 +1,14 @@
-use std::{env, fmt::Display, fs::File, io::Write};
+use std::{env, fmt::Display, fs::File, io::Write, default};
 
+use common::Intensity;
 use itertools::Itertools;
-use num::Integer;
 use rand::random;
 use trace_to_pulses::{
     log_then_panic_t,
-    trace_iterators::load_from_trace_file::{load_trace_file, TraceFile},
-    Real,
+    trace_iterators::{load_from_trace_file::{load_trace_file, TraceFile}, save_to_file::SaveToFile, find_baseline::FindBaselineFilter},
+    Real, processing, window::{WindowFilter, gate::Gate, finite_differences::FiniteDifferences}, SmoothingWindow, peak_detector::LocalExtremumDetector,
+    EventFilter, RealArray, tracedata,
+    events::SaveEventsToFile,
 };
 
 use crate::{
@@ -33,10 +35,7 @@ fn save_to_file<T: Display, I: Iterator<Item = T>>(name: &str, it: I) {
  */
 pub fn run_simulated_mode(
     params: SimulationParameters,
-    detection_type: Option<DetectionType>,
-    benchmark: bool,
-    evaluate: bool,
-) {
+) -> Vec<Intensity> {
     /*
     let distrbution = PulseDistribution {
         std_dev: RandomInterval(params.std_dev_min,params.std_dev_max),
@@ -61,75 +60,84 @@ pub fn run_simulated_mode(
         params.voltage_noise,
     );
     */
+    Vec::<Intensity>::default()
 }
 
 pub fn run_file_mode(
     params: FileParameters,
-    detection_type: Option<DetectionType>,
-    benchmark: bool,
-    evaluate: bool,
-) {
+) -> Vec<Intensity> {
     let file_name = params.file_name.unwrap_or(
         //"../../Data/Traces/MuSR_A27_B28_C29_D30_Apr2021_Ag_ZF_InstDeg_Slit60_short.traces".to_owned(),
         "../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces"
             .to_owned(),
     );
-    let save_file_name = params.save_file_name.unwrap_or("Saves/output".to_owned());
 
     let mut trace_file = load_trace_file(&file_name).unwrap();
-
     {
         let event_index = 243;
         let channel_index = 0;
 
         let run = trace_file.get_event(event_index).unwrap();
-        run_trace(
-            run.normalized_channel_trace(channel_index),
-            save_file_name,
-            detection_type,
-            benchmark,
-            evaluate,
-        );
+        run.clone_channel_trace(channel_index)
     }
-
-    //optimize(trace_file, detection_type, 10);
 }
 
-fn run_trace(
-    trace: &Vec<u16>,
-    save_file_name: String,
+pub fn run_trace(
+    trace: &Vec<Intensity>,
+    save_file_name: Option<String>,
     detection_type: Option<DetectionType>,
     benchmark: bool,
     evaluate: bool,
 ) {
-    let mut trace_run = TraceRun::new(
-        BasicParameters {
-            gate_size: 2.,
-            smoothing_window_size: 4,
-            baseline_length: 1000,
-        },
-        AdvancedParameters {
-            change_detector_threshold: 1.,
-            change_detector_bound: 100.,
-        },
-    );
-    let baselined = trace_run.run_baselined(trace);
+    
+    let basic_parameters = BasicParameters {
+        gate_size: 2.,
+        smoothing_window_size: 4,
+        baseline_length: 1000,
+    };
+    let advanced_parameters = AdvancedParameters {
+        change_detector_threshold: 1.,
+        change_detector_bound: 100.,
+    };
+    
+    let baselined = trace
+        .iter()
+        .enumerate()
+        .map(processing::make_enumerate_real)
+        .map(|(i, v)| (i, -v)) // The trace should be positive
+        .find_baseline(basic_parameters.baseline_length) // We find the baseline of the trace from the first 1000 points, which are discarded.
+    ;
+    let smoothed = baselined
+        .clone()
+        //.window(Gate::new(basic_parameters.gate_size))                              //  We apply the gate filter first
+        .map(|(i,v)|(i,Real::max(v, 2.0)))
+        .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))       //  We smooth the trace
+        .map(tracedata::extract::enumerated_mean)
+    ;
+    let pulses = smoothed
+        .clone()
+        .window(FiniteDifferences::<2>::new())
+        .events(LocalExtremumDetector::<RealArray<2>>::new(RealArray::new([0.0, 0.01])));
+    /*
+
     let (smoothed, feedback_parameter) = trace_run.run_smoothed(baselined.clone());
     let pulses = trace_run.run_pulses(smoothed.clone(), feedback_parameter);
-
+ */
     if evaluate {
         //trace_run.run_and_print_evaluation("General", baselined.clone(), &pulses);
     }
     if benchmark {
         //trace_run.run_benchmark(baselined.clone());
-        trace_run.save_baselined(save_file_name.clone(), baselined.clone());
-        trace_run.save_smoothed(
-            save_file_name.clone(),
-            smoothed.map(|(i, f)| (i, f[0])).clone(),
-        );
-        //trace_run.save_diff             (save_file_name.clone(), diff.clone());
-        //trace_run.save_cuts             (save_file_name.clone(), cuts.clone());
-        //trace_run.save_pulse_simulation (save_file_name.clone(), baselined, &pulses);
-        trace_run.save_pulse_events(save_file_name, pulses);
+    }
+    if let Some(save_file_name) = save_file_name {
+        trace
+            .iter()
+            .enumerate()
+            .map(|(i,v)|(i as Real, *v as Real))
+            .save_to_file(&(save_file_name.clone() + "_raw.csv"));
+        
+        baselined.save_to_file(&(save_file_name.clone() + "_baselined" + ".csv"));
+        smoothed.save_to_file(&(save_file_name.clone() + "_smoothed" + ".csv"));
+        pulses.save_to_file(&(save_file_name.clone() + "_pulses" + ".csv"));
     }
 }

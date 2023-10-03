@@ -17,7 +17,7 @@ mod trace_run;
 
 //use tdengine::tdengine::TDEngine;
 
-use crate::commands::{run_file_mode, run_simulated_mode};
+use crate::commands::{run_file_mode, run_simulated_mode, run_trace};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -27,6 +27,9 @@ pub(crate) struct Cli {
 
     #[clap(long, short = 'e', default_value = "true")]
     evaluate: bool,
+
+    #[clap(long, short = 'o')]
+    save_file_name: Option<String>,
 
     #[clap(
         long,
@@ -103,8 +106,6 @@ pub struct SimulationParameters {
 pub struct FileParameters {
     #[clap(long, short = 'f')]
     file_name: Option<String>,
-    #[clap(long, short = 'o')]
-    save_file_name: Option<String>,
 }
 
 #[derive(Parser, Clone)]
@@ -117,21 +118,28 @@ fn main() -> Result<()> {
     log::debug!("Parsing Cli");
     let cli = Cli::parse();
 
-    match cli.mode {
+    let trace = match cli.mode {
         Some(Mode::Simulation(npm)) => {
-            run_simulated_mode(npm, cli.detection_type, cli.benchmark, cli.evaluate)
+            run_simulated_mode(npm)
         }
-        Some(Mode::Database(dpm)) => (),
+        Some(Mode::Database(dpm)) => /* TODO */Vec::<_>::default(),
         Some(Mode::File(fpm)) => {
-            run_file_mode(fpm, cli.detection_type, cli.benchmark, cli.evaluate)
+            run_file_mode(fpm)
         }
         None => run_file_mode(
             FileParameters::parse(),
-            cli.detection_type,
-            cli.benchmark,
-            cli.evaluate,
         ),
-    }
+    };
+    let save_file_name = cli.save_file_name.unwrap_or("Saves/output".to_owned());   //This will be replaced with optional behaviour
+    
+    run_trace(
+        &trace,
+        Some(save_file_name),
+        cli.detection_type,
+        cli.benchmark,
+        cli.evaluate,
+    );
+
 
     Ok(())
 }

@@ -261,7 +261,7 @@ impl<Model : PulseModel> EventValuedDetector for PulseDetector<Model, ChangeDete
 
 
 
-impl<Model : PulseModel> EventValuedDetector for PulseDetector<Model, LocalExtremumDetector> {
+impl<Model : PulseModel> EventValuedDetector for PulseDetector<Model, LocalExtremumDetector<Real>> {
     type DataValueType = LocalExtremumData;
 
     fn on_event(&mut self, event: Event<Self::TimeType, Self::DataValueType>) -> Option<Event<Self::TimeType, PulseData<Model>>> {
