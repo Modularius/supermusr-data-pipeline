@@ -17,4 +17,7 @@ pub use iter::{
     WithTraceAndFeedback,
 };
 
-pub use save_to_file::SaveEventsToFile;
+pub use save_to_file::{
+    SaveEventsToFile,
+    SavePulsesToFile
+};

@@ -45,6 +45,7 @@ fn time_collect_vec<I: Iterator + Clone>(iter: I) -> (Vec<I::Item>, Real) {
 #[derive(Default, Debug, Clone)]
 pub(crate) struct BasicParameters {
     pub(crate) gate_size: Real,
+    pub(crate) min_voltage: Real,
     pub(crate) smoothing_window_size: usize,
     pub(crate) baseline_length: usize,
 }
@@ -53,7 +54,7 @@ pub(crate) struct AdvancedParameters {
     pub(crate) change_detector_threshold: Real,
     pub(crate) change_detector_bound: Real,
 }
-
+/*
 #[derive(Default, Debug, Clone)]
 pub(crate) struct TraceRun {
     basic_parameters: BasicParameters,
@@ -315,3 +316,4 @@ impl TraceRun {
         println!("[Benchmarks Finished]");*/
     }
 }
+ */

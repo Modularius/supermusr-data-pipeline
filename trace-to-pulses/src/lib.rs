@@ -19,6 +19,7 @@ pub mod detectors;
 pub mod events;
 pub mod tracedata;
 pub mod ode;
+pub mod pulse;
 //pub mod partition;
 
 use std::{fmt::{Debug, Display}, ops::Index};
@@ -29,6 +30,7 @@ pub use detectors::{
     peak_detector,
     pulse_detector,
     change_detector,
+    basic_muon_detector,
     Detector
 };
 pub use events::{
@@ -51,7 +53,11 @@ impl<const N: usize, T> TraceArray<N,T> where T : Default + Clone + Debug + Disp
 }
 impl<const N: usize,T> Display for TraceArray<N,T> where T : Default + Clone + Debug + Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{self}")
+        let TraceArray(array) = self;
+        for i in 0..(N - 1) {
+            write!(f,"{0},", array[i])?;
+        }
+        write!(f,"{0}", array[N - 1])
     }
 }
 impl<const N: usize,T> Default for TraceArray<N,T> where T : Default + Copy + Debug + Display {

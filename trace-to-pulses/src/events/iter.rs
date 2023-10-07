@@ -3,8 +3,9 @@ use std::marker::PhantomData;
 
 use crate::detectors::{
     Detector,
-    FeedbackDetector, EventValuedDetector
+    FeedbackDetector, EventValuedDetector, Assembler
 };
+use crate::pulse::Pulse;
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::trace_iterators::iter::{TraceIter, TraceIterType};
 use crate::tracedata::{TraceData, TraceValue};
@@ -230,6 +231,55 @@ impl<I, D> EventsWithFeedbackFilter<I, D> for I where
             source: self,
             detector,
             child: WithTraceAndFeedback(parameter)
+        }
+    }
+}
+
+
+
+
+
+
+pub struct AssemblerIter<I, A> where
+    A: Assembler,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+{
+    source: I,
+    assembler: A,
+}
+impl<I, A> Iterator for AssemblerIter<I, A> where
+    A: Assembler,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+{
+    type Item = Pulse;
+
+    fn next(&mut self) -> Option<Pulse> {        
+        while let Some(event) = self.source.next() {
+            let pulse = self.assembler.assemble_pulses(event);
+            if pulse.is_some() {
+                return pulse;
+            }
+        }
+        None
+    }
+}
+
+
+pub trait AssembleFilter<I, A> where
+    A: Assembler,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+{
+    fn assemble(self, assembler: A) -> AssemblerIter<I, A>;
+}
+
+impl<I, A> AssembleFilter<I, A> for I where
+    A: Assembler,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+{
+    fn assemble(self, assembler: A) -> AssemblerIter<I, A> {
+        AssemblerIter {
+            source: self,
+            assembler,
         }
     }
 }

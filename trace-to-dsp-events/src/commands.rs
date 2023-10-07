@@ -8,11 +8,12 @@ use trace_to_pulses::{
     trace_iterators::{load_from_trace_file::{load_trace_file, TraceFile}, save_to_file::SaveToFile, find_baseline::FindBaselineFilter},
     Real, processing, window::{WindowFilter, gate::Gate, finite_differences::FiniteDifferences}, SmoothingWindow, peak_detector::LocalExtremumDetector,
     EventFilter, RealArray, tracedata,
-    events::SaveEventsToFile,
+    events::{SaveEventsToFile, SavePulsesToFile, iter::{AssembleFilter, AssemblerIter}},
+    basic_muon_detector::{self, BasicMuonDetector, BasicMuonAssembler},
 };
 
 use crate::{
-    trace_run::{AdvancedParameters, BasicParameters, TraceRun}, //, min_max_run::optimize
+    trace_run::{AdvancedParameters, BasicParameters}, //, min_max_run::optimize
     DetectionType,
     FileParameters,
     SimulationParameters,
@@ -92,6 +93,7 @@ pub fn run_trace(
     
     let basic_parameters = BasicParameters {
         gate_size: 2.,
+        min_voltage: 2.,
         smoothing_window_size: 4,
         baseline_length: 1000,
     };
@@ -110,14 +112,17 @@ pub fn run_trace(
     let smoothed = baselined
         .clone()
         //.window(Gate::new(basic_parameters.gate_size))                              //  We apply the gate filter first
-        .map(|(i,v)|(i,Real::max(v, 2.0)))
+        .map(|(i,v)|(i,Real::max(v, basic_parameters.min_voltage)))
         .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))       //  We smooth the trace
         .map(tracedata::extract::enumerated_mean)
     ;
-    let pulses = smoothed
+    let events = smoothed
         .clone()
         .window(FiniteDifferences::<2>::new())
-        .events(LocalExtremumDetector::<RealArray<2>>::new(RealArray::new([0.0, 0.01])));
+        .events(BasicMuonDetector::new(0.1, 0.0, -0.1, 0.0, -0.05, 0.0));
+    let pulses = events
+        .clone()
+        .assemble(BasicMuonAssembler::default());
     /*
 
     let (smoothed, feedback_parameter) = trace_run.run_smoothed(baselined.clone());
@@ -138,6 +143,7 @@ pub fn run_trace(
         
         baselined.save_to_file(&(save_file_name.clone() + "_baselined" + ".csv"));
         smoothed.save_to_file(&(save_file_name.clone() + "_smoothed" + ".csv"));
+        events.save_to_file(&(save_file_name.clone() + "_events" + ".csv"));
         pulses.save_to_file(&(save_file_name.clone() + "_pulses" + ".csv"));
     }
 }
