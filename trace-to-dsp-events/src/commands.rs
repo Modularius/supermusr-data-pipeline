@@ -1,5 +1,6 @@
 use std::{env, fmt::Display, fs::File, io::Write, default};
 
+use histogram;
 use common::Intensity;
 use itertools::Itertools;
 use rand::random;
@@ -123,6 +124,15 @@ pub fn run_trace(
     let pulses = events
         .clone()
         .assemble(BasicMuonAssembler::default());
+
+    let hist = histogram::Histogram::new(1,12,24).unwrap();
+    pulses.clone().for_each(|pulse|hist.increment(pulse.steepest_rise.value.unwrap()[0] as u64, 1).unwrap());
+
+    let buckets = hist.percentiles(&(0..100).map(|x|x as Real).collect_vec()).unwrap();
+    for i in buckets {
+        println!("{0}",i.bucket().count());
+    }
+
     /*
 
     let (smoothed, feedback_parameter) = trace_run.run_smoothed(baselined.clone());

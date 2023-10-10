@@ -240,16 +240,17 @@ impl<I, D> EventsWithFeedbackFilter<I, D> for I where
 
 
 
+#[derive(Clone)]
 pub struct AssemblerIter<I, A> where
     A: Assembler,
-    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>> + Clone,
 {
     source: I,
     assembler: A,
 }
 impl<I, A> Iterator for AssemblerIter<I, A> where
     A: Assembler,
-    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>> + Clone,
 {
     type Item = Pulse;
 
@@ -267,14 +268,14 @@ impl<I, A> Iterator for AssemblerIter<I, A> where
 
 pub trait AssembleFilter<I, A> where
     A: Assembler,
-    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>> + Clone,
 {
     fn assemble(self, assembler: A) -> AssemblerIter<I, A>;
 }
 
 impl<I, A> AssembleFilter<I, A> for I where
     A: Assembler,
-    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>>,
+    I: Iterator<Item = Event<<A::DetectorType as Detector>::TimeType, <A::DetectorType as Detector>::DataType>> + Clone,
 {
     fn assemble(self, assembler: A) -> AssemblerIter<I, A> {
         AssemblerIter {

@@ -10,7 +10,6 @@ use super::Assembler;
 #[derive(Default, Debug, Clone,PartialEq)]
 pub enum Class {
     #[default] Onset,
-    Steepest,
     Peak,
     End,
     EndOnset,
@@ -19,7 +18,6 @@ impl Display for Class {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Onset => "0",
-            Self::Steepest => "1",
             Self::Peak => "2",
             Self::End => "-1",
             Self::EndOnset => "-2",
@@ -39,7 +37,7 @@ impl Data {
     }
     pub fn get_class(&self) -> Class { self.class.clone() }
     pub fn get_value(&self) -> Real { self.value }
-    pub fn get_superlative(&self) -> Option<TimeValue<RealArray<2>>> { self.superlative }
+    pub fn get_superlative(&self) -> Option<TimeValue<RealArray<2>>> { self.superlative.clone() }
 }
 impl EventData for Data {}
 
@@ -51,6 +49,15 @@ impl Display for Data {
 
 type BasicMuonEvent = Event<Real, Data>;
 
+
+
+type SuperlativeValue = TimeValue<RealArray<2>>;
+
+impl SuperlativeValue {
+    fn reset(&mut self) {
+        self.value = RealArray::default();
+    }
+}
 
 
 
@@ -83,8 +90,8 @@ pub struct BasicMuonDetector {
     potential_duration : Real,
     mode: Mode,
 
-    steepest_rise : TimeValue<RealArray<2>>,
-    sharpest_fall : TimeValue<RealArray<2>>,
+    steepest_rise : SuperlativeValue,
+    sharpest_fall : SuperlativeValue,
 }
 
 impl BasicMuonDetector {
@@ -109,9 +116,14 @@ impl BasicMuonDetector {
             self.potential_duration = 0.0;
         }
     }
-    fn realise_potential_mode_if(&mut self, duration : Real, mode : Mode, class : Class, value : Real, superlative : Option<TimeValue<RealArray<2>>>) -> Option<Data> {
+    fn realise_potential_mode_if(&mut self, duration : Real, mode : Mode, class : Class, value : Real, superlative : Option<SuperlativeValue>) -> Option<Data> {
         if self.potential_duration >= duration {
             self.mode = mode;
+            match class {
+                Class::Onset => { self.steepest_rise.reset(); },
+                Class::Peak => { self.sharpest_fall.reset(); },
+                _ => {},
+            }
             Some(Data { class, value, superlative })
         } else {
             None
@@ -160,11 +172,11 @@ impl Detector for BasicMuonDetector {
             Mode::Rise => match self.potential_mode {
                 Mode::Level => None,
                 Mode::Rise => None,
-                Mode::Fall => self.realise_potential_mode_if(self.fall_min_duration, Mode::Fall, Class::Peak, value[0], Some(self.steepest_rise)),
+                Mode::Fall => self.realise_potential_mode_if(self.fall_min_duration, Mode::Fall, Class::Peak, value[0], Some(self.steepest_rise.clone())),
             },
             Mode::Fall => match self.potential_mode {
-                Mode::Level => self.realise_potential_mode_if(self.termination_min_duration, Mode::Level, Class::End, value[0], Some(self.sharpest_fall)),
-                Mode::Rise=> self.realise_potential_mode_if(self.onset_min_duration, Mode::Rise, Class::EndOnset, value[0], Some(self.sharpest_fall)),
+                Mode::Level => self.realise_potential_mode_if(self.termination_min_duration, Mode::Level, Class::End, value[0], Some(self.sharpest_fall.clone())),
+                Mode::Rise=> self.realise_potential_mode_if(self.onset_min_duration, Mode::Rise, Class::EndOnset, value[0], Some(self.sharpest_fall.clone())),
                 Mode::Fall => None,
             },
         }.map(|data|data.make_event(time - self.potential_duration))
@@ -174,8 +186,8 @@ impl Detector for BasicMuonDetector {
 #[derive(Default,Clone, Debug)]
 enum AssemblerMode {
     #[default]Waiting,
-    Rising { start : TimeValue<Real>, steepest_rise : Option<TimeValue<RealArray<2>>> },
-    Falling { start : TimeValue<Real>, steepest_rise : Option<TimeValue<RealArray<2>>>, peak : TimeValue<Real>, sharpest_fall : Option<TimeValue<RealArray<2>>> },
+    Rising { start : TimeValue<Real> },
+    Falling { start : TimeValue<Real>, steepest_rise : Option<TimeValue<RealArray<2>>>, peak : TimeValue<Real> },
 }
 
 #[derive(Default,Clone)]
@@ -193,49 +205,44 @@ impl Assembler for BasicMuonAssembler {
                 match source.get_data().get_class() {
                     Class::Onset => {
                         let start = TimeValue { time: source.get_time(), value: source.get_data().get_value() };
-                        self.mode = AssemblerMode::Rising { start, steepest_rise: None };
+                        self.mode = AssemblerMode::Rising { start };
                         None
                     },
                     _ => None,
                 }
             },
-            AssemblerMode::Rising { start, steepest_rise } => {
+            AssemblerMode::Rising { start } => {
                 match source.get_data().get_class() {
-                    Class::Steepest => None/*{
-                        let steepest_rise = TimeValue::<RealArray<2>> { time: Some(source.get_time()), value: Some(source.get_data().get_value()) };
-                        self.mode = AssemblerMode::Rising { start, steepest_rise };
-                        None
-                    }*/,
                     Class::Peak => {
                         let peak = TimeValue::<Real> { time: source.get_time(), value: source.get_data().get_value() };
-                        self.mode = AssemblerMode::Falling { start, steepest_rise, peak, sharpest_fall: None };
+                        self.mode = AssemblerMode::Falling { start, steepest_rise: source.get_data().get_superlative(), peak };
                         None
                     },
                     _ => None,
                 }
             },
-            AssemblerMode::Falling { start, steepest_rise, peak, sharpest_fall } => {
-                match source.get_data().get_class() {
+            AssemblerMode::Falling { start, steepest_rise, peak } => {
+                let end = match source.get_data().get_class() {
                     Class::End => {
                         self.mode = AssemblerMode::Waiting;
                         let end = TimeValue { time: source.get_time(), value: source.get_data().get_value() };
-                        Some(Pulse {
-                            start: start.into(), peak: peak.into(), end: end.into(),
-                            steepest_rise: steepest_rise.unwrap_or_default().into(),
-                            sharpest_fall: sharpest_fall.unwrap_or_default().into()
-                        })
+                        Some(end)
                     },
                     Class::EndOnset => {
                         let end = TimeValue { time: source.get_time(), value: source.get_data().get_value() };
-                        self.mode = AssemblerMode::Rising { start: end.clone(), steepest_rise: None };
-                        Some(Pulse {
-                            start: start.into(), peak: peak.into(), end: end.into(),
-                            steepest_rise: steepest_rise.unwrap_or_default().into(),
-                            sharpest_fall: sharpest_fall.unwrap_or_default().into()
-                        })
+                        self.mode = AssemblerMode::Rising { start: end.clone() };
+                        Some(end)
                     },
                     _ => None,
-                }
+                };
+                end.map(|end| {
+                    let steepest_rise = steepest_rise.unwrap_or_default().into();
+                    let sharpest_fall = source.get_data().get_superlative().map(|tv|tv.into()).unwrap_or_default();
+                    Pulse {
+                        start: start.into(), peak: peak.into(), end: end.into(),
+                        steepest_rise, sharpest_fall
+                    }
+                })
             },
         }
     }

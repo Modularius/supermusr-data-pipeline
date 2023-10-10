@@ -965,6 +965,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
+name = "histogram"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e673d137229619d5c2c8903b6ed5852b43636c0017ff2e66b1aafb8ccf04b80b"
+dependencies = [
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "http"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2832,6 +2842,7 @@ dependencies = [
  "common",
  "dotenv",
  "env_logger",
+ "histogram",
  "itertools 0.11.0",
  "log",
  "rand 0.8.5",

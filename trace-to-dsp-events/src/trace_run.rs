@@ -15,7 +15,6 @@ use trace_to_pulses::{
     trace_iterators::{
         feedback::{FeedbackFilter, FeedbackParameter as FP},
         find_baseline::FindBaselineFilter,
-        memory::MemoryFilter,
         save_to_file::SaveToFile,
         to_trace::ToTrace,
     },
