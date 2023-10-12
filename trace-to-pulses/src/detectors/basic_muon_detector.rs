@@ -51,9 +51,17 @@ type BasicMuonEvent = Event<Real, Data>;
 
 
 
-type SuperlativeValue = TimeValue<RealArray<2>>;
+type SuperlativeValue = TimeValue<Real>;
 
 impl SuperlativeValue {
+    fn reset(&mut self) {
+        self.value = Real::default();
+    }
+}
+
+type SuperlativeDiff = TimeValue<RealArray<2>>;
+
+impl SuperlativeDiff {
     fn reset(&mut self) {
         self.value = RealArray::default();
     }
@@ -90,8 +98,11 @@ pub struct BasicMuonDetector {
     potential_duration : Real,
     mode: Mode,
 
-    steepest_rise : SuperlativeValue,
-    sharpest_fall : SuperlativeValue,
+    peak : SuperlativeValue,
+    nadir : SuperlativeValue,
+
+    steepest_rise : SuperlativeDiff,
+    sharpest_fall : SuperlativeDiff,
 }
 
 impl BasicMuonDetector {
@@ -116,12 +127,12 @@ impl BasicMuonDetector {
             self.potential_duration = 0.0;
         }
     }
-    fn realise_potential_mode_if(&mut self, duration : Real, mode : Mode, class : Class, value : Real, superlative : Option<SuperlativeValue>) -> Option<Data> {
+    fn realise_potential_mode_if(&mut self, duration : Real, mode : Mode, class : Class, value : Real, superlative : Option<SuperlativeDiff>) -> Option<Data> {
         if self.potential_duration >= duration {
             self.mode = mode;
             match class {
-                Class::Onset => { self.steepest_rise.reset(); },
-                Class::Peak => { self.sharpest_fall.reset(); },
+                Class::Onset => { self.steepest_rise.reset(); self.peak.reset(); },
+                Class::Peak => { self.sharpest_fall.reset(); self.nadir.reset(); },
                 _ => {},
             }
             Some(Data { class, value, superlative })
@@ -144,8 +155,13 @@ impl Detector for BasicMuonDetector {
                 }
             }
             Mode::Rise => {
+                //  Update Steepest Rise
                 if value[1] > self.steepest_rise.value[1] {
                     self.steepest_rise = TimeValue { time, value };
+                }
+                //  Update Peak
+                if value[0] > self.peak.value {
+                    self.peak = TimeValue { time, value: value[0] };
                 }
                 if value[1] <= self.fall_threshold {
                     self.set_potential_mode_to(Mode::Fall, None);
