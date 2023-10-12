@@ -135,7 +135,7 @@ impl BasicMuonDetector {
                 Class::Peak => { self.sharpest_fall.reset(); self.nadir.reset(); },
                 _ => {},
             }
-            Some(Data { class, value, superlative })
+            Some( Data { class, value, superlative })
         } else {
             None
         }
