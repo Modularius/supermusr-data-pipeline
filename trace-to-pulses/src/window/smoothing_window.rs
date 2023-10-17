@@ -83,7 +83,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_window_size_zero() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
         data.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_window_size_one() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
         data.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_window_size_two() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
         assert!(data
             .iter()
             .enumerate()
@@ -125,7 +125,7 @@ mod tests {
     }
     #[test]
     fn test_insufficient_data() {
-        let data = [4, 3];
+        let data = [4.0, 3.0];
         assert!(data
             .iter()
             .enumerate()
@@ -136,7 +136,7 @@ mod tests {
     }
     #[test]
     fn test_minimal() {
-        let data = [4, 3];
+        let data = [4.0, 3.0];
         let (i, stats) = data
             .iter()
             .enumerate()
@@ -154,7 +154,7 @@ mod tests {
     }
     #[test]
     fn test_three_data() {
-        let data = [4, 3, 1];
+        let data = [4.0, 3.0, 1.0];
         let (i, stats) = data
             .iter()
             .enumerate()
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_three_data_three_window() {
-        let data = [4, 3, 1];
+        let data = [4.0, 3.0, 1.0];
         let (i, stats) = data
             .iter()
             .enumerate()
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_five_data_three_window() {
-        let data = [4, 3, 1, 5, 3];
+        let data = [4.0, 3.0, 1.0, 5.0, 3.0];
         let mut itr = data
             .iter()
             .enumerate()
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_variance_accuracy() {
         use rand::random;
-        let data: Vec<Intensity> = (0..1000).map(|_| random::<Intensity>()).collect();
+        let data: Vec<Real> = (0..1000).map(|_| random()).collect();
 
         for window_size in 2..100 {
             let smoothing_window = SmoothingWindow::new(window_size);
@@ -261,8 +261,8 @@ mod tests {
     #[test]
     fn test_variance_zero_on_constant_sequence() {
         use rand::random;
-        let num = random::<Intensity>();
-        let data: Vec<Intensity> = vec![num; 1000];
+        let num = random::<Real>();
+        let data: Vec<Real> = vec![num; 1000];
 
         for window_size in 2..100 {
             let smoothing_window = SmoothingWindow::new(window_size);

@@ -63,8 +63,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_window_size_zero() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        data.iter().enumerate()
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
+        data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(0, 1., 0.));
     }
@@ -72,16 +74,20 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_window_size_one() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        data.iter().enumerate()
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
+        data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(1,  1., 0.));
     }
 
     #[test]
     fn test_window_size_two() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        assert!(data.iter().enumerate()
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
+        assert!(data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(2, 1., 0.))
             .next()
@@ -99,8 +105,10 @@ mod tests {
     }
     #[test]
     fn test_insufficient_data() {
-        let data = [4, 3];
-        assert!(data.iter().enumerate()
+        let data = [4.0, 3.0];
+        assert!(data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(3, 1., 0.))
             .next()
@@ -108,8 +116,10 @@ mod tests {
     }
     #[test]
     fn test_minimal() {
-        let data = [4, 3];
-        let (i, stats) = data.iter().enumerate()
+        let data = [4.0, 3.0];
+        let (i, stats) = data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(2, 1., 0.))
             .next()
@@ -125,8 +135,10 @@ mod tests {
     }
     #[test]
     fn test_three_data() {
-        let data = [4, 3, 1];
-        let (i, stats) = data.iter().enumerate()
+        let data = [4.0, 3.0, 1.0];
+        let (i, stats) = data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(2, 1., 0.))
             .skip(1)
@@ -143,8 +155,10 @@ mod tests {
 
     #[test]
     fn test_three_data_three_window() {
-        let data = [4, 3, 1];
-        let (i, stats) = data.iter().enumerate()
+        let data = [4.0, 3.0, 1.0];
+        let (i, stats) = data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(3, 1., 0.))
             .next()
@@ -163,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_five_data_three_window() {
-        let data = [4, 3, 1, 5, 3];
+        let data = [4.0, 3.0, 1.0, 5.0, 3.0];
         let mut itr = data
             .iter()
             .enumerate()

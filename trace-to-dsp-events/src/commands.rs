@@ -3,14 +3,14 @@ use std::{env, fmt::Display, fs::File, io::Write, default};
 use histogram;
 use common::Intensity;
 use itertools::Itertools;
-use rand::random;
+use rand::{random, seq::IteratorRandom, thread_rng};
 use trace_to_pulses::{
     log_then_panic_t,
     trace_iterators::{load_from_trace_file::{load_trace_file, TraceFile}, save_to_file::SaveToFile, find_baseline::FindBaselineFilter},
-    Real, processing, window::{WindowFilter, gate::Gate, finite_differences::FiniteDifferences}, SmoothingWindow, peak_detector::LocalExtremumDetector,
+    Real, processing::{self, make_enumerate_real}, window::{WindowFilter, gate::Gate, finite_differences::FiniteDifferences}, SmoothingWindow, peak_detector::LocalExtremumDetector,
     EventFilter, RealArray, tracedata,
     events::{SaveEventsToFile, SavePulsesToFile, iter::{AssembleFilter, AssemblerIter}},
-    basic_muon_detector::{self, BasicMuonDetector, BasicMuonAssembler},
+    basic_muon_detector::{self, BasicMuonDetector, BasicMuonAssembler}, pulse::Pulse,
 };
 
 use crate::{
@@ -37,7 +37,7 @@ fn save_to_file<T: Display, I: Iterator<Item = T>>(name: &str, it: I) {
  */
 pub fn run_simulated_mode(
     params: SimulationParameters,
-) -> Vec<Intensity> {
+) -> Vec<Vec<Real>> {
     /*
     let distrbution = PulseDistribution {
         std_dev: RandomInterval(params.std_dev_min,params.std_dev_max),
@@ -62,12 +62,12 @@ pub fn run_simulated_mode(
         params.voltage_noise,
     );
     */
-    Vec::<Intensity>::default()
+    Vec::<Vec<_>>::default()
 }
 
 pub fn run_file_mode(
     params: FileParameters,
-) -> Vec<Intensity> {
+) -> Vec<Vec<Real>> {
     let file_name = params.file_name.unwrap_or(
         //"../../Data/Traces/MuSR_A27_B28_C29_D30_Apr2021_Ag_ZF_InstDeg_Slit60_short.traces".to_owned(),
         "../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces"
@@ -76,21 +76,32 @@ pub fn run_file_mode(
 
     let mut trace_file = load_trace_file(&file_name).unwrap();
     {
-        let event_index = 243;
-        let channel_index = 0;
+        let max_event_index = 243;
 
-        let run = trace_file.get_event(event_index).unwrap();
-        run.clone_channel_trace(channel_index)
+        let num_events = params.num_events.unwrap_or(5);
+        let mut rng = thread_rng();
+        let events = (0..max_event_index).choose_multiple(&mut rng, num_events);
+
+        events
+            .into_iter()
+            .map(|event_index| {
+                let run = trace_file.get_event(event_index).unwrap();
+                (0..trace_file.get_num_channels())
+                    .map(|channel_index|run.clone_channel_trace(channel_index))
+                    .collect_vec()
+            })
+            .flatten()
+            .collect()
     }
 }
 
 pub fn run_trace(
-    trace: &Vec<Intensity>,
+    trace: &[Real],
     save_file_name: Option<String>,
     detection_type: Option<DetectionType>,
     benchmark: bool,
     evaluate: bool,
-) {
+) -> Vec<Pulse> {
     
     let basic_parameters = BasicParameters {
         gate_size: 2.,
@@ -106,33 +117,28 @@ pub fn run_trace(
     let baselined = trace
         .iter()
         .enumerate()
-        .map(processing::make_enumerate_real)
+        //.map(|(i, v)|(i as Real, *v as Real))
+        .map(trace_to_pulses::processing::make_enumerate_real)
         .map(|(i, v)| (i, -v)) // The trace should be positive
         .find_baseline(basic_parameters.baseline_length) // We find the baseline of the trace from the first 1000 points, which are discarded.
     ;
     let smoothed = baselined
         .clone()
         //.window(Gate::new(basic_parameters.gate_size))                              //  We apply the gate filter first
-        .map(|(i,v)|(i,Real::max(v, basic_parameters.min_voltage)))
+        //.map(|(i,v)|(i,Real::max(v, basic_parameters.min_voltage)))
         .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))       //  We smooth the trace
         .map(tracedata::extract::enumerated_mean)
     ;
     let events = smoothed
         .clone()
         .window(FiniteDifferences::<2>::new())
-        .events(BasicMuonDetector::new(0.1, 0.0, -0.1, 0.0, -0.05, 0.0));
+        .events(BasicMuonDetector::new(0.00001, 0.0, -0.00001, 0.0, -0.000005, 0.0));
     let pulses = events
         .clone()
-        .assemble(BasicMuonAssembler::default());
+        .assemble(BasicMuonAssembler::default())
+        .filter(|pulse|pulse.peak.value.unwrap_or_default() - Real::min(pulse.start.value.unwrap_or_default(),pulse.end.value.unwrap_or_default()) > 0.0001);
 
-    let hist = histogram::Histogram::new(1,12,24).unwrap();
-    pulses.clone().for_each(|pulse|hist.increment(pulse.steepest_rise.value.unwrap()[0] as u64, 1).unwrap());
-
-    let buckets = hist.percentiles(&(0..100).map(|x|x as Real).collect_vec()).unwrap();
-    for i in buckets {
-        println!("{0}",i.bucket().count());
-    }
-
+    let pulse_vec = pulses.clone().collect_vec();
     /*
 
     let (smoothed, feedback_parameter) = trace_run.run_smoothed(baselined.clone());
@@ -155,5 +161,30 @@ pub fn run_trace(
         smoothed.save_to_file(&(save_file_name.clone() + "_smoothed" + ".csv"));
         events.save_to_file(&(save_file_name.clone() + "_events" + ".csv"));
         pulses.save_to_file(&(save_file_name.clone() + "_pulses" + ".csv"));
+        //time_hist.save_to_file(&(save_file_name.clone() + "_time_hist" + ".csv"));
     }
+    pulse_vec
+}
+
+pub fn calc_stats(pulse_vec : &[Pulse]) {
+    let num = pulse_vec.len();
+    let amplitude_min = {
+        let my_iter = pulse_vec
+            .iter()
+            .map(|pulse|(pulse.peak.value.unwrap_or_default()*100000000.0) as i32);
+            (my_iter.clone().min().unwrap_or_default() as Real)/100000000.0
+    };
+    let amplitude_max = {
+        let my_iter = pulse_vec
+            .iter()
+            .map(|pulse|(pulse.peak.value.unwrap_or_default()*100000000.0) as i32);
+            (my_iter.clone().max().unwrap_or_default() as Real)/100000000.0
+    };
+    let amplitude_mean : Real = pulse_vec
+        .iter()
+        .map(|pulse|pulse.peak.value.unwrap_or_default())
+        .sum::<Real>()/num as Real;
+    println!("There are {num} pulses.");
+    println!("Whose amplitude ranges from {amplitude_min} to {amplitude_max}, with mean {amplitude_mean}.");
+
 }

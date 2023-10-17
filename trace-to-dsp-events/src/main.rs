@@ -9,6 +9,7 @@ use common::Intensity;
 use anyhow::Result;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use trace_to_pulses::{pulse::Pulse, events::SavePulsesToFile};
 //use tdengine::utils::log_then_panic_t;
 
 mod commands;
@@ -17,7 +18,7 @@ mod trace_run;
 
 //use tdengine::tdengine::TDEngine;
 
-use crate::commands::{run_file_mode, run_simulated_mode, run_trace};
+use crate::commands::{run_file_mode, run_simulated_mode, run_trace, calc_stats};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -106,6 +107,9 @@ pub struct SimulationParameters {
 pub struct FileParameters {
     #[clap(long, short = 'f')]
     file_name: Option<String>,
+
+    #[clap(long, short = 'n')]
+    num_events: Option<usize>,
 }
 
 #[derive(Parser, Clone)]
@@ -118,7 +122,7 @@ fn main() -> Result<()> {
     log::debug!("Parsing Cli");
     let cli = Cli::parse();
 
-    let trace = match cli.mode {
+    let traces = match cli.mode {
         Some(Mode::Simulation(npm)) => {
             run_simulated_mode(npm)
         }
@@ -131,15 +135,23 @@ fn main() -> Result<()> {
         ),
     };
     let save_file_name = cli.save_file_name.unwrap_or("Saves/output".to_owned());   //This will be replaced with optional behaviour
-    
-    run_trace(
-        &trace,
-        Some(save_file_name),
-        cli.detection_type,
-        cli.benchmark,
-        cli.evaluate,
-    );
 
+    let mut all_pulses = Vec::<Pulse>::new();
+    for (index,trace) in traces.into_iter().enumerate() {
+        println!("Trace {index}");
+        let pulses = run_trace(
+            &trace,
+            //None,
+            Some(save_file_name.clone()),
+            cli.detection_type.clone(),
+            cli.benchmark,
+            cli.evaluate,
+        );
+        all_pulses.extend(pulses.into_iter());
+        //build_time_hist(&mut hist,&pulses);
+    }
+    calc_stats(&all_pulses);
+    all_pulses.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses" + ".csv"));
 
     Ok(())
 }

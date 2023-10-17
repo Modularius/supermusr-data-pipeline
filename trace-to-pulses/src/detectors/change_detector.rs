@@ -119,7 +119,7 @@ mod tests {
     fn test_with_data() {
         use ChangeClass::*;
 
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
+        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
         let mut detector = ChangeDetector::new(1.5);
         let results = data.iter()
             .enumerate()

@@ -54,26 +54,70 @@ type BasicMuonEvent = Event<Real, Data>;
 type SuperlativeValue = TimeValue<Real>;
 
 impl SuperlativeValue {
-    fn reset(&mut self) {
-        self.value = Real::default();
+    fn from_min(time: Real) -> SuperlativeValue {
+        TimeValue {time, value: Real::default() }
+    }
+    fn from_max(time: Real) -> SuperlativeValue {
+        TimeValue {time, value: Real::MAX }
     }
 }
 
 type SuperlativeDiff = TimeValue<RealArray<2>>;
 
 impl SuperlativeDiff {
-    fn reset(&mut self) {
-        self.value = RealArray::default();
+    fn from_min(time: Real) -> SuperlativeDiff {
+        TimeValue {time, value: RealArray::new([Real::default(), Real::default()]) }
+    }
+    fn from_max(time: Real) -> SuperlativeDiff {
+        TimeValue {time, value: RealArray::new([Real::default(), Real::MAX]) }
     }
 }
 
-
-
-#[derive(Default, Clone, PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 enum Mode {
-    #[default]Level,
     Rise,
     Fall,
+}
+
+#[derive(Clone,Debug)]
+struct State(Mode,SuperlativeValue,SuperlativeDiff);
+
+impl State {
+    fn from_mode(mode : Option<Mode>, time: Real, value: Real) -> Option<Self> {
+        mode.map(|mode| match mode {
+            Mode::Rise => State(Mode::Rise, SuperlativeValue { time, value }, SuperlativeDiff { time, value: RealArray::new([value, Real::default()])}),
+            Mode::Fall => State(Mode::Fall, SuperlativeValue { time, value }, SuperlativeDiff { time, value: RealArray::new([value, Real::default()])}),
+        })
+    }
+}
+
+#[derive(Default,Clone)]
+struct PotentialMode {
+    active: bool,
+    mode: Option<Mode>,
+    duration : Real,
+    min_duration : Real,
+}
+
+impl PotentialMode {
+    fn set_to(&mut self, mode : Option<Mode>, min_duration: Real) {
+        self.active = true;
+        if self.mode == mode {
+            self.duration += 1.0;
+        } else {
+            self.mode = mode;
+            self.duration = 0.0;
+            self.min_duration = min_duration;
+        }
+    }
+
+    fn is_real(&self) -> bool {
+        self.active && self.duration == self.min_duration
+    }
+
+    fn reset(&mut self) {
+        self.active = false;
+    }
 }
 
 
@@ -94,15 +138,8 @@ pub struct BasicMuonDetector {
 
     // If a change in signal behavior is detected then it is recorded in potential_mode.
     //If the change lasts the requisite duration then the mode is changed.
-    potential_mode : Mode,
-    potential_duration : Real,
-    mode: Mode,
-
-    peak : SuperlativeValue,
-    nadir : SuperlativeValue,
-
-    steepest_rise : SuperlativeDiff,
-    sharpest_fall : SuperlativeDiff,
+    potential_mode : PotentialMode,
+    state: Option<State>,
 }
 
 impl BasicMuonDetector {
@@ -117,29 +154,6 @@ impl BasicMuonDetector {
         ..Default::default()
     } }
 
-    fn set_potential_mode_to(&mut self, mode : Mode, extra_mode : Option<Mode>) {
-        if self.potential_mode == mode {
-            self.potential_duration += 1.0;
-        } else if extra_mode.map(|m| self.potential_mode == m).unwrap_or(false) {
-            self.potential_mode = mode;
-        } else {
-            self.potential_mode = mode;
-            self.potential_duration = 0.0;
-        }
-    }
-    fn realise_potential_mode_if(&mut self, duration : Real, mode : Mode, class : Class, value : Real, superlative : Option<SuperlativeDiff>) -> Option<Data> {
-        if self.potential_duration >= duration {
-            self.mode = mode;
-            match class {
-                Class::Onset => { self.steepest_rise.reset(); self.peak.reset(); },
-                Class::Peak => { self.sharpest_fall.reset(); self.nadir.reset(); },
-                _ => {},
-            }
-            Some( Data { class, value, superlative })
-        } else {
-            None
-        }
-    }
 }
 
 impl Detector for BasicMuonDetector {
@@ -148,54 +162,71 @@ impl Detector for BasicMuonDetector {
     type DataType = Data;
 
     fn signal(&mut self, time: Real, value: RealArray<2>) -> Option<BasicMuonEvent> {
-        match self.mode {
-            Mode::Level => {
-                if value[1] >= self.onset_threshold {
-                    self.set_potential_mode_to(Mode::Rise, None);
-                }
+        if let Some(state) = &mut self.state {
+            match state {
+                State(Mode::Rise, peak, steepest_rise) => {
+                    //  Update Steepest Rise
+                    if value[1] >= steepest_rise.value[1] {
+                        steepest_rise.time = time;
+                        steepest_rise.value = value;
+                    }
+                    //  Update Peak
+                    if value[0] >= peak.value {
+                        peak.time = time;
+                        peak.value = value[0];
+                    }
+                    if value[1] <= self.fall_threshold {
+                        self.potential_mode.set_to(Some(Mode::Fall), self.fall_min_duration);
+                    }
+                },
+                State(Mode::Fall, nadir, sharpest_fall) => {
+                    if value[1] <= sharpest_fall.value[1] {
+                        sharpest_fall.time = time;
+                        sharpest_fall.value = value;
+                    }
+                    //  Update Nadir
+                    if value[0] <= nadir.value {
+                        nadir.time = time;
+                        nadir.value = value[0];
+                    }
+    
+                    if value[1] >= self.onset_threshold {
+                        self.potential_mode.set_to(Some(Mode::Rise), self.onset_min_duration);
+                    } else if value[1] >= self.termination_threshold {
+                        self.potential_mode.set_to(None, self.termination_min_duration);
+                    }
+                },
             }
-            Mode::Rise => {
-                //  Update Steepest Rise
-                if value[1] > self.steepest_rise.value[1] {
-                    self.steepest_rise = TimeValue { time, value };
-                }
-                //  Update Peak
-                if value[0] > self.peak.value {
-                    self.peak = TimeValue { time, value: value[0] };
-                }
-                if value[1] <= self.fall_threshold {
-                    self.set_potential_mode_to(Mode::Fall, None);
-                }
-            },
-            Mode::Fall => {
-                if value[1] < self.sharpest_fall.value[1] {
-                    self.sharpest_fall = TimeValue { time, value };
-                }
-
-                if value[1] >= self.onset_threshold {
-                    self.set_potential_mode_to(Mode::Rise, None);
-                } else if value[1] >= self.termination_threshold {
-                    self.set_potential_mode_to(Mode::Level, None);
-                }
-            },
+        } else {
+            if value[1] >= self.onset_threshold {
+                self.potential_mode.set_to(Some(Mode::Rise), self.onset_min_duration);
+            }
         }
-        match self.mode {
-            Mode::Level => match self.potential_mode {
-                Mode::Level => None,
-                Mode::Rise => self.realise_potential_mode_if(self.onset_min_duration, Mode::Rise, Class::Onset, value[0], None),
-                Mode::Fall => None,
-            },
-            Mode::Rise => match self.potential_mode {
-                Mode::Level => None,
-                Mode::Rise => None,
-                Mode::Fall => self.realise_potential_mode_if(self.fall_min_duration, Mode::Fall, Class::Peak, value[0], Some(self.steepest_rise.clone())),
-            },
-            Mode::Fall => match self.potential_mode {
-                Mode::Level => self.realise_potential_mode_if(self.termination_min_duration, Mode::Level, Class::End, value[0], Some(self.sharpest_fall.clone())),
-                Mode::Rise=> self.realise_potential_mode_if(self.onset_min_duration, Mode::Rise, Class::EndOnset, value[0], Some(self.sharpest_fall.clone())),
-                Mode::Fall => None,
-            },
-        }.map(|data|data.make_event(time - self.potential_duration))
+
+        if self.potential_mode.is_real() {
+            let event = match &self.state {
+                Some(State(Mode::Rise, peak, steepest_rise)) => match self.potential_mode.mode {
+                    Some(Mode::Rise) => None,
+                    Some(Mode::Fall) => Some(Data{ class: Class::Peak, value: peak.value, superlative: Some(steepest_rise.clone()) }.make_event(peak.time)),
+                    None             => None
+                },
+                Some(State(Mode::Fall, nadir, sharpest_fall)) => match self.potential_mode.mode {
+                    Some(Mode::Rise) => Some(Data{ class: Class::EndOnset, value: nadir.value, superlative: Some(sharpest_fall.clone()) }.make_event(nadir.time)),
+                    Some(Mode::Fall) => None,
+                    None => Some(Data{ class: Class::End, value: nadir.value, superlative: Some(sharpest_fall.clone()) }.make_event(nadir.time))
+                },
+                None => match self.potential_mode.mode {
+                    Some(Mode::Rise) => Some(Data{ class: Class::Onset, value: value[0], superlative: None }.make_event(time - self.potential_mode.duration)),
+                    Some(Mode::Fall) => None,
+                    None => None
+                }
+            };
+            self.state = State::from_mode(self.potential_mode.mode.clone(), time, value[0]);
+            self.potential_mode.reset();
+            event
+        } else {
+            None
+        }
     }
 }
 
@@ -215,7 +246,6 @@ impl Assembler for BasicMuonAssembler {
     type DetectorType = BasicMuonDetector;
 
     fn assemble_pulses(&mut self, source : Event<Real,Data>) -> Option<Pulse> {
-        println!("{0:?}",self.mode);
         match self.mode.clone() {
             AssemblerMode::Waiting => {
                 match source.get_data().get_class() {

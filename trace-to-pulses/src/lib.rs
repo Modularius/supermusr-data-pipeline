@@ -91,7 +91,7 @@ impl<T1,T2> Default for TracePair<T1,T2> where T1 : Default + Clone + Debug + Di
 
 pub mod processing {
     use super::*;
-    pub fn make_enumerate_real((i, v): (usize, &Intensity)) -> (Real, Real) {
+    pub fn make_enumerate_real((i, v): (usize, &Real)) -> (Real, Real) {
         (i as Real, *v as Real)
     }
     pub fn make_enumerate_integeral((i, v): (Real, Real)) -> (usize, Integer) {

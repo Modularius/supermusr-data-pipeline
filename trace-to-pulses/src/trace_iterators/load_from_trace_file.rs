@@ -92,16 +92,18 @@ impl TraceFileHeader {
         )
     }
     fn get_event(&self, file: &mut File) -> Result<TraceFileEvent, Error> {
-        TraceFileEvent::load(
+        Ok(TraceFileEvent::load(
             file,
             self.number_of_channels as usize,
             self.number_of_samples as usize,
-        )?
-        .build_normalized_trace(
+            &self.volts_scale_factor,
+            &self.channel_offset_volts,
+        )?)
+        /*event.build_normalized_trace(
             self.number_of_channels as usize,
             &self.volts_scale_factor,
             &self.channel_offset_volts,
-        )
+        )?;*/
     }
 }
 
@@ -112,8 +114,8 @@ pub struct TraceFileEvent {
     pub number_saved_traces: i32,
     pub saved_channels: Vec<bool>,
     pub trigger_time: f64,
-    pub raw_trace: Vec<Vec<Intensity>>,
-    pub normalized_trace: Vec<Vec<f64>>,
+    //pub raw_trace: Vec<Vec<Intensity>>,
+    pub trace: Vec<Vec<f64>>,
     _total_bytes: usize,
 }
 impl TraceFileEvent {
@@ -126,20 +128,20 @@ impl TraceFileEvent {
         size_of::<f64>() + //pub trigger_time : f64,
         size_of::<Intensity>()*num_channels*num_samples //pub raw_trace : Vec<Vec<Intensity>>,
     }
-    pub fn clone_channel_trace(&self, channel: usize) -> Vec<Intensity> {
-        self.raw_trace[channel].clone()
+    pub fn clone_channel_trace(&self, channel: usize) -> Vec<f64> {
+        self.trace[channel].clone()
     }
-    pub fn channel_trace(&self, channel: usize) -> &Vec<Intensity> {
-        &self.raw_trace[channel]
+    pub fn channel_trace(&self, channel: usize) -> &Vec<f64> {
+        &self.trace[channel]
     }
-    pub fn clone_normalized_channel_trace(&self, channel: usize) -> Vec<f64> {
+    /*pub fn clone_normalized_channel_trace(&self, channel: usize) -> Vec<f64> {
         self.normalized_trace[channel].clone()
     }
     pub fn normalized_channel_trace(&self, channel: usize) -> &Vec<f64> {
         &self.normalized_trace[channel]
-    }
+    }*/
 
-    pub fn load(file: &mut File, num_channels: usize, num_samples: usize) -> Result<Self, Error> {
+    pub fn load(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         Ok(TraceFileEvent {
             cur_event: load_i32(file, &mut total_bytes)?,
@@ -147,14 +149,14 @@ impl TraceFileEvent {
             number_saved_traces: load_i32(file, &mut total_bytes)?,
             saved_channels: load_bool_vec(file, num_channels, &mut total_bytes)?,
             trigger_time: load_f64(file, &mut total_bytes)?,
-            raw_trace: (0..num_channels)
-                .map(|_| load_trace(file, num_samples, &mut total_bytes).unwrap())
+            trace: (0..num_channels)
+                .map(|c| load_trace(file, num_samples, &mut total_bytes, scale[c], offset[c]).unwrap())
                 .collect(),
-            normalized_trace: (0..num_channels).map(|_| Default::default()).collect(),
+            //normalized_trace: (0..num_channels).map(|_| Default::default()).collect(),
             _total_bytes:total_bytes,
         })
     }
-    pub fn extract_normalized_trace(
+    /*pub fn extract_normalized_trace(
         &self,
         channel: usize,
         scale: f64,
@@ -166,19 +168,19 @@ impl TraceFileEvent {
             .collect()
     }
     pub fn build_normalized_trace(
-        mut self,
+        &mut self,
         num_channels: usize,
         scale: &Vec<f64>,
         offset: &Vec<f64>,
-    ) -> Result<Self, Error> {
+    ) -> Result<(), Error> {
         for i in 0..num_channels {
             self.normalized_trace[i] = self.raw_trace[i]
                 .iter()
                 .map(|v| *v as f64 * scale[i] + offset[i])
                 .collect();
         }
-        Ok(self)
-    }
+        Ok(())
+    }*/
 }
 
 #[derive(Debug)]
@@ -306,7 +308,9 @@ pub fn load_trace(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
-) -> Result<Vec<Intensity>, Error> {
+    scale : f64,
+    offset : f64,
+) -> Result<Vec<f64>, Error> {
     let mut trace_bytes = Vec::<u8>::new();
     let bytes = (Intensity::BITS / u8::BITS) as usize * size;
     *total_bytes += bytes;
@@ -315,5 +319,6 @@ pub fn load_trace(
     file.read_exact(&mut trace_bytes).unwrap();
     Ok((0..size)
         .map(|i| Intensity::from_be_bytes([trace_bytes[2 * i], trace_bytes[2 * i + 1]]))
+        .map(|i| i as f64*scale - offset)
         .collect())
 }
