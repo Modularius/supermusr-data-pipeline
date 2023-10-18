@@ -18,7 +18,7 @@ mod trace_run;
 
 //use tdengine::tdengine::TDEngine;
 
-use crate::commands::{run_file_mode, run_simulated_mode, run_trace, calc_stats};
+use crate::commands::{run_file_mode, run_simulated_mode, run_trace, calc_stats, run_simple_detection};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -137,21 +137,23 @@ fn main() -> Result<()> {
     let save_file_name = cli.save_file_name.unwrap_or("Saves/output".to_owned());   //This will be replaced with optional behaviour
 
     let mut all_pulses = Vec::<Pulse>::new();
+    let mut all_pulses_simple = Vec::<Pulse>::new();
     for (index,trace) in traces.into_iter().enumerate() {
         println!("Trace {index}");
         let pulses = run_trace(
             &trace,
-            //None,
-            Some(save_file_name.clone()),
+            None,
+            //Some(save_file_name.clone() + &index.to_string()),
             cli.detection_type.clone(),
             cli.benchmark,
             cli.evaluate,
         );
         all_pulses.extend(pulses.into_iter());
-        //build_time_hist(&mut hist,&pulses);
+        let pulses = run_simple_detection(&trace, None);
+        all_pulses_simple.extend(pulses.into_iter());
     }
-    calc_stats(&all_pulses);
     all_pulses.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses" + ".csv"));
+    all_pulses_simple.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses_simple" + ".csv"));
 
     Ok(())
 }

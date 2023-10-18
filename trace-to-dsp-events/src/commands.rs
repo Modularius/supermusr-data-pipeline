@@ -10,7 +10,7 @@ use trace_to_pulses::{
     Real, processing::{self, make_enumerate_real}, window::{WindowFilter, gate::Gate, finite_differences::FiniteDifferences}, SmoothingWindow, peak_detector::LocalExtremumDetector,
     EventFilter, RealArray, tracedata,
     events::{SaveEventsToFile, SavePulsesToFile, iter::{AssembleFilter, AssemblerIter}},
-    basic_muon_detector::{self, BasicMuonDetector, BasicMuonAssembler}, pulse::Pulse,
+    basic_muon_detector::{self, BasicMuonDetector, BasicMuonAssembler}, pulse::Pulse, detectors::threshold_detector::{ThresholdDetector, ThresholdAssembler},
 };
 
 use crate::{
@@ -76,9 +76,9 @@ pub fn run_file_mode(
 
     let mut trace_file = load_trace_file(&file_name).unwrap();
     {
-        let max_event_index = 243;
+        let max_event_index = 300;
 
-        let num_events = params.num_events.unwrap_or(5);
+        let num_events = params.num_events.unwrap_or(max_event_index);
         let mut rng = thread_rng();
         let events = (0..max_event_index).choose_multiple(&mut rng, num_events);
 
@@ -120,7 +120,7 @@ pub fn run_trace(
         //.map(|(i, v)|(i as Real, *v as Real))
         .map(trace_to_pulses::processing::make_enumerate_real)
         .map(|(i, v)| (i, -v)) // The trace should be positive
-        .find_baseline(basic_parameters.baseline_length) // We find the baseline of the trace from the first 1000 points, which are discarded.
+        //.find_baseline(basic_parameters.baseline_length) // We find the baseline of the trace from the first 1000 points, which are discarded.
     ;
     let smoothed = baselined
         .clone()
@@ -136,7 +136,8 @@ pub fn run_trace(
     let pulses = events
         .clone()
         .assemble(BasicMuonAssembler::default())
-        .filter(|pulse|pulse.peak.value.unwrap_or_default() - Real::min(pulse.start.value.unwrap_or_default(),pulse.end.value.unwrap_or_default()) > 0.0001);
+        //.filter(|pulse|pulse.peak.value.unwrap_or_default() - Real::min(pulse.start.value.unwrap_or_default(),pulse.end.value.unwrap_or_default()) > 0.0001)
+        ;
 
     let pulse_vec = pulses.clone().collect_vec();
     /*
@@ -162,6 +163,49 @@ pub fn run_trace(
         events.save_to_file(&(save_file_name.clone() + "_events" + ".csv"));
         pulses.save_to_file(&(save_file_name.clone() + "_pulses" + ".csv"));
         //time_hist.save_to_file(&(save_file_name.clone() + "_time_hist" + ".csv"));
+    }
+    pulse_vec
+}
+
+
+pub fn run_simple_detection(
+    trace: &[Real],
+    save_file_name: Option<String>,
+) -> Vec<Pulse> {
+    /*
+    let basic_parameters = BasicParameters {
+        gate_size: 2.,
+        min_voltage: 2.,
+        smoothing_window_size: 4,
+        baseline_length: 1000,
+    };
+    let advanced_parameters = AdvancedParameters {
+        change_detector_threshold: 1.,
+        change_detector_bound: 100.,
+    };
+     */
+    let baselined = trace
+        .iter()
+        .enumerate()
+        .map(trace_to_pulses::processing::make_enumerate_real)
+        .map(|(i, v)| (i, -v)) // The trace should be positive
+    ;
+    let events = baselined
+        .clone()
+        .events(ThresholdDetector::new(0.39965, 4));
+    let pulses = events
+        .clone()
+        .assemble(ThresholdAssembler::default())
+        ;
+
+    let pulse_vec = pulses.clone().collect_vec();
+    if let Some(save_file_name) = save_file_name {
+        trace
+            .iter()
+            .enumerate()
+            .map(|(i,v)|(i as Real, *v as Real))
+            .save_to_file(&(save_file_name.clone() + "_raw.csv"));
+        pulses.save_to_file(&(save_file_name.clone() + "_pulses" + ".csv"));
     }
     pulse_vec
 }
