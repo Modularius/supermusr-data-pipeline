@@ -22,7 +22,7 @@ pub mod ode;
 pub mod pulse;
 //pub mod partition;
 
-use std::{fmt::{Debug, Display}, ops::Index};
+use std::{fmt::{Debug, Display}, ops::{Index, IndexMut}};
 
 use common::Intensity;
 
@@ -70,6 +70,11 @@ impl<const N: usize,T> Index<usize> for TraceArray<N,T> where T : Default + Copy
 
     fn index(&self, idx: usize) -> &T {
         &self.0[idx]
+    }
+}
+impl<const N: usize,T> IndexMut<usize> for TraceArray<N,T> where T : Default + Copy + Debug + Display {
+    fn index_mut(&mut self, idx: usize) -> &mut T {
+        &mut self.0[idx]
     }
 }
 pub type RealArray<const N: usize> = TraceArray<N,Real>;

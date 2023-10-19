@@ -9,6 +9,9 @@ use common::Intensity;
 use anyhow::Result;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use trace_to_pulses::Real;
+use trace_to_pulses::detectors::threshold_detector::ThresholdDuration;
+use trace_to_pulses::trace_iterators::save_to_file::SaveToFile;
 use trace_to_pulses::{pulse::Pulse, events::SavePulsesToFile};
 //use tdengine::utils::log_then_panic_t;
 
@@ -18,7 +21,12 @@ mod trace_run;
 
 //use tdengine::tdengine::TDEngine;
 
-use crate::commands::{run_file_mode, run_simulated_mode, run_trace, calc_stats, run_simple_detection};
+use crate::commands::{
+    run_file_mode, run_simulated_mode, calc_stats
+};
+use crate::trace_run::{
+    run_basic_detection, run_simple_detection, BasicParameters, SimpleParameters, save_raw_file
+};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -136,24 +144,53 @@ fn main() -> Result<()> {
     };
     let save_file_name = cli.save_file_name.unwrap_or("Saves/output".to_owned());   //This will be replaced with optional behaviour
 
-    let mut all_pulses = Vec::<Pulse>::new();
+    let mut all_pulses_basic = Vec::<Pulse>::new();
     let mut all_pulses_simple = Vec::<Pulse>::new();
+    
+    let mut basic_parameters = BasicParameters {
+        gate_size: 2.,
+        min_voltage: 2.,
+        smoothing_window_size: 4,
+        baseline_length: 1000,
+        min_amplitude: 10.0,
+        muon_onset: ThresholdDuration{threshold: 0.00001, duration: 0},
+        muon_fall: ThresholdDuration{threshold: -0.00001, duration: 0},
+        muon_termination: ThresholdDuration{threshold: -0.000005, duration: 0},
+    };
+
+    let mut simple_parameters = SimpleParameters {
+        threshold_trigger: ThresholdDuration { threshold: 0.39875, duration: 4},
+        ..Default::default()
+    };
+    
     for (index,trace) in traces.into_iter().enumerate() {
         println!("Trace {index}");
-        let pulses = run_trace(
-            &trace,
-            None,
-            //Some(save_file_name.clone() + &index.to_string()),
-            cli.detection_type.clone(),
-            cli.benchmark,
-            cli.evaluate,
-        );
-        all_pulses.extend(pulses.into_iter());
-        let pulses = run_simple_detection(&trace, None);
-        all_pulses_simple.extend(pulses.into_iter());
+        //let save_file_name = Some(save_file_name.clone() + &index.to_string());
+        let save_file_name = None::<&str>;
+        let save_file_name = save_file_name.as_deref();
+        append_simple_and_basic_detections(&trace, save_file_name, &simple_parameters, &mut all_pulses_simple, &basic_parameters, &mut all_pulses_basic);
+
     }
-    all_pulses.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses" + ".csv"));
-    all_pulses_simple.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses_simple" + ".csv"));
+    all_pulses_basic.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses_simple.csv"));
+    all_pulses_simple.into_iter().save_to_file(&(save_file_name.clone() + "_all_pulses_simple.csv"));
 
     Ok(())
+}
+
+fn append_simple_and_basic_detections(trace : &[Real], save_file_name : Option<&str>, simple_parameters : &SimpleParameters, all_pulses_simple: &mut Vec<Pulse>, basic_parameters : &BasicParameters, all_pulses_basic: &mut Vec<Pulse>) {
+    save_raw_file(&trace, save_file_name);
+
+    let pulses = run_basic_detection(
+        &trace,
+        basic_parameters,
+        save_file_name
+    );
+    all_pulses_basic.extend(pulses.into_iter());
+
+    let pulses = run_simple_detection(
+        &trace,
+        simple_parameters,
+        save_file_name
+    );
+    all_pulses_simple.extend(pulses.into_iter());
 }

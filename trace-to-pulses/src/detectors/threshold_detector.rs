@@ -13,7 +13,7 @@ pub struct Data {
 }
 
 impl Display for Data {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
         //f.write_fmt(format_args!("{0},{1},{2}", self.time.unwrap_or_default(), self.start.unwrap_or_default(), self.end.unwrap_or_default()))
     }
@@ -22,15 +22,24 @@ impl EventData for Data {}
 
 
 
+#[derive(Default, Debug, Clone)]
+pub struct ThresholdDuration {
+    pub threshold : Real,
+    pub duration : usize,
+}
+
+impl ThresholdDuration {
+    pub fn new(threshold : Real, duration : usize) -> Self { Self { threshold, duration } }
+}
+
 #[derive(Default,Clone)]
 pub struct ThresholdDetector {
     time_till_armed: Option<usize>, // If this is None, then the detector is armed
-    threshold : Real,
-    time_to_rearm : usize,
+    trigger : ThresholdDuration,
 }
 
 impl ThresholdDetector {
-    pub fn new(threshold : Real, time_to_rearm : usize) -> Self { Self { threshold, time_to_rearm, ..Default::default() } }
+    pub fn new(trigger : &ThresholdDuration) -> Self { Self { trigger:trigger.clone(), ..Default::default() } }
 }
 
 pub type ThresholdEvent = Event<Real, Data>;
@@ -44,8 +53,8 @@ impl Detector for ThresholdDetector {
         self.time_till_armed = self.time_till_armed.and_then(|time| match time {
             0 => None, pos => Some(pos - 1),
         });
-        if self.time_till_armed.is_none() && value > self.threshold {
-            self.time_till_armed = Some(self.time_to_rearm);
+        if self.time_till_armed.is_none() && value > self.trigger.threshold {
+            self.time_till_armed = Some(self.trigger.duration);
             Some(Data { }.make_event(time))
         } else {
             None

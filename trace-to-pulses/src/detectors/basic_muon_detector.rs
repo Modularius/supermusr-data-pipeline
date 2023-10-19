@@ -6,6 +6,7 @@ use crate::tracedata::{EventData, Stats, TraceValue};
 use crate::{Detector, Real, RealArray};
 
 use super::Assembler;
+use super::threshold_detector::ThresholdDuration;
 
 #[derive(Default, Debug, Clone,PartialEq)]
 pub enum Class {
@@ -95,18 +96,18 @@ impl State {
 struct PotentialMode {
     active: bool,
     mode: Option<Mode>,
-    duration : Real,
-    min_duration : Real,
+    duration : usize,
+    min_duration : usize,
 }
 
 impl PotentialMode {
-    fn set_to(&mut self, mode : Option<Mode>, min_duration: Real) {
+    fn set_to(&mut self, mode : Option<Mode>, min_duration: usize) {
         self.active = true;
         if self.mode == mode {
-            self.duration += 1.0;
+            self.duration += 1;
         } else {
             self.mode = mode;
-            self.duration = 0.0;
+            self.duration = 0;
             self.min_duration = min_duration;
         }
     }
@@ -124,17 +125,14 @@ impl PotentialMode {
 #[derive(Default,Clone)]
 pub struct BasicMuonDetector {
     // Value of the derivative at which an event is said to have been detected
-    onset_threshold : Real,
     // Time for which the voltage should rise for the rise to be considered genuine.
-    onset_min_duration : Real,
+    onset : ThresholdDuration,
     // Value of the derivative at which an event is said to have peaked
-    fall_threshold : Real,
     // Time for which the voltage should drop for the peak to be considered genuine
-    fall_min_duration : Real,
+    fall : ThresholdDuration,
     // Value of the derivative at which an event is said to have finished
-    termination_threshold : Real,
     // Time for which the voltage should level for the finish to be considered genuine
-    termination_min_duration : Real,
+    termination : ThresholdDuration,
 
     // If a change in signal behavior is detected then it is recorded in potential_mode.
     //If the change lasts the requisite duration then the mode is changed.
@@ -144,15 +142,10 @@ pub struct BasicMuonDetector {
 
 impl BasicMuonDetector {
     pub fn new(
-        onset_threshold : Real, onset_min_duration : Real,
-        fall_threshold : Real, fall_min_duration : Real,
-        termination_threshold : Real, termination_min_duration : Real,
-    ) -> Self { Self {
-        onset_threshold, onset_min_duration,
-        fall_threshold, fall_min_duration,
-        termination_threshold, termination_min_duration,
-        ..Default::default()
-    } }
+        onset : &ThresholdDuration,
+        fall : &ThresholdDuration,
+        termination : &ThresholdDuration,
+    ) -> Self { Self { onset:onset.clone(), fall:fall.clone(), termination:termination.clone(), ..Default::default()} }
 
 }
 
@@ -175,8 +168,8 @@ impl Detector for BasicMuonDetector {
                         peak.time = time;
                         peak.value = value[0];
                     }
-                    if value[1] <= self.fall_threshold {
-                        self.potential_mode.set_to(Some(Mode::Fall), self.fall_min_duration);
+                    if value[1] <= self.fall.threshold {
+                        self.potential_mode.set_to(Some(Mode::Fall), self.fall.duration);
                     }
                 },
                 State(Mode::Fall, nadir, sharpest_fall) => {
@@ -190,16 +183,16 @@ impl Detector for BasicMuonDetector {
                         nadir.value = value[0];
                     }
     
-                    if value[1] >= self.onset_threshold {
-                        self.potential_mode.set_to(Some(Mode::Rise), self.onset_min_duration);
-                    } else if value[1] >= self.termination_threshold {
-                        self.potential_mode.set_to(None, self.termination_min_duration);
+                    if value[1] >= self.onset.threshold {
+                        self.potential_mode.set_to(Some(Mode::Rise), self.onset.duration);
+                    } else if value[1] >= self.termination.threshold {
+                        self.potential_mode.set_to(None, self.termination.duration);
                     }
                 },
             }
         } else {
-            if value[1] >= self.onset_threshold {
-                self.potential_mode.set_to(Some(Mode::Rise), self.onset_min_duration);
+            if value[1] >= self.onset.threshold {
+                self.potential_mode.set_to(Some(Mode::Rise), self.onset.duration);
             }
         }
 
@@ -216,7 +209,7 @@ impl Detector for BasicMuonDetector {
                     None => Some(Data{ class: Class::End, value: nadir.value, superlative: Some(sharpest_fall.clone()) }.make_event(nadir.time))
                 },
                 None => match self.potential_mode.mode {
-                    Some(Mode::Rise) => Some(Data{ class: Class::Onset, value: value[0], superlative: None }.make_event(time - self.potential_mode.duration)),
+                    Some(Mode::Rise) => Some(Data{ class: Class::Onset, value: value[0], superlative: None }.make_event(time - self.potential_mode.duration as Real)),
                     Some(Mode::Fall) => None,
                     None => None
                 }
@@ -267,7 +260,7 @@ impl Assembler for BasicMuonAssembler {
                     _ => None,
                 }
             },
-            AssemblerMode::Falling { start, steepest_rise, peak } => {
+            AssemblerMode::Falling { start, steepest_rise, mut peak } => {
                 let end = match source.get_data().get_class() {
                     Class::End => {
                         self.mode = AssemblerMode::Waiting;
@@ -282,11 +275,19 @@ impl Assembler for BasicMuonAssembler {
                     _ => None,
                 };
                 end.map(|end| {
-                    let steepest_rise = steepest_rise.unwrap_or_default().into();
-                    let sharpest_fall = source.get_data().get_superlative().map(|tv|tv.into()).unwrap_or_default();
+                    let mut steepest_rise = steepest_rise.unwrap_or_default();
+                    let mut sharpest_fall = source.get_data().get_superlative().map(|tv|tv).unwrap_or_default();
+
+                    //if end.time - start.time <= 0 { Problem }
+
+                    let gradient = (peak.time - start.time)/(end.time - start.time);
+                    peak.value -= (peak.value - start.value)*gradient;
+                    steepest_rise.value[0] -= (steepest_rise.value[0] - start.value)*gradient;
+                    sharpest_fall.value[0] -= (sharpest_fall.value[0] - start.value)*gradient;
+
                     Pulse {
                         start: start.into(), peak: peak.into(), end: end.into(),
-                        steepest_rise, sharpest_fall
+                        steepest_rise: steepest_rise.into(), sharpest_fall: sharpest_fall.into()
                     }
                 })
             },
