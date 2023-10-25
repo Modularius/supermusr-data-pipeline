@@ -10,6 +10,7 @@ members = [
   "trace-to-events",
   "trace-archiver-db",
   "trace-simulator",
+  "trace-reader",
   "tdengine",
   "trace-to-dsp-events",
   "trace-to-pulses",

@@ -48,10 +48,68 @@ pub struct BasicParameters {
     pub min_voltage: Real,
     pub smoothing_window_size: usize,
     pub baseline_length: usize,
-    pub min_amplitude: Real,
+    pub max_amplitude: Option<Real>,
+    pub min_amplitude: Option<Real>,
     pub muon_onset: ThresholdDuration,
     pub muon_fall: ThresholdDuration,
     pub muon_termination: ThresholdDuration,
+}
+
+pub fn run_detection(
+    trace: &[Intensity],
+) -> Vec<Pulse> {
+    let basic_parameters = BasicParameters {
+        gate_size: 2.,
+        min_voltage: 2.,
+        smoothing_window_size: 4,
+        baseline_length: 1000,
+        max_amplitude: Some(0.4*10000.0),
+        min_amplitude: Some(0.3985*10000.0),
+        muon_onset: ThresholdDuration{threshold: 0.00001*10000.0, duration: 0},
+        muon_fall: ThresholdDuration{threshold: -0.00001*10000.0, duration: 0},
+        muon_termination: ThresholdDuration{threshold: -0.000005*10000.0, duration: 0},
+    };
+    let baselined = trace
+        .iter()
+        .enumerate()
+        .map(|(i, v)|(i as Real, *v as Real))
+        //.map(trace_to_pulses::processing::make_enumerate_real)
+        .map(|(i, v)| (i, -v)) // The trace should be positive
+        .find_baseline(basic_parameters.baseline_length) // We find the baseline of the trace from the first 1000 points, which are discarded.
+    ;
+    let smoothed = baselined
+        .clone()
+        .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))       //  We smooth the trace
+        .map(tracedata::extract::enumerated_mean)
+    ;
+    let events = smoothed
+        .clone()
+        .window(FiniteDifferences::<2>::new())
+        .events(BasicMuonDetector::new(
+            &basic_parameters.muon_onset,
+            &basic_parameters.muon_fall,
+            &basic_parameters.muon_termination
+        ));
+    let pulses = events
+        .clone()
+        .assemble(BasicMuonAssembler::default())
+        .filter(|pulse|
+            basic_parameters.min_amplitude.map(|min_amplitude|
+                pulse.peak.value.map(|peak_value|
+                    peak_value >= min_amplitude
+                ).unwrap_or(true)
+            ).unwrap_or(true)
+        )
+        .filter(|pulse|
+            basic_parameters.max_amplitude.map(|max_amplitude|
+                pulse.peak.value.map(|peak_value|
+                    peak_value <= max_amplitude
+                ).unwrap_or(true)
+            ).unwrap_or(true)
+        );
+
+    let pulse_vec = pulses.clone().collect_vec();
+    pulse_vec
 }
 
 pub fn run_basic_detection(
@@ -83,8 +141,20 @@ pub fn run_basic_detection(
     let pulses = events
         .clone()
         .assemble(BasicMuonAssembler::default())
-        //.filter(|pulse|pulse.peak.value.unwrap_or_default() - Real::min(pulse.start.value.unwrap_or_default(),pulse.end.value.unwrap_or_default()) > 0.0001)
-        ;
+        .filter(|pulse|
+            parameters.min_amplitude.map(|min_amplitude|
+                pulse.peak.value.map(|peak_value|
+                    peak_value >= min_amplitude
+                ).unwrap_or(true)
+            ).unwrap_or(true)
+        )
+        .filter(|pulse|
+            parameters.max_amplitude.map(|max_amplitude|
+                pulse.peak.value.map(|peak_value|
+                    peak_value <= max_amplitude
+                ).unwrap_or(true)
+            ).unwrap_or(true)
+        );
 
     let pulse_vec = pulses.clone().collect_vec();
     /*

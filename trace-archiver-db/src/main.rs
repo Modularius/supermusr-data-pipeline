@@ -100,7 +100,7 @@ struct BenchmarkParameters {
     #[clap(long)]
     num_repeats: Option<usize>,
     #[clap(long)]
-    delay: Option<u64>,
+    delay: Option<u64>, 
     #[clap(long)]
     show_output: bool,
     #[clap(long)]

@@ -9,9 +9,6 @@ use std::{
 
 use common::Intensity;
 
-use crate::log_then_panic_t;
-//use tdengine::utils::log_then_panic_t;
-
 #[derive(Default, Debug)]
 pub struct TraceFileHeader {
     pub prog_version: String,
@@ -92,7 +89,7 @@ impl TraceFileHeader {
         )
     }
     fn get_event(&self, file: &mut File) -> Result<TraceFileEvent, Error> {
-        Ok(TraceFileEvent::load(
+        Ok(TraceFileEvent::load_raw(
             file,
             self.number_of_channels as usize,
             self.number_of_samples as usize,
@@ -110,7 +107,8 @@ pub struct TraceFileEvent {
     pub saved_channels: Vec<bool>,
     pub trigger_time: f64,
     pub trace: Vec<Vec<f64>>,
-    _total_bytes: usize,
+    pub raw_trace: Vec<Vec<Intensity>>,
+    total_bytes: usize,
 }
 impl TraceFileEvent {
     //fn get_total_bytes(&self) -> usize { self.total_bytes }
@@ -135,7 +133,7 @@ impl TraceFileEvent {
         &self.normalized_trace[channel]
     }*/
 
-    pub fn load(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
+    pub fn load(file: &mut File, num_channels: usize, num_samples: usize) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         Ok(TraceFileEvent {
             cur_event: load_i32(file, &mut total_bytes)?,
@@ -143,10 +141,42 @@ impl TraceFileEvent {
             number_saved_traces: load_i32(file, &mut total_bytes)?,
             saved_channels: load_bool_vec(file, num_channels, &mut total_bytes)?,
             trigger_time: load_f64(file, &mut total_bytes)?,
+            total_bytes,
+            ..Default::default()
+        })
+    }
+
+    pub fn load_raw(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
+        let mut total_bytes = usize::default();
+        let event = Self::load(file, num_channels, num_samples)?;
+        Ok(TraceFileEvent {
+            cur_event: event.cur_event,
+            event_runtime: event.event_runtime,
+            number_saved_traces: event.number_saved_traces,
+            saved_channels: event.saved_channels,
+            trigger_time: event.trigger_time,
+            raw_trace: (0..num_channels)
+                .map(|c| load_raw_trace(file, num_samples, &mut total_bytes))
+                .collect::<Result<_,_>>()?,
+            total_bytes:event.total_bytes + total_bytes,
+            ..Default::default()
+        })
+    }
+
+    pub fn load_real(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
+        let mut total_bytes = usize::default();
+        let event = Self::load(file, num_channels, num_samples)?;
+        Ok(TraceFileEvent {
+            cur_event: event.cur_event,
+            event_runtime: event.event_runtime,
+            number_saved_traces: event.number_saved_traces,
+            saved_channels: event.saved_channels,
+            trigger_time: event.trigger_time,
             trace: (0..num_channels)
-                .map(|c| load_trace(file, num_samples, &mut total_bytes, scale[c], offset[c]).unwrap())
-                .collect(),
-            _total_bytes:total_bytes,
+                .map(|c| load_trace(file, num_samples, &mut total_bytes, scale[c], offset[c]))
+                .collect::<Result<_,_>>()?,
+            total_bytes:event.total_bytes + total_bytes,
+            ..Default::default()
         })
     }
 }
@@ -174,11 +204,12 @@ impl TraceFile {
     }
     pub fn get_num_event(&self) -> usize { self.num_events }
     pub fn get_num_channels(&self) -> usize { self.header.number_of_channels as usize }
+    pub fn get_num_samples(&self) -> usize { self.header.number_of_samples as usize }
 }
 
 pub fn load_trace_file(name: &str) -> Result<TraceFile, Error> {
     let cd = env::current_dir()
-        .unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
+        .unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
     let mut file = File::open(cd.join(name))?;
     let header: TraceFileHeader = TraceFileHeader::load(&mut file)?;
     let file_size = file.metadata().unwrap().len() as usize;
@@ -288,5 +319,20 @@ pub fn load_trace(
     Ok((0..size)
         .map(|i| Intensity::from_be_bytes([trace_bytes[2 * i], trace_bytes[2 * i + 1]]))
         .map(|i| i as f64*scale - offset)
+        .collect())
+}
+pub fn load_raw_trace(
+    file: &mut File,
+    size: usize,
+    total_bytes: &mut usize,
+) -> Result<Vec<Intensity>, Error> {
+    let mut trace_bytes = Vec::<u8>::new();
+    let bytes = (Intensity::BITS / u8::BITS) as usize * size;
+    *total_bytes += bytes;
+
+    trace_bytes.resize(bytes, 0);
+    file.read_exact(&mut trace_bytes).unwrap();
+    Ok((0..size)
+        .map(|i| Intensity::from_be_bytes([trace_bytes[2 * i], trace_bytes[2 * i + 1]]))
         .collect())
 }

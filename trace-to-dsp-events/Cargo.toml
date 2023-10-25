@@ -5,16 +5,19 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-histogram = "0.7.4"
 common = { path = "../common"}
+streaming-types = { path = "../streaming-types" }
 trace-to-pulses = { path = "../trace-to-pulses"}
+trace-reader = { path = "../trace-reader"}
 itertools = "0.11.0"
 rand = "0.8.5"
 anyhow.workspace = true
 chrono.workspace = true
-clap.workspace = true
+clap = { version = "4.0", features = ["derive", "env"] }
 env_logger.workspace = true
+rdkafka.workspace = true
 log.workspace = true
+tokio.workspace = true
 dotenv = "0.15.0"
 
 [dev-dependencies]
