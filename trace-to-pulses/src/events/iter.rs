@@ -1,5 +1,4 @@
 use std::iter::Take;
-use std::marker::PhantomData;
 
 use crate::detectors::{
     Detector,
@@ -8,9 +7,8 @@ use crate::detectors::{
 use crate::pulse::Pulse;
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::trace_iterators::iter::{TraceIter, TraceIterType};
-use crate::tracedata::{TraceData, TraceValue};
 
-use crate::tracedata::EventData;
+use crate::tracedata::{EventData, TraceData, TraceValue};
 use super::event::Event;
 
 pub trait EventIterType : Default + Clone {}

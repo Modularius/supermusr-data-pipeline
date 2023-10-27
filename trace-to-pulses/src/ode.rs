@@ -1,12 +1,9 @@
 
-use std::error::Error;
-
-use na::{Matrix, ArrayStorage, MatrixXx2, MatrixXx1, RawStorage};
-use nalgebra::{self as na, OMatrix, OVector, U2, U3};
+use nalgebra::{self as na, OMatrix, OVector, U3};
 use lstsq;
 use anyhow::{Result,anyhow};
 
-use crate::{Real, RealArray};
+use crate::Real;
 
 /*
 #[derive(Default, Debug, Clone)]

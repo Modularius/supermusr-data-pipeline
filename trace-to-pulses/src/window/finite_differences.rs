@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use crate::{
     Real,
     RealArray,
-    tracedata::TraceData, trace_iterators::iter::TraceIterType,
 };
 use num::integer::binomial;
 

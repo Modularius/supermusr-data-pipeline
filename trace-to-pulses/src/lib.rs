@@ -24,8 +24,6 @@ pub mod pulse;
 
 use std::{fmt::{Debug, Display}, ops::{Index, IndexMut}};
 
-use common::Intensity;
-
 pub use detectors::{
     peak_detector,
     pulse_detector,

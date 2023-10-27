@@ -9,10 +9,8 @@ use std::{
 
 use crate::{
     tracedata::TraceData,
-    EventIter, detectors::FeedbackDetector, log_then_panic_t, events::Event
+    log_then_panic_t,
 };
-
-use super::iter::{TraceIterType, TraceIter};
 
 
 fn create_file(name: &str) -> File {

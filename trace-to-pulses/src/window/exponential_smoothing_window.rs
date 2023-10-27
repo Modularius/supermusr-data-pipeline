@@ -1,10 +1,6 @@
-use std::collections::VecDeque;
-
 use crate::Real;
 
 use crate::window::Window;
-
-use crate::tracedata::Stats;
 
 #[derive(Default,Clone)]
 pub struct ExponentialSmoothingWindow {

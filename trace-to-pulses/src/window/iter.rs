@@ -1,6 +1,5 @@
 use crate::{
     tracedata::{TraceData, TraceValue},
-    trace_iterators::feedback::FeedbackParameter, TraceArray,
 };
 
 use super::Window;

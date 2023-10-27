@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::pulse::{Pulse, TimeValue, TimeValueOptional};
+use crate::pulse::{Pulse, TimeValueOptional};
 use crate::{Real, Detector};
 use crate::events::Event;
 use crate::tracedata::EventData;

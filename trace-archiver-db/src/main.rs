@@ -13,7 +13,7 @@ use dotenv;
 mod envfile;
 use tdengine as engine;
 use tdengine::utils;
-use trace_simulator;
+use trace_generator;
 #[cfg(feature = "benchmark")]
 mod benchmarker;
 mod redpanda_engine;

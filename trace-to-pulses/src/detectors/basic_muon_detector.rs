@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::events::Event;
-use crate::pulse::{Pulse, TimeValue, TimeValueOptional};
+use crate::pulse::{Pulse, TimeValue};
 use crate::tracedata::{EventData, Stats, TraceValue};
 use crate::{Detector, Real, RealArray};
 
@@ -55,10 +55,10 @@ type BasicMuonEvent = Event<Real, Data>;
 type SuperlativeValue = TimeValue<Real>;
 
 impl SuperlativeValue {
-    fn from_min(time: Real) -> SuperlativeValue {
+    fn _from_min(time: Real) -> SuperlativeValue {
         TimeValue {time, value: Real::default() }
     }
-    fn from_max(time: Real) -> SuperlativeValue {
+    fn _from_max(time: Real) -> SuperlativeValue {
         TimeValue {time, value: Real::MAX }
     }
 }
@@ -66,10 +66,10 @@ impl SuperlativeValue {
 type SuperlativeDiff = TimeValue<RealArray<2>>;
 
 impl SuperlativeDiff {
-    fn from_min(time: Real) -> SuperlativeDiff {
+    fn _from_min(time: Real) -> SuperlativeDiff {
         TimeValue {time, value: RealArray::new([Real::default(), Real::default()]) }
     }
-    fn from_max(time: Real) -> SuperlativeDiff {
+    fn _from_max(time: Real) -> SuperlativeDiff {
         TimeValue {time, value: RealArray::new([Real::default(), Real::MAX]) }
     }
 }

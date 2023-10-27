@@ -1,4 +1,3 @@
-use crate::Real;
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::tracedata::Empty;
 use crate::tracedata::EventData;

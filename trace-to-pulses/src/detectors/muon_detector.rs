@@ -1,13 +1,10 @@
 use std::fmt::Display;
 use std::collections::VecDeque;
 
-use crate::change_detector::{ChangeDetector, self};
 use crate::events::Event;
-use crate::peak_detector::LocalExtremumDetector;
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::tracedata::{EventData, Stats};
 use crate::{Detector, Real, RealArray, TracePair, peak_detector, ode};
-use anyhow::{Result,anyhow};
 
 use super::FeedbackDetector;
 

@@ -12,7 +12,7 @@
 ///             ChangeDetector(0.5),1   // the value of y in the function given to ```rust start_feedback```.
 ///     ))
 ///```
-use std::{cell::Cell, rc::Rc, iter::Map, fmt::{Display, Formatter, self}};
+use std::{cell::Cell, rc::Rc, fmt::{Display, Formatter, self}};
 
 use crate::tracedata::{TraceData, TraceValue};
 
@@ -61,7 +61,7 @@ pub struct FeedbackFunction<V> where V : TraceValue {
 }
 
 impl<V> FeedbackFunction<V> where V: TraceValue {
-    fn new(modifier : fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
+    fn _new(modifier : fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
         Self { parameter: FeedbackParameter::new(), modifier: modifier }
     }
     /// Clone creates a new instance and clones the Rc contained within it.
