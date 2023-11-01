@@ -29,6 +29,7 @@ impl Window for ExponentialSmoothingWindow {
 
 #[cfg(test)]
 mod tests {
+    /*
     use crate::processing;
 
     use common::Intensity;
@@ -36,4 +37,5 @@ mod tests {
     use super::super::iter::WindowFilter;
     use super::*;
     use assert_approx_eq::assert_approx_eq;
+    */
 }

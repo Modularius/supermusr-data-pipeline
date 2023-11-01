@@ -4,7 +4,6 @@ use common::Intensity;
 
 use crate::{
     Real,
-    RealArray,
     events::event::Event, TraceArray, TracePair
 };
 

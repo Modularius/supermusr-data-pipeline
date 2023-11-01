@@ -1,9 +1,5 @@
 use crate::trace_iterators::feedback::FeedbackParameter;
-use crate::tracedata::Empty;
-use crate::tracedata::EventData;
-use crate::tracedata::Temporal;
-use crate::tracedata::TraceValue;
-use crate::tracedata::TraceData;
+use crate::tracedata::{EventData, Temporal, TraceValue};
 use std::fmt::Debug;
 use std::fmt::Display;
 

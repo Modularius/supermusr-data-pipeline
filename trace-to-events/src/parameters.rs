@@ -2,34 +2,34 @@ use std::str::FromStr;
 
 use clap::{Parser, Subcommand};
 use common::Time;
-use trace_to_pulses::Real;
+use trace_to_pulses::{Real, detectors::threshold_detector::ThresholdDuration};
 use anyhow::{anyhow, Error};
 
 
 #[derive(Default, Debug, Clone)]
-pub struct ThresholdDuration {
-    pub threshold : Real,
-    pub duration : Time,
-}
+pub struct ThresholdDurationWrapper(pub(crate)ThresholdDuration);
 
-impl FromStr for ThresholdDuration {
+impl FromStr for ThresholdDurationWrapper {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        const ERROR : Error  = anyhow!("Incorrect number of parameters, expected pattern *,*");
         let vals : Vec<_> = s.split(",").collect();
-        Ok(ThresholdDuration{
-            threshold: Real::from_str(*vals.get(0).ok_or(ERROR)?)?,
-            duration: Time::from_str(vals.get(1).ok_or(ERROR)?)?
-        })
+        Ok(ThresholdDurationWrapper(ThresholdDuration{
+            threshold: Real::from_str(*vals.get(0).ok_or(anyhow!("Incorrect number of parameters in threshold, expected pattern '*,*', got '{s}'"))?)?,
+            duration: Time::from_str(vals.get(1).ok_or(anyhow!("Incorrect number of parameters in duration, expected pattern '*,*', got '{s}'"))?)? as usize
+        }))
     }
 }
 
 #[derive(Default, Debug, Clone, Parser)]
 pub struct SimpleParameters {
-    pub threshold_trigger: ThresholdDuration,
+    pub threshold_trigger: ThresholdDurationWrapper,
 }
 
+
+pub struct SaveOptions {
+    pub file_name : String,
+}
 
 
 #[derive(Default, Debug, Clone,Parser)]
@@ -40,9 +40,9 @@ pub struct BasicParameters {
     pub baseline_length: usize,
     pub max_amplitude: Option<Real>,
     pub min_amplitude: Option<Real>,
-    pub muon_onset: ThresholdDuration,
-    pub muon_fall: ThresholdDuration,
-    pub muon_termination: ThresholdDuration,
+    pub muon_onset: ThresholdDurationWrapper,
+    pub muon_fall: ThresholdDurationWrapper,
+    pub muon_termination: ThresholdDurationWrapper,
 }
 
 

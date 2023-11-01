@@ -1,6 +1,4 @@
-use crate::{
-    tracedata::{TraceData, TraceValue},
-};
+use crate::tracedata::TraceData;
 
 use super::Window;
 

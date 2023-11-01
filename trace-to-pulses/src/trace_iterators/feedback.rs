@@ -56,19 +56,19 @@ impl<V> Display for FeedbackParameter<V> where V : TraceValue {
 
 
 pub struct FeedbackFunction<V> where V : TraceValue {
-    parameter: FeedbackParameter<V>,
-    modifier: fn(&V::ContentType,&V::FeedbackType)->V,
+    _parameter: FeedbackParameter<V>,
+    _modifier: fn(&V::ContentType,&V::FeedbackType)->V,
 }
 
 impl<V> FeedbackFunction<V> where V: TraceValue {
     fn _new(modifier : fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
-        Self { parameter: FeedbackParameter::new(), modifier: modifier }
+        Self { _parameter: FeedbackParameter::new(), _modifier: modifier }
     }
     /// Clone creates a new instance and clones the Rc contained within it.
     /// This creates a new pointer to the Cell containing the parameter.
     /// Note this does not clone the parameter itself.
-    fn clone_parameter(&self) -> FeedbackParameter<V> {
-        self.parameter.clone()
+    fn _clone_parameter(&self) -> FeedbackParameter<V> {
+        self._parameter.clone()
     }
 }
 

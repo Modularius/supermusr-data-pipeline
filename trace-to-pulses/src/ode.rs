@@ -154,7 +154,7 @@ impl ParameterEstimator {
 
         let cos : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)*Real::cos(0.5*root.1*i as Real)).collect();
         let sin : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)*Real::sin(0.5*root.1*i as Real)).collect();
-        let exp : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)).collect();
+        let _exp : Vec<Real> = a_y.iter().enumerate().map(|(i,_)|Real::exp(-root.0*i as Real)).collect();
 
         let a = OMatrix::<Real, na::Dyn, U3>::from_columns(&[cos.into(), sin.into(), b]);
         let sol = lstsq::lstsq(&a, &a_y, epsilon).map_err(|s|anyhow!(s))?;
@@ -169,11 +169,11 @@ impl ParameterEstimator {
 mod tests {
     use itertools::Itertools;
 
-    use crate::processing;
+    //use crate::processing;
     use super::*;
 
 
-    fn biexp_peak_time(kappa : Real, rho : Real) -> Real {
+    fn _biexp_peak_time(kappa : Real, rho : Real) -> Real {
         (Real::ln(kappa) - Real::ln(rho))/(1./rho - 1./kappa)
     }
     fn biexp_value(t : Real, kappa : Real, rho : Real) -> Real {

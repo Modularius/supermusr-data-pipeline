@@ -75,7 +75,6 @@ impl Window for SmoothingWindow {
 mod tests {
     use crate::processing;
 
-    use common::Intensity;
     use super::super::iter::WindowFilter;
     use super::*;
     use assert_approx_eq::assert_approx_eq;

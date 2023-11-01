@@ -4,7 +4,7 @@ use common::Intensity;
 use itertools::Itertools;
 use rand::{random, seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
-use trace_generator::{dispatch_trace_file, load_trace_file};
+use trace_reader::{dispatch_trace_file, load_trace_file};
 use trace_to_pulses::{
     log_then_panic_t,
     trace_iterators::{save_to_file::SaveToFile, find_baseline::FindBaselineFilter},

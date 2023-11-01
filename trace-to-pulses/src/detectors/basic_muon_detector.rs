@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::events::Event;
 use crate::pulse::{Pulse, TimeValue};
-use crate::tracedata::{EventData, Stats, TraceValue};
+use crate::tracedata::EventData;
 use crate::{Detector, Real, RealArray};
 
 use super::Assembler;
@@ -298,10 +298,10 @@ impl Assembler for BasicMuonAssembler {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
+    //use itertools::Itertools;
 
-    use crate::processing;
-    use super::*;
+    //use crate::processing;
+    //use super::*;
 
     #[test]
     fn zero_data() {
@@ -311,6 +311,6 @@ mod tests {
 
     #[test]
     fn test_gate_zero_threshold() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
+        //let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
     }
 }

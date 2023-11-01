@@ -99,8 +99,8 @@ impl PulseModel for Biexponential {
         if t < self.start_time { return Real::default(); }
         self.amplitude*(((t - self.start_time)/self.rise_time).exp()/self.rise_time/self.rise_time - ((t - self.start_time)/self.decay_time).exp()/self.decay_time/self.decay_time)
     }
-    fn from_data(peak_time: Real, peak_value: Real, area_under_curve: Real) -> Self {
-        let standard_deviation_estimate = 2.*area_under_curve/Real::sqrt(2.* PI)/peak_value;
+    fn from_data(_peak_time: Real, peak_value: Real, area_under_curve: Real) -> Self {
+        let _standard_deviation_estimate = 2.*area_under_curve/Real::sqrt(2.* PI)/peak_value;
         Self::default()
     }
     fn get_effective_interval(&self, bound : Real) -> (Real, Real) {

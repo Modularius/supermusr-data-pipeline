@@ -20,7 +20,7 @@ pub trait PulseModel : Default + Debug + Display + Clone {
     fn get_effective_interval(&self, bound : Real) -> (Real, Real);
 
     fn from_data(peak_time: Real, peak_value: Real, area_under_curve: Real) -> Self;
-    fn from_data2(data : Vec<Real>, start: Real, peak : Real) -> Self { Self::default() }
+    fn from_data2(_data : Vec<Real>, _start: Real, _peak : Real) -> Self { Self::default() }
     fn from_basic(mean: Real, amplitude: Real,) -> Self;
 }
 

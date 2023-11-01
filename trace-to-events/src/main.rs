@@ -17,6 +17,8 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 
 use parameters::Mode;
 
+use crate::parameters::SaveOptions;
+
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -29,13 +31,13 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    #[clap(long = "group")]
+    #[clap(long = "group", default_value = "trace-to-event")]
     consumer_group: String,
 
-    #[clap(long)]
+    #[clap(long, default_value = "Traces")]
     trace_topic: String,
 
-    #[clap(long)]
+    #[clap(long, default_value = "Events")]
     event_topic: String,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
@@ -58,6 +60,8 @@ async fn main() -> Result<()> {
     let mut client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
+    let producer: FutureProducer = client_config.create()?;
+
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
@@ -67,7 +71,7 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    let producer: FutureProducer = client_config.create()?;
+    let save_output = SaveOptions{ file_name : "Saves/output".to_owned() };
 
     loop {
         match consumer.recv().await {
@@ -93,7 +97,7 @@ async fn main() -> Result<()> {
                                 match producer
                                     .send(
                                         FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(&thing, args.mode))
+                                            .payload(&processing::process(&thing, args.mode.as_ref(), Some(&save_output)))
                                             .key("test"),
                                         Duration::from_secs(0),
                                     )

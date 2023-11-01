@@ -6,7 +6,6 @@ use crate::detectors::{
 };
 use crate::pulse::Pulse;
 use crate::trace_iterators::feedback::FeedbackParameter;
-use crate::trace_iterators::iter::{TraceIter, TraceIterType};
 
 use crate::tracedata::{EventData, TraceData, TraceValue};
 use super::event::Event;

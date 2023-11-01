@@ -3,8 +3,8 @@ use std::collections::VecDeque;
 
 use crate::events::Event;
 use crate::trace_iterators::feedback::FeedbackParameter;
-use crate::tracedata::{EventData, Stats};
-use crate::{Detector, Real, RealArray, TracePair, peak_detector, ode};
+use crate::tracedata::EventData;
+use crate::{Detector, Real, RealArray, ode};
 
 use super::FeedbackDetector;
 
@@ -14,9 +14,9 @@ use super::FeedbackDetector;
 pub struct ODEData {
     start : Real,
     end : Real,
-    quadratic : Real,
-    linear : Real,
-    constant : Real,
+    //quadratic : Real,
+    //linear : Real,
+    //constant : Real,
     lambda : Real,
     theta : Real,
     coef_cos : Real,
@@ -26,12 +26,12 @@ pub struct ODEData {
 }
 impl ODEData {
     pub fn new(start : Real, end: Real,
-        quadratic : Real, linear : Real, constant : Real,
+        //quadratic : Real, linear : Real, constant : Real,
         lambda : Real, theta : Real,
         coef_cos : Real, coef_sin : Real, coef_const : Real,
         residual : Real) -> Self {
         ODEData{ start, end,
-            quadratic, linear, constant,
+            //quadratic, linear, constant,
             lambda, theta,
             coef_cos, coef_sin, coef_const,
             residual, ..Default::default() }

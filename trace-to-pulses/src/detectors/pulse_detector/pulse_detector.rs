@@ -70,17 +70,17 @@ impl Display for Gaussian {
 #[derive(Default, Debug, Clone)]
 pub struct PulseData<Model : PulseModel> {
     model : Model,
-    uncertainty: Option<(Model,Model)>,
+    _uncertainty: Option<(Model,Model)>,
     effective_interval: Option<(Real,Real)>,
     cache : Vec<Real>,
 }
 impl<Model : PulseModel> PulseData<Model>{
     pub fn new(
         model: Model,
-        uncertainty: Option<(Model,Model)>,
+        _uncertainty: Option<(Model,Model)>,
         effective_interval: Option<(Real,Real)>
     ) -> Self {
-        PulseData { model, uncertainty, effective_interval, ..Default::default() }
+        PulseData { model, _uncertainty, effective_interval, ..Default::default() }
     }
     pub fn new_basic(
         mean: Real,
@@ -90,11 +90,11 @@ impl<Model : PulseModel> PulseData<Model>{
     }
     pub fn with_cache(
         model: Model,
-        uncertainty: Option<(Model,Model)>,
+        _uncertainty: Option<(Model,Model)>,
         effective_bound: Real
     ) -> Self {
         let effective_interval = Some(model.get_effective_interval(effective_bound));
-        let pd = PulseData { model, uncertainty, effective_interval, ..Default::default() };
+        let pd = PulseData { model, _uncertainty, effective_interval, ..Default::default() };
         //pd.build_cache();
         pd
     }
@@ -109,7 +109,7 @@ impl<Model : PulseModel> PulseData<Model>{
             Real::default()
         }
     }
-    fn build_cache(&mut self) {
+    fn _build_cache(&mut self) {
         if let Some((start,end)) = self.effective_interval {
             self.cache = Vec::<f64>::with_capacity(Real::ceil(end - start) as usize);
             for i in 0..Real::ceil(end - start) as usize {
