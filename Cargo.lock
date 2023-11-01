@@ -2853,6 +2853,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "clap",
  "common",
  "dotenv",
  "env_logger",
@@ -2864,6 +2865,28 @@ dependencies = [
  "rdkafka 0.31.0",
  "serde",
  "streaming-types",
+ "tokio",
+]
+
+[[package]]
+name = "trace-reader"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "common",
+ "dotenv",
+ "env_logger",
+ "flatbuffers",
+ "itertools 0.11.0",
+ "kagiyama",
+ "log",
+ "rand 0.8.5",
+ "rdkafka 0.31.0",
+ "serde",
+ "streaming-types",
+ "tokio",
 ]
 
 [[package]]
@@ -2905,6 +2928,7 @@ dependencies = [
  "rdkafka 0.31.0",
  "streaming-types",
  "tokio",
+ "trace-to-pulses",
 ]
 
 [[package]]

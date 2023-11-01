@@ -63,11 +63,11 @@ pub fn run_detection(
         min_voltage: 2.,
         smoothing_window_size: 4,
         baseline_length: 1000,
-        max_amplitude: Some(0.4*10000.0),
-        min_amplitude: Some(0.3985*10000.0),
-        muon_onset: ThresholdDuration{threshold: 0.00001*10000.0, duration: 0},
-        muon_fall: ThresholdDuration{threshold: -0.00001*10000.0, duration: 0},
-        muon_termination: ThresholdDuration{threshold: -0.000005*10000.0, duration: 0},
+        max_amplitude: None,
+        min_amplitude: None,
+        muon_onset: ThresholdDuration{threshold: 1.0, duration: 0},
+        muon_fall: ThresholdDuration{threshold: -0.1, duration: 0},
+        muon_termination: ThresholdDuration{threshold: -0.25, duration: 0},
     };
     let baselined = trace
         .iter()
@@ -109,6 +109,15 @@ pub fn run_detection(
         );
 
     let pulse_vec = pulses.clone().collect_vec();
+    
+    let save_file_name = Some("Saves/output0");
+    if let Some(save_file_name) = save_file_name {
+        baselined.save_to_file(&(save_file_name.to_owned() + "_baselined" + ".csv"));
+        smoothed.save_to_file(&(save_file_name.to_owned() + "_smoothed" + ".csv"));
+        events.save_to_file(&(save_file_name.to_owned() + "_events" + ".csv"));
+        pulses.save_to_file(&(save_file_name.to_owned() + "_pulses" + ".csv"));
+        //time_hist.save_to_file(&(save_file_name.clone() + "_time_hist" + ".csv"));
+    }
     pulse_vec
 }
 

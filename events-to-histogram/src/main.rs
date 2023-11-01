@@ -64,6 +64,7 @@ async fn main() -> Result<()> {
 
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
+        .set("auto.offset.reset", "earliest")
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")

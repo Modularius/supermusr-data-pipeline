@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 
     let consumer: StreamConsumer = client_config
         .set("group.id", &cli.consumer_group)
-        .set("enable.partition.eof", "true")
+        .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
         .create()?;
@@ -65,12 +65,6 @@ async fn main() -> Result<()> {
 /*
 fn run_offline_mode(opm : OfflineParameters) -> Result<()> {
     
-    let traces = match opm.mode {
-        Some(OfflineMode::Simulation(npm)) => { run_simulated_mode(npm) }
-        Some(OfflineMode::Database(dpm)) => /* TODO */Vec::<_>::default(),
-        Some(OfflineMode::File(fpm)) => { run_file_mode(fpm) }
-        None => run_file_mode( FileParameters::parse(), ),  //  This will be listen by default
-    };
     let save_file_name = opm.save_file_name.unwrap_or("Saves/output".to_owned());   //This will be replaced with optional behaviour
 
     let mut all_pulses_basic = Vec::<Pulse>::new();

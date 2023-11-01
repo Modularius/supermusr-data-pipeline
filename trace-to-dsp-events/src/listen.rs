@@ -42,7 +42,8 @@ pub(super) async fn listen (consumer : &StreamConsumer, producer : &FutureProduc
                     match root_as_digitizer_analog_trace_message(payload) {
                         Ok(thing) => {
                             let bytes = process_message(&thing);
-                            let future_record = FutureRecord::to(event_topic).payload(&bytes).key("");
+                            let key = m.offset().to_string();
+                            let future_record = FutureRecord::to(event_topic).payload(&bytes).key(&key);
                             match producer.send(future_record,Duration::from_secs(0)).await
                             {
                                 Ok(_) => log::trace!("Published event message"),
@@ -54,7 +55,7 @@ pub(super) async fn listen (consumer : &StreamConsumer, producer : &FutureProduc
                 } else { log::warn!("Unexpected message type on topic \"{}\"", m.topic()); }
             }
 
-            consumer.commit_message(&m, CommitMode::Async).unwrap();
+            consumer.commit_message(&m, CommitMode::Sync).unwrap();
         }
         Err(e) => log::warn!("Kafka error: {}", e),
     };

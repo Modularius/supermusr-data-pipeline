@@ -6,13 +6,14 @@ members = [
   "simulator",
   "stream-to-file",
   "streaming-types",
-  "trace-archiver",
-  "trace-to-events",
-  "trace-archiver-db",
-  "trace-generator",
   "tdengine",
+  "trace-archiver",
+  "trace-archiver-db",
+  "trace-reader",
+  "trace-to-events",
   "trace-to-dsp-events",
   "trace-to-pulses",
+  "trace-simulator",
 ]
 
 [workspace.package]

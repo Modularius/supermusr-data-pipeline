@@ -6,7 +6,7 @@ use common::Intensity;
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "localhost:19092")]
     pub(super) broker: String,
 
     #[clap(long, env)]
@@ -15,13 +15,13 @@ pub(crate) struct Cli {
     #[clap(long, env)]
     pub(super) password: Option<String>,
 
-    #[clap(long = "group", env)]
+    #[clap(long = "group", env, default_value = "group")]
     pub(super) consumer_group: String,
 
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "Traces")]
     pub(super) trace_topic: String,
 
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "Events")]
     pub(super) event_topic: String,
 
     #[clap(long, default_value = "127.0.0.1:9090")]

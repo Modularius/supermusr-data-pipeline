@@ -1,9 +1,9 @@
 mod metrics;
 mod processing;
+mod parameters;
 
 use anyhow::Result;
 use clap::Parser;
-use common::Intensity;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -14,6 +14,8 @@ use std::{net::SocketAddr, time::Duration};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
+
+use parameters::Mode;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -36,11 +38,11 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
-    #[clap(long)]
-    threshold: Intensity,
-
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
+    
+    #[command(subcommand)]
+    pub mode: Option<Mode>,
 }
 
 #[tokio::main]
@@ -91,7 +93,7 @@ async fn main() -> Result<()> {
                                 match producer
                                     .send(
                                         FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(&thing, args.threshold))
+                                            .payload(&processing::process(&thing, args.mode))
                                             .key("test"),
                                         Duration::from_secs(0),
                                     )

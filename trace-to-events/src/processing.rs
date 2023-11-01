@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use common::{Channel, EventData, Intensity, Time};
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -11,6 +13,8 @@ use streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
 
+use crate::parameters::{Mode, SimpleParameters, ThresholdDuration};
+
 struct ChannnelEvents {
     channel_number: Channel,
 
@@ -20,27 +24,18 @@ struct ChannnelEvents {
 
 fn find_channel_events(
     trace: &ChannelTrace,
-    threshold: Intensity,
+    mode: Option<Mode>,
     sample_time: Time,
 ) -> ChannnelEvents {
-    let events: Vec<(usize, Intensity)> = trace
-        .voltage()
-        .unwrap()
-        .into_iter()
-        .enumerate()
-        .tuple_windows()
-        .flat_map(|p: ((usize, Intensity), (usize, Intensity))| {
-            if p.0 .1 < threshold && p.1 .1 >= threshold {
-                Some(p.1)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let events = match mode {
+        Some(Mode::Simple(simple_parameters)) => find_simple_events(trace, simple_parameters, sample_time),
+        Some(Mode::Basic(basic_parameters)) => find_basic_events(trace, basic_parameters, sample_time),
+        None => find_simple_events(trace, SimpleParameters { threshold_trigger: ThresholdDuration::from_str("4,4").unwrap() }, sample_time),
+    };
 
     let mut time = Vec::default();
     let mut voltage = Vec::default();
-
+    
     for event in events {
         time.push((event.0 as Time) * sample_time);
         voltage.push(event.1);
@@ -53,7 +48,49 @@ fn find_channel_events(
     }
 }
 
-pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, threshold: Intensity) -> Vec<u8> {
+fn find_simple_events(
+    trace: &ChannelTrace,
+    simple_parameters : SimpleParameters,
+    sample_time: Time,
+) -> Vec<(usize, Intensity)> {
+    trace
+        .voltage()
+        .unwrap()
+        .into_iter()
+        .enumerate()
+        .tuple_windows()
+        .flat_map(|p: ((usize, Intensity), (usize, Intensity))| {
+            if p.0 .1 < threshold && p.1 .1 >= threshold {
+                Some(p.1)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn find_basic_events(
+    trace: &ChannelTrace,
+    basic_parameters : BasicParameters,
+    sample_time: Time,
+) -> Vec<(usize, Intensity)> {
+    trace
+        .voltage()
+        .unwrap()
+        .into_iter()
+        .enumerate()
+        .tuple_windows()
+        .flat_map(|p: ((usize, Intensity), (usize, Intensity))| {
+            if p.0 .1 < threshold && p.1 .1 >= threshold {
+                Some(p.1)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, mode: Option<Mode>) -> Vec<u8> {
     log::info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
@@ -74,7 +111,7 @@ pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, threshold: Intensity)
         .iter()
         .collect::<Vec<ChannelTrace>>()
         .par_iter()
-        .map(|i| find_channel_events(i, threshold, sample_time_in_us))
+        .map(|i| find_channel_events(i, mode, sample_time_in_us))
         .collect::<Vec<ChannnelEvents>>();
 
     for mut channel in channel_events {

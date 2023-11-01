@@ -18,6 +18,8 @@ kagiyama = "0.3.0"
 log = "0.4"
 dotenv = "0.15.0"
 rdkafka.workspace = true
+clap.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 serde = "1.0.164"
