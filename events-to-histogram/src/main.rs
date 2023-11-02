@@ -27,13 +27,13 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    #[clap(long = "group")]
+    #[clap(long = "group", default_value = "event-to-histogram")]
     consumer_group: String,
 
-    #[clap(long)]
+    #[clap(long, default_value = "Events")]
     event_topic: String,
 
-    #[clap(long)]
+    #[clap(long, default_value = "Histograms")]
     histogram_topic: String,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
@@ -76,6 +76,8 @@ async fn main() -> Result<()> {
 
     let edges = processing::make_bins_edges(args.time_start, args.time_end, args.time_bin_width);
 
+    let save_file_name = Some("Saves/output");
+
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -104,6 +106,7 @@ async fn main() -> Result<()> {
                                                 &thing,
                                                 args.time_bin_width,
                                                 edges.clone(),
+                                                save_file_name,
                                             ))
                                             .key("test"),
                                         Duration::from_secs(0),

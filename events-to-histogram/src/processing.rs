@@ -1,7 +1,7 @@
 use common::{Channel, Time};
 use ndarray::array;
 use ndarray_stats::histogram::{self, Bins, Edges, Grid};
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::File, env, io::Write};
 use streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
     flatbuffers::FlatBufferBuilder,
@@ -51,12 +51,24 @@ impl HistogramCollection {
             log::warn!("Bin not found for time {}", time);
         }
     }
+
+    fn save_to_file(&self, name : &str) {
+        let cd = env::current_dir()
+            .unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
+        let mut file = File::create(cd.join(name))
+            .unwrap_or_else(|e| panic!("Cannot create {name} file : {e}"));
+        writeln!(&mut file, "{0:?}",self.grid).unwrap();
+        for hist in &self.channels {
+            writeln!(&mut file, "{0}",hist.1.counts()).unwrap();
+        }
+    }
 }
 
 pub(crate) fn process(
     trace: &DigitizerEventListMessage,
     time_bin_width: Time,
     time_bin_edges: Edges<Time>,
+    save_file_name : Option<&str>
 ) -> Vec<u8> {
     log::info!(
         "Dig ID: {}, Metadata: {:?}",
@@ -69,6 +81,10 @@ pub(crate) fn process(
     let mut histograms = HistogramCollection::new(time_bin_edges);
     for (time, channel) in std::iter::zip(trace.time().unwrap(), trace.channel().unwrap()) {
         histograms.record(channel, time);
+    }
+
+    if let Some(save_file_name) = save_file_name {
+        histograms.save_to_file(save_file_name);
     }
 
     let metadata = FrameMetadataV1Args {
@@ -171,7 +187,7 @@ mod tests {
 
         let bin_width = 2;
         let edges = make_bins_edges(0, 10, bin_width);
-        let result = process(&message, bin_width, edges);
+        let result = process(&message, bin_width, edges, None);
 
         assert!(histogram_message_buffer_has_identifier(&result));
         let message = root_as_histogram_message(&result).unwrap();
