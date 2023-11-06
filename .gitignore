@@ -10,3 +10,4 @@ perf.*
 *.svg
 .direnv/
 .vscode/
+result
