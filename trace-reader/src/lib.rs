@@ -3,7 +3,7 @@
 //!
 #![allow(dead_code, unused_variables, unused_imports)]
 
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 use itertools::Itertools;
 //use std::ops::Range;
 use chrono::Utc;
@@ -11,11 +11,14 @@ use loader::{TraceFileEvent, TraceFileHeader};
 
 use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use rand::{random, rngs::ThreadRng, thread_rng, Rng};
-use rdkafka::{producer::{FutureProducer, FutureRecord}, util::Timeout};
+use rdkafka::{
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout,
+};
 use std::{ops::RangeInclusive, time::Duration};
 
 pub mod loader;
-pub use loader::{TraceFile, load_trace_file};
+pub use loader::{load_trace_file, TraceFile};
 
 use common::{Channel, DigitizerId, FrameNumber, Intensity};
 use streaming_types::{
@@ -26,27 +29,34 @@ use streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-
-pub async fn dispatch_trace_file(mut trace_file : TraceFile, events : Vec<usize>, producer : &FutureProducer, topic : &str, timeout_ms : u64) -> Result<()>
-{
+pub async fn dispatch_trace_file(
+    mut trace_file: TraceFile,
+    events: Vec<usize>,
+    producer: &FutureProducer,
+    topic: &str,
+    timeout_ms: u64,
+) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     for event_idx in events {
         let event = trace_file.get_event(event_idx)?;
-        create_partly_random_message_with_now(&mut fbb, 1..=10, 1..=10, trace_file.get_num_channels(), trace_file.get_num_samples(), &event)?;
+        create_partly_random_message_with_now(
+            &mut fbb,
+            1..=10,
+            1..=10,
+            trace_file.get_num_channels(),
+            trace_file.get_num_samples(),
+            &event,
+        )?;
 
         let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
         let timeout = Timeout::After(Duration::from_millis(timeout_ms));
-        match producer.send(future_record,timeout).await
-        {
+        match producer.send(future_record, timeout).await {
             Ok(r) => log::debug!("Delivery: {:?}", r),
             Err(e) => log::error!("Delivery failed: {:?}", e.0),
         };
     }
     Ok(())
 }
-
-
-
 
 pub fn create_channel<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
@@ -71,8 +81,8 @@ pub fn create_message_with_now(
     fbb: &mut FlatBufferBuilder<'_>,
     frame_number: u32,
     digitizer_id: u8,
-    number_of_channels : usize,
-    number_of_samples : usize,
+    number_of_channels: usize,
+    number_of_samples: usize,
     event: &TraceFileEvent,
 ) -> Result<String, Error> {
     let time: GpsTime = Utc::now().into();
@@ -102,8 +112,8 @@ pub fn create_message(
     time: GpsTime,
     frame_number: u32,
     digitizer_id: u8,
-    number_of_channels : usize,
-    number_of_samples : usize,
+    number_of_channels: usize,
+    number_of_samples: usize,
     event: &TraceFileEvent,
 ) -> Result<String, Error> {
     fbb.reset();
@@ -118,24 +128,28 @@ pub fn create_message(
     };
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
-    let num_channels = number_of_channels as usize;
-    let measurements_per_frame = number_of_samples as usize;
-    let channels: Vec<_> = (0..num_channels)
-        .into_iter()
-        .map(|c| create_channel(fbb, c as u32,  measurements_per_frame, event.raw_trace[c].as_slice()))
+    let channels: Vec<_> = (0..number_of_channels)
+        //.into_iter()
+        .map(|c| {
+            create_channel(
+                fbb,
+                c as u32,
+                number_of_samples,
+                event.raw_trace[c].as_slice(),
+            )
+        })
         .collect();
 
     let message = DigitizerAnalogTraceMessageArgs {
-        digitizer_id: digitizer_id,
+        digitizer_id,
         metadata: Some(metadata),
         sample_rate: 1_000_000_000,
-        channels: Some(fbb.create_vector_from_iter(channels.iter()),
-        ),
+        channels: Some(fbb.create_vector_from_iter(channels.iter())),
     };
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {measurements_per_frame} measurements."))
+    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels, and {number_of_samples} measurements."))
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp,
@@ -154,8 +168,8 @@ pub fn create_partly_random_message(
     time: GpsTime,
     frame_number: RangeInclusive<FrameNumber>,
     digitizer_id: RangeInclusive<DigitizerId>,
-    number_of_channels : usize,
-    number_of_samples : usize,
+    number_of_channels: usize,
+    number_of_samples: usize,
     event: &TraceFileEvent,
 ) -> Result<String, Error> {
     let mut rng = rand::thread_rng();
@@ -172,7 +186,6 @@ pub fn create_partly_random_message(
     )
 }
 
-
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with the present timestamp,
 /// and a random frame number and digitizer id.
 /// #Arguments
@@ -188,8 +201,8 @@ pub fn create_partly_random_message_with_now(
     fbb: &mut FlatBufferBuilder<'_>,
     frame_number: RangeInclusive<FrameNumber>,
     digitizer_id: RangeInclusive<DigitizerId>,
-    number_of_channels : usize,
-    number_of_samples : usize,
+    number_of_channels: usize,
+    number_of_samples: usize,
     event: &TraceFileEvent,
 ) -> Result<String, Error> {
     let time: GpsTime = Utc::now().into();

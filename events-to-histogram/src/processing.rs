@@ -1,7 +1,7 @@
 use common::{Channel, Time};
 use ndarray::array;
 use ndarray_stats::histogram::{self, Bins, Edges, Grid};
-use std::{collections::HashMap, fs::File, env, io::Write};
+use std::{collections::HashMap, env, fs::File, io::Write};
 use streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
     flatbuffers::FlatBufferBuilder,
@@ -52,14 +52,14 @@ impl HistogramCollection {
         }
     }
 
-    fn save_to_file(&self, name : &str) {
-        let cd = env::current_dir()
-            .unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
+    fn save_to_file(&self, name: &str) {
+        let cd =
+            env::current_dir().unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
         let mut file = File::create(cd.join(name))
             .unwrap_or_else(|e| panic!("Cannot create {name} file : {e}"));
-        writeln!(&mut file, "{0:?}",self.grid).unwrap();
+        writeln!(&mut file, "{0:?}", self.grid).unwrap();
         for hist in &self.channels {
-            writeln!(&mut file, "{0}",hist.1.counts()).unwrap();
+            writeln!(&mut file, "{0}", hist.1.counts()).unwrap();
         }
     }
 }
@@ -68,7 +68,7 @@ pub(crate) fn process(
     trace: &DigitizerEventListMessage,
     time_bin_width: Time,
     time_bin_edges: Edges<Time>,
-    save_file_name : Option<&str>
+    save_file_name: Option<&str>,
 ) -> Vec<u8> {
     log::info!(
         "Dig ID: {}, Metadata: {:?}",

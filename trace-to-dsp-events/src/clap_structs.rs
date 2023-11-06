@@ -61,7 +61,6 @@ pub struct OfflineParameters {
     pub mode: Option<OfflineMode>,
 }
 
-
 #[derive(Subcommand, Clone)]
 pub enum OfflineMode {
     #[clap(about = "Generate Random Traces and Extract Pulses")]

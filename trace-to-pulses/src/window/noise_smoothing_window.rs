@@ -2,12 +2,9 @@ use crate::Real;
 
 use crate::window::{smoothing_window::SmoothingWindow, Window};
 
-use crate::tracedata::{
-    SNRSign,
-    Stats
-};
+use crate::tracedata::{SNRSign, Stats};
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub struct NoiseSmoothingWindow {
     threshold: Real,
     _influence: Real, //  Maybe we should do something with this?
@@ -48,9 +45,10 @@ impl Window for NoiseSmoothingWindow {
         stats.shift(self.position);
         Some(stats)
     }
-    fn apply_time_shift(&self, time : Real ) -> Real { self.window.apply_time_shift(time) }
+    fn apply_time_shift(&self, time: Real) -> Real {
+        self.window.apply_time_shift(time)
+    }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -64,8 +62,7 @@ mod tests {
     #[should_panic]
     fn test_window_size_zero() {
         let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
-        data
-            .iter()
+        data.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(0, 1., 0.));
@@ -75,11 +72,10 @@ mod tests {
     #[should_panic]
     fn test_window_size_one() {
         let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
-        data
-            .iter()
+        data.iter()
             .enumerate()
             .map(processing::make_enumerate_real)
-            .window(NoiseSmoothingWindow::new(1,  1., 0.));
+            .window(NoiseSmoothingWindow::new(1, 1., 0.));
     }
 
     #[test]
@@ -97,7 +93,9 @@ mod tests {
     #[test]
     fn test_no_data() {
         let data = [];
-        assert!(data.iter().enumerate()
+        assert!(data
+            .iter()
+            .enumerate()
             .map(processing::make_enumerate_real)
             .window(NoiseSmoothingWindow::new(3, 1., 0.))
             .next()
@@ -219,7 +217,7 @@ mod tests {
                 / (3. - 1.)
         );
     }
-/*
+    /*
     #[test]
     fn test_variance_accuracy() {
         use rand::random;

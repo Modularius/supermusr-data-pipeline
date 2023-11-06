@@ -11,9 +11,19 @@ use streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use trace_to_pulses::{Real, detectors::threshold_detector::{ThresholdDetector, ThresholdAssembler}, EventFilter, events::{iter::AssembleFilter, SavePulsesToFile}, window::{WindowFilter, finite_differences::FiniteDifferences}, SmoothingWindow, tracedata, basic_muon_detector::{BasicMuonDetector, BasicMuonAssembler}, trace_iterators::save_to_file::SaveToFile};
+use trace_to_pulses::{
+    basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
+    detectors::threshold_detector::{ThresholdAssembler, ThresholdDetector},
+    events::{iter::AssembleFilter, SavePulsesToFile},
+    trace_iterators::save_to_file::SaveToFile,
+    tracedata,
+    window::{finite_differences::FiniteDifferences, WindowFilter},
+    EventFilter, Real, SmoothingWindow,
+};
 
-use crate::parameters::{Mode, SimpleParameters, ThresholdDurationWrapper, SaveOptions, BasicParameters};
+use crate::parameters::{
+    BasicParameters, Mode, SaveOptions, SimpleParameters, ThresholdDurationWrapper,
+};
 
 struct ChannnelEvents {
     channel_number: Channel,
@@ -24,21 +34,31 @@ struct ChannnelEvents {
 
 fn find_channel_events(
     trace: &ChannelTrace,
-    sample_time : Time,
+    sample_time: Real,
     mode: Option<&Mode>,
     save_options: Option<&SaveOptions>,
 ) -> ChannnelEvents {
-    let events = match mode {
-        Some(Mode::Simple(simple_parameters)) => find_simple_events(trace, simple_parameters, save_options),
-        Some(Mode::Basic(basic_parameters)) => find_basic_events(trace, basic_parameters, save_options),
-        None => find_simple_events(trace, &SimpleParameters { threshold_trigger: ThresholdDurationWrapper::from_str("-70,4").unwrap() }, save_options),
+    let events = match &mode {
+        Some(Mode::Simple(simple_parameters)) => {
+            find_simple_events(trace, simple_parameters, save_options)
+        }
+        Some(Mode::Basic(basic_parameters)) => {
+            find_basic_events(trace, basic_parameters, save_options)
+        }
+        None => find_simple_events(
+            trace,
+            &SimpleParameters {
+                threshold_trigger: ThresholdDurationWrapper::from_str("-80.0,4").unwrap(),
+            },
+            save_options,
+        ),
     };
 
     let mut time = Vec::default();
     let mut voltage = Vec::default();
-    
+
     for event in events {
-        time.push((event.0 as Time) * sample_time);
+        time.push(((event.0 as Real) * sample_time) as Time);
         voltage.push(event.1);
     }
 
@@ -51,7 +71,7 @@ fn find_channel_events(
 
 fn find_simple_events(
     trace: &ChannelTrace,
-    simple_parameters : &SimpleParameters,
+    simple_parameters: &SimpleParameters,
     save_options: Option<&SaveOptions>,
 ) -> Vec<(usize, Intensity)> {
     let raw = trace
@@ -63,22 +83,45 @@ fn find_simple_events(
 
     let pulses = raw
         .clone()
-        .events(ThresholdDetector::new(&simple_parameters.threshold_trigger.0))
+        .events(ThresholdDetector::new(
+            &simple_parameters.threshold_trigger.0,
+        ))
         .assemble(ThresholdAssembler::default());
 
     if let Some(save_options) = save_options {
-        raw.clone().save_to_file(&(save_options.file_name.clone() + &trace.channel().to_string() + "_raw" + ".csv")).unwrap();
-        pulses.clone().save_to_file(&(save_options.file_name.clone() + &trace.channel().to_string() + "_pulses" + ".csv")).unwrap();
+        raw.clone()
+            .save_to_file(
+                save_options.save_path,
+                &(save_options.file_name.to_owned()
+                    + &trace.channel().to_string()
+                    + "_raw"
+                    + ".csv"),
+            )
+            .unwrap();
+        pulses
+            .clone()
+            .save_to_file(
+                save_options.save_path,
+                &(save_options.file_name.to_owned()
+                    + &trace.channel().to_string()
+                    + "_pulses"
+                    + ".csv"),
+            )
+            .unwrap();
     }
-    pulses.map(|pulse|(
-        pulse.start.time.unwrap_or_default() as usize,
-        pulse.start.value.unwrap_or_default() as Intensity
-    )).collect()
+    pulses
+        .map(|pulse| {
+            (
+                pulse.start.time.unwrap() as usize,
+                pulse.start.value.unwrap_or_default() as Intensity,
+            )
+        })
+        .collect()
 }
 
 fn find_basic_events(
     trace: &ChannelTrace,
-    basic_parameters : &BasicParameters,
+    basic_parameters: &BasicParameters,
     save_options: Option<&SaveOptions>,
 ) -> Vec<(usize, Intensity)> {
     let raw = trace
@@ -86,49 +129,91 @@ fn find_basic_events(
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)|(i as Real, -(v as Real)));
+        .map(|(i, v)| (i as Real, -(v as Real)));
 
-    let smoothed = raw.clone() 
+    let smoothed = raw
+        .clone()
         .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))
         .map(tracedata::extract::enumerated_mean);
 
-    let pulses = smoothed.clone() 
+    let pulses = smoothed
+        .clone()
         .window(FiniteDifferences::<2>::new())
         .events(BasicMuonDetector::new(
             &basic_parameters.muon_onset.0,
             &basic_parameters.muon_fall.0,
-            &basic_parameters.muon_termination.0
+            &basic_parameters.muon_termination.0,
         ))
         .assemble(BasicMuonAssembler::default())
-        .filter(|pulse|
-            basic_parameters.min_amplitude.map(|min_amplitude|
-                pulse.peak.value.map(|peak_value|
-                    peak_value >= min_amplitude
-                ).unwrap_or(true)
-            ).unwrap_or(true)
-        )
-        .filter(|pulse|
-            basic_parameters.max_amplitude.map(|max_amplitude|
-                pulse.peak.value.map(|peak_value|
-                    peak_value <= max_amplitude
-                ).unwrap_or(true)
-            ).unwrap_or(true)
-        );
+        .filter(|pulse| {
+            basic_parameters
+                .min_amplitude
+                .map(|min_amplitude| {
+                    pulse
+                        .peak
+                        .value
+                        .map(|peak_value| peak_value >= min_amplitude)
+                        .unwrap_or(true)
+                })
+                .unwrap_or(true)
+        })
+        .filter(|pulse| {
+            basic_parameters
+                .max_amplitude
+                .map(|max_amplitude| {
+                    pulse
+                        .peak
+                        .value
+                        .map(|peak_value| peak_value <= max_amplitude)
+                        .unwrap_or(true)
+                })
+                .unwrap_or(true)
+        });
     if let Some(save_options) = save_options {
-        raw.clone().save_to_file(&(save_options.file_name.clone() + &trace.channel().to_string() + "_raw" + ".csv")).unwrap();
-        smoothed.clone().save_to_file(&(save_options.file_name.clone() + &trace.channel().to_string() + "_smoothed" + ".csv")).unwrap();
-        pulses.clone().save_to_file(&(save_options.file_name.clone() + &trace.channel().to_string() + "_pulses" + ".csv")).unwrap();
+        raw.clone()
+            .save_to_file(
+                save_options.save_path,
+                &(save_options.file_name.to_owned()
+                    + &trace.channel().to_string()
+                    + "_raw"
+                    + ".csv"),
+            )
+            .unwrap();
+        smoothed
+            .clone()
+            .save_to_file(
+                save_options.save_path,
+                &(save_options.file_name.to_owned()
+                    + &trace.channel().to_string()
+                    + "_smoothed"
+                    + ".csv"),
+            )
+            .unwrap();
+        pulses
+            .clone()
+            .save_to_file(
+                save_options.save_path,
+                &(save_options.file_name.to_owned()
+                    + &trace.channel().to_string()
+                    + "_pulses"
+                    + ".csv"),
+            )
+            .unwrap();
     }
-    pulses.map(|pulse|(
-        pulse.steepest_rise.time.unwrap_or_default() as usize,
-        pulse.peak.value.unwrap_or_default() as Intensity
-    )).collect()
+    pulses
+        .map(|pulse| {
+            (
+                pulse.steepest_rise.time.unwrap_or_default() as usize,
+                pulse.peak.value.unwrap_or_default() as Intensity,
+            )
+        })
+        .collect()
 }
 
 pub(crate) fn process(
     trace: &DigitizerAnalogTraceMessage,
     mode: Option<&Mode>,
-    save_options: Option<&SaveOptions>
+    save_options: Option<&SaveOptions>,
 ) -> Vec<u8> {
     log::info!(
         "Dig ID: {}, Metadata: {:?}",
@@ -140,9 +225,7 @@ pub(crate) fn process(
 
     let mut events = EventData::default();
 
-    let sample_time_in_us: Time = (1_000_000 / trace.sample_rate())
-        .try_into()
-        .expect("Sample time range");
+    let sample_time_in_ns: Real = 1_000_000_000.0 / trace.sample_rate() as Real;
 
     let channel_events = trace
         .channels()
@@ -150,7 +233,9 @@ pub(crate) fn process(
         .iter()
         .collect::<Vec<ChannelTrace>>()
         .par_iter()
-        .map(move |channel_trace| find_channel_events(channel_trace, sample_time_in_us, mode, save_options))
+        .map(move |channel_trace| {
+            find_channel_events(channel_trace, sample_time_in_ns, mode, save_options)
+        })
         .collect::<Vec<ChannnelEvents>>();
 
     for mut channel in channel_events {

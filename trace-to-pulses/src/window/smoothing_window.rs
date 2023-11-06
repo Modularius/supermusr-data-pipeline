@@ -6,7 +6,7 @@ use crate::window::Window;
 
 use crate::tracedata::Stats;
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub struct SmoothingWindow {
     value: Real,
     sum: Real,
@@ -68,7 +68,9 @@ impl Window for SmoothingWindow {
             None
         }
     }
-    fn apply_time_shift(&self, time : Real) -> Real { time - (self.size - 1.)/2.0 }
+    fn apply_time_shift(&self, time: Real) -> Real {
+        time - (self.size - 1.) / 2.0
+    }
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 mod metrics;
-mod processing;
 mod parameters;
+mod processing;
 
 use anyhow::Result;
 use clap::Parser;
@@ -42,7 +42,10 @@ struct Cli {
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
-    
+
+    #[clap(long)]
+    save_file_name: Option<String>,
+
     #[command(subcommand)]
     pub mode: Option<Mode>,
 }
@@ -71,7 +74,10 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    let save_output = SaveOptions{ file_name : "Saves/output".to_owned() };
+    let save_output = args.save_file_name.as_ref().map(|file_name| SaveOptions {
+        save_path: "Saves",
+        file_name,
+    });
 
     loop {
         match consumer.recv().await {
@@ -97,7 +103,11 @@ async fn main() -> Result<()> {
                                 match producer
                                     .send(
                                         FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(&thing, args.mode.as_ref(), Some(&save_output)))
+                                            .payload(&processing::process(
+                                                &thing,
+                                                args.mode.as_ref(),
+                                                save_output.as_ref(),
+                                            ))
                                             .key("test"),
                                         Duration::from_secs(0),
                                     )

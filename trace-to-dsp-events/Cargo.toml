@@ -8,7 +8,6 @@ edition.workspace = true
 common = { path = "../common"}
 streaming-types = { path = "../streaming-types" }
 trace-to-pulses = { path = "../trace-to-pulses"}
-trace-simulator = { path = "../trace-simulator"}
 trace-reader = { path = "../trace-reader"}
 itertools = "0.11.0"
 rand = "0.8.5"

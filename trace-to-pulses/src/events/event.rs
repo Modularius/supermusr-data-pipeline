@@ -4,28 +4,55 @@ use std::fmt::Debug;
 use std::fmt::Display;
 
 #[derive(Default, Debug, Clone)]
-pub struct Event<T, D> where
+pub struct Event<T, D>
+where
     T: Temporal,
     D: EventData,
 {
     pub time: T,
     pub data: D,
 }
-impl<T, D> Event<T, D> where D: EventData, T: Temporal, D: EventData
+impl<T, D> Event<T, D>
+where
+    D: EventData,
+    T: Temporal,
+    D: EventData,
 {
-    pub fn new(time: T, data: D) -> Self { Self { time, data } }
-    pub fn get_time(&self) -> T { self.time }
-    pub fn get_data(&self) -> &D { &self.data }
-    pub fn get_data_mut(&mut self) -> &mut D { &mut self.data }
-    pub fn take_data(self) -> D { self.data }
+    pub fn new(time: T, data: D) -> Self {
+        Self { time, data }
+    }
+    pub fn get_time(&self) -> T {
+        self.time
+    }
+    pub fn get_data(&self) -> &D {
+        &self.data
+    }
+    pub fn get_data_mut(&mut self) -> &mut D {
+        &mut self.data
+    }
+    pub fn take_data(self) -> D {
+        self.data
+    }
 }
 
-impl<T, D> PartialEq for Event<T, D> where T: Temporal, D: EventData {
-    fn eq(&self, other: &Self) -> bool { self.time == other.time }
+impl<T, D> PartialEq for Event<T, D>
+where
+    T: Temporal,
+    D: EventData,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.time == other.time
+    }
 }
 
-impl<T, D> Display for Event<T, D> where T: Temporal, D: EventData, {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_fmt(format_args!("{0},{1};", self.time, self.data)) }
+impl<T, D> Display for Event<T, D>
+where
+    T: Temporal,
+    D: EventData,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{0},{1};", self.time, self.data))
+    }
 }
 /*
 
@@ -43,57 +70,62 @@ impl<D> TraceData for Event<D> where
 }
  */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(Default, Debug, Clone)]
-pub struct EventWithFeedback<T,D,V> where
+pub struct EventWithFeedback<T, D, V>
+where
     T: Temporal,
     D: EventData,
-    V : TraceValue,
+    V: TraceValue,
 {
     pub event: Event<T, D>,
     pub parameter: FeedbackParameter<V>,
 }
-impl<T,D,V> EventWithFeedback<T,D,V> where
+impl<T, D, V> EventWithFeedback<T, D, V>
+where
     T: Temporal,
     D: EventData,
-    V : TraceValue,
+    V: TraceValue,
 {
     pub fn new(time: T, data: D) -> Self {
-        Self { event: Event::<T,D>::new(time, data),..Default::default() }
+        Self {
+            event: Event::<T, D>::new(time, data),
+            ..Default::default()
+        }
     }
-    pub fn get_time(&self) -> T { self.event.get_time() }
-    pub fn get_data(&self) -> &D { self.event.get_data() }
-    pub fn get_data_mut(&mut self) -> &mut D { self.event.get_data_mut() }
-    pub fn take_data(self) -> D { self.event.take_data() }
+    pub fn get_time(&self) -> T {
+        self.event.get_time()
+    }
+    pub fn get_data(&self) -> &D {
+        self.event.get_data()
+    }
+    pub fn get_data_mut(&mut self) -> &mut D {
+        self.event.get_data_mut()
+    }
+    pub fn take_data(self) -> D {
+        self.event.take_data()
+    }
 }
 
-impl<T,D,V> PartialEq for EventWithFeedback<T,D,V> where
+impl<T, D, V> PartialEq for EventWithFeedback<T, D, V>
+where
     T: Temporal,
     D: EventData,
-    V : TraceValue,
+    V: TraceValue,
 {
-    fn eq(&self, other: &Self) -> bool { self.event == other.event }
+    fn eq(&self, other: &Self) -> bool {
+        self.event == other.event
+    }
 }
 
-impl<T,D,V> Display for EventWithFeedback<T,D,V> where
+impl<T, D, V> Display for EventWithFeedback<T, D, V>
+where
     T: Temporal,
     D: EventData,
-    V : TraceValue,
+    V: TraceValue,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { std::fmt::Display::fmt(&self.event, f) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.event, f)
+    }
 }
 
 /*

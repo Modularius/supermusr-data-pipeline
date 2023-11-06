@@ -12,28 +12,34 @@
 ///             ChangeDetector(0.5),1   // the value of y in the function given to ```rust start_feedback```.
 ///     ))
 ///```
-use std::{cell::Cell, rc::Rc, fmt::{Display, Formatter, self}};
+use std::{
+    cell::Cell,
+    fmt::{self, Display, Formatter},
+    rc::Rc,
+};
 
 use crate::tracedata::{TraceData, TraceValue};
 
-use super::iter::{
-    TraceIter,
-    TraceIterType
-};
+use super::iter::{TraceIter, TraceIterType};
 
 /// This is a wrapper for the pointer to the feedback parameter.
 /// Instances of this can be cloned and passed around and modified.
 #[derive(Default, Debug)]
-pub struct FeedbackParameter<V>(pub Rc<Cell<V::FeedbackType>>) where V : TraceValue;
+pub struct FeedbackParameter<V>(pub Rc<Cell<V::FeedbackType>>)
+where
+    V: TraceValue;
 
 /// #Methods
 /// - new(initial : V): Creates a new Cell and Rc in which to store the feedback parameter.
 /// - set(value : V): Dereferences the Rc and changes the value of the cell.
-impl<V> FeedbackParameter<V> where V : TraceValue {
+impl<V> FeedbackParameter<V>
+where
+    V: TraceValue,
+{
     pub fn new() -> Self {
         Self(Rc::new(Cell::new(V::FeedbackType::default())))
     }
-    pub fn set(&self, value : V::FeedbackType) {
+    pub fn set(&self, value: V::FeedbackType) {
         (*self.0).set(value);
     }
 }
@@ -41,28 +47,41 @@ impl<V> FeedbackParameter<V> where V : TraceValue {
 /// Clone creates a new instance and clones the Rc contained within it.
 /// This creates a new pointer to the Cell containing the parameter.
 /// Note this does not clone the parameter itself.
-impl<V> Clone for FeedbackParameter<V> where V : TraceValue {
+impl<V> Clone for FeedbackParameter<V>
+where
+    V: TraceValue,
+{
     fn clone(&self) -> Self {
         Self(Rc::clone(&self.0))
     }
 }
 
-impl<V> Display for FeedbackParameter<V> where V : TraceValue {
+impl<V> Display for FeedbackParameter<V>
+where
+    V: TraceValue,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{self:?}"))
     }
 }
 
-
-
-pub struct FeedbackFunction<V> where V : TraceValue {
+pub struct FeedbackFunction<V>
+where
+    V: TraceValue,
+{
     _parameter: FeedbackParameter<V>,
-    _modifier: fn(&V::ContentType,&V::FeedbackType)->V,
+    _modifier: fn(&V::ContentType, &V::FeedbackType) -> V,
 }
 
-impl<V> FeedbackFunction<V> where V: TraceValue {
-    fn _new(modifier : fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
-        Self { _parameter: FeedbackParameter::new(), _modifier: modifier }
+impl<V> FeedbackFunction<V>
+where
+    V: TraceValue,
+{
+    fn _new(modifier: fn(&V::ContentType, &V::FeedbackType) -> V) -> Self {
+        Self {
+            _parameter: FeedbackParameter::new(),
+            _modifier: modifier,
+        }
     }
     /// Clone creates a new instance and clones the Rc contained within it.
     /// This creates a new pointer to the Cell containing the parameter.
@@ -72,40 +91,54 @@ impl<V> FeedbackFunction<V> where V: TraceValue {
     }
 }
 
-
-
-
 #[derive(Clone)]
-pub struct Feedback<V> where V: TraceValue, {
+pub struct Feedback<V>
+where
+    V: TraceValue,
+{
     parameter: FeedbackParameter<V>,
-    modifier: fn(&V::ContentType,&V::FeedbackType)->V,
+    modifier: fn(&V::ContentType, &V::FeedbackType) -> V,
 }
 
-impl<V> Feedback<V> where V: TraceValue {
-    fn new(parameter : FeedbackParameter<V>, modifier: fn(&V::ContentType,&V::FeedbackType)->V) -> Self {
-        Self { parameter, modifier }
+impl<V> Feedback<V>
+where
+    V: TraceValue,
+{
+    fn new(
+        parameter: FeedbackParameter<V>,
+        modifier: fn(&V::ContentType, &V::FeedbackType) -> V,
+    ) -> Self {
+        Self {
+            parameter,
+            modifier,
+        }
     }
 }
 
 impl<V> TraceIterType for Feedback<V> where V: TraceValue {}
 
-impl<I> Iterator for TraceIter<Feedback<<I::Item as TraceData>::ValueType>,I> where
+impl<I> Iterator for TraceIter<Feedback<<I::Item as TraceData>::ValueType>, I>
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
 {
-    type Item = (<I::Item as TraceData>::TimeType, <I::Item as TraceData>::ValueType);
+    type Item = (
+        <I::Item as TraceData>::TimeType,
+        <I::Item as TraceData>::ValueType,
+    );
 
     fn next(&mut self) -> Option<Self::Item> {
         let val = self.source.next()?;
         let time = val.get_time();
-        let value = (self.child.modifier)(&val.get_value().get_value(),&self.child.parameter.0.get());
+        let value =
+            (self.child.modifier)(val.get_value().get_value(), &self.child.parameter.0.get());
 
         // LOG
         //log::info!("Applied correction of {0:?}", self.parameter.0.get());
         //let r = Rc::strong_count(&self.parameter.0);
         // LOG
         //log::info!("Number of references: {0:?}",r);
-        Some((time, value))//
+        Some((time, value)) //
     }
 }
 /*
@@ -148,13 +181,13 @@ impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D :
 }
  */
 
+type FeedbackValueType<I> = <<I as Iterator>::Item as TraceData>::ValueType;
 
- type FeedbackValueType<I> = <<I as Iterator>::Item as TraceData>::ValueType;
+type FeedbackFunctionTypeValue<I> = <FeedbackValueType<I> as TraceValue>::ContentType;
+type FeedbackFunctionTypeFeedback<I> = <FeedbackValueType<I> as TraceValue>::FeedbackType;
+type FeedbackFunctionType<I> =
+    fn(&FeedbackFunctionTypeValue<I>, &FeedbackFunctionTypeFeedback<I>) -> FeedbackValueType<I>;
 
- type FeedbackFunctionTypeValue<I> = <FeedbackValueType<I> as TraceValue>::ContentType;
- type FeedbackFunctionTypeFeedback<I> = <FeedbackValueType<I> as TraceValue>::FeedbackType;
- type FeedbackFunctionType<I> = fn(&FeedbackFunctionTypeValue<I>, &FeedbackFunctionTypeFeedback<I>)->FeedbackValueType<I>;
- 
 /// This trait is implemented for any iterator that contains TraceData.
 /// #Methods
 /// - start_feedback(modifier): from hereon, all trace values have the modifier function
@@ -163,22 +196,31 @@ impl<X,Y,D> TraceData for (X,Y,Option<D>) where X : Temporal, Y: TraceValue, D :
 /// modifier: fn(&ValueType, &ParameterType)->ValueType
 /// ```
 /// Note ValueType and ParameterType refer to the associated types of the TraceData trait referred to above.
-pub trait FeedbackFilter<I> where
+pub trait FeedbackFilter<I>
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
 {
-    fn start_feedback(self, parameter: &FeedbackParameter<FeedbackValueType<I>>, modifier: FeedbackFunctionType<I>) -> TraceIter<Feedback<FeedbackValueType<I>>,I>;
+    fn start_feedback(
+        self,
+        parameter: &FeedbackParameter<FeedbackValueType<I>>,
+        modifier: FeedbackFunctionType<I>,
+    ) -> TraceIter<Feedback<FeedbackValueType<I>>, I>;
 }
 
-impl<I> FeedbackFilter<I> for I where
+impl<I> FeedbackFilter<I> for I
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
 {
-    fn start_feedback(self, parameter: &FeedbackParameter<FeedbackValueType<I>>, modifier: FeedbackFunctionType<I>) -> TraceIter<Feedback<FeedbackValueType<I>>,I> {
+    fn start_feedback(
+        self,
+        parameter: &FeedbackParameter<FeedbackValueType<I>>,
+        modifier: FeedbackFunctionType<I>,
+    ) -> TraceIter<Feedback<FeedbackValueType<I>>, I> {
         TraceIter::new(Feedback::new(parameter.clone(), modifier), self)
     }
 }
-
 
 /// This trait can be implemented for any iterator whose items are of the form:
 /// ```rust
@@ -204,7 +246,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
-            .start_feedback(&feedback_parameter, |x,&y : &Real|x + y)
+            .start_feedback(&feedback_parameter, |x, &y: &Real| x + y)
             .map(|(_, x)| x)
             .collect();
 
@@ -225,7 +267,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
-            .start_feedback(&feedback_parameter, |x,&y : &Real|x + y)
+            .start_feedback(&feedback_parameter, |x, &y: &Real| x + y)
             .map(|(_, x)| {
                 feedback_parameter.set(2.);
                 x

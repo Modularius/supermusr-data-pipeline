@@ -1,16 +1,12 @@
 use std::collections::VecDeque;
 
-use crate::{
-    Real,
-    RealArray,
-};
+use crate::{Real, RealArray};
 use num::integer::binomial;
 
 use super::Window;
 
 #[derive(Default, Clone)]
-pub struct FiniteDifferences<const N: usize>
-{
+pub struct FiniteDifferences<const N: usize> {
     coefficients: Vec<Vec<Real>>,
     values: VecDeque<Real>,
     diffs: Vec<Real>,
@@ -37,8 +33,7 @@ impl<const N: usize> FiniteDifferences<N> {
     }
 }
 
-impl<const N: usize> Window for FiniteDifferences<N> where
-{
+impl<const N: usize> Window for FiniteDifferences<N> {
     type TimeType = Real;
     type InputType = Real;
     type OutputType = RealArray<N>;
@@ -59,23 +54,13 @@ impl<const N: usize> Window for FiniteDifferences<N> where
 
     fn stats(&self) -> Option<Self::OutputType> {
         (self.values.len() + 1 == N)
-            .then_some(RealArray::new(
-                self.diffs
-                    .as_slice()
-                    .try_into()
-                    .ok()?
-                ))
+            .then_some(RealArray::new(self.diffs.as_slice().try_into().ok()?))
     }
 
-    fn apply_time_shift(&self, time : Self::TimeType) -> Self::TimeType {
+    fn apply_time_shift(&self, time: Self::TimeType) -> Self::TimeType {
         time
     }
 }
-
-
-
-
-
 
 #[cfg(test)]
 mod tests {

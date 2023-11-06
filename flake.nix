@@ -9,6 +9,7 @@
 
     naersk.url = "github:nix-community/naersk";
   };
+
   outputs = {
     self,
     nixpkgs,
@@ -21,8 +22,7 @@
         pkgs = (import nixpkgs) {
           inherit system;
           overlays = [
-            #(import ./nix/overlays/hdf5.nix)
-            #(import ./nix/overlays/tdengine.nix)
+            (import ./nix/overlays/hdf5.nix)
           ];
         };
 
@@ -47,13 +47,26 @@
           name = "hdf5";
           paths = with pkgs; [hdf5 hdf5.dev];
         };
-        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config zstd];
-        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined];
+        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config];
+        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined python311Packages.ipykernel python311Packages.pip];
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
           buildInputs = buildInputs;
-          packages = with pkgs; [nix skopeo alejandra treefmt];
+
+          packages = with pkgs; [
+            # Newer version of nix is required to use `dirtyShortRev`
+            nix
+
+            # Code formatting tools
+            alejandra
+            treefmt
+
+            # Container image management
+            skopeo
+          ];
+
+          HDF5_DIR = "${hdf5-joined}";
         };
 
         packages =
@@ -75,12 +88,14 @@
               # Ensure detailed test output appears in nix build log
               cargoTestOptions = x: x ++ ["1>&2"];
             };
-          };
-          #// import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          #// import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          #// import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          #// import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          #// import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
+          }
+          // import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./trace-reader {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }
     );
 }

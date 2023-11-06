@@ -2,24 +2,28 @@ use crate::tracedata::TraceData;
 
 use super::Window;
 
-
 #[derive(Clone)]
-pub struct WindowIter<I, W> where
+pub struct WindowIter<I, W>
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
     W: Window,
 {
     window_function: W,
     source: I,
 }
 
-impl<I, W> WindowIter<I, W> where
+impl<I, W> WindowIter<I, W>
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
     W: Window,
 {
     pub fn new(source: I, window_function: W) -> Self {
-        WindowIter { source, window_function}
+        WindowIter {
+            source,
+            window_function,
+        }
     }
     #[cfg(test)]
     pub fn get_window(&self) -> &W {
@@ -27,12 +31,13 @@ impl<I, W> WindowIter<I, W> where
     }
 }
 
-impl<I, W> Iterator for WindowIter<I, W> where
+impl<I, W> Iterator for WindowIter<I, W>
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
     W: Window<
         TimeType = <I::Item as TraceData>::TimeType,
-        InputType = <I::Item as TraceData>::ValueType
+        InputType = <I::Item as TraceData>::ValueType,
     >,
 {
     type Item = (W::TimeType, W::OutputType);
@@ -41,37 +46,33 @@ impl<I, W> Iterator for WindowIter<I, W> where
         loop {
             let val = self.source.next()?;
             if self.window_function.push(val.get_value().clone()) {
-                return Some((self.window_function.apply_time_shift(val.get_time()), self.window_function.stats()?));
+                return Some((
+                    self.window_function.apply_time_shift(val.get_time()),
+                    self.window_function.stats()?,
+                ));
             }
         }
     }
 }
-pub trait WindowFilter<I, W> where
+pub trait WindowFilter<I, W>
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
     W: Window,
 {
     fn window(self, window: W) -> WindowIter<I, W>;
 }
 
-impl<I, W> WindowFilter<I, W> for I where
+impl<I, W> WindowFilter<I, W> for I
+where
     I: Iterator,
-    I::Item : TraceData,
+    I::Item: TraceData,
     W: Window,
 {
     fn window(self, window: W) -> WindowIter<I, W> {
         WindowIter::<I, W>::new(self, window)
     }
 }
-
-
-
-
-
-
-
-
-
 
 /*
 

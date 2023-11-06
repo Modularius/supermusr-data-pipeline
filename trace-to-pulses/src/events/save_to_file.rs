@@ -1,56 +1,63 @@
 use std::{
     env,
-    fs::File,
+    fs::{create_dir_all, File},
     io::{Error, Write},
 };
 
 //use tdengine::utils::log_then_panic_t;
 
-use crate::{events::Event, log_then_panic_t, tracedata::{EventData, Temporal}, pulse::Pulse};
+use crate::{
+    events::Event,
+    pulse::Pulse,
+    tracedata::{EventData, Temporal},
+};
 
-pub trait SaveEventsToFile<T,I,D> where
+pub trait SaveEventsToFile<T, I, D>
+where
     T: Temporal,
-    I: Iterator<Item = Event<T,D>>,
-    D : EventData
+    I: Iterator<Item = Event<T, D>>,
+    D: EventData,
 {
-    fn save_to_file(self, name: &str) -> Result<(), Error>;
+    fn save_to_file(self, folder: &str, name: &str) -> Result<(), Error>;
 }
 
-impl<T,I,D> SaveEventsToFile<T,I,D> for I where
+fn create_file(folder: &str, name: &str) -> Result<File, Error> {
+    let cd = env::current_dir()?;
+    let path = cd.join(folder);
+    create_dir_all(&path)?;
+    File::create(path.join(name))
+}
+
+impl<T, I, D> SaveEventsToFile<T, I, D> for I
+where
     T: Temporal,
-    I: Iterator<Item = Event<T,D>>,
-    D : EventData
+    I: Iterator<Item = Event<T, D>>,
+    D: EventData,
 {
-    fn save_to_file(self, name: &str) -> Result<(), Error> {
-        let cd = env::current_dir()
-            .unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
-        let mut file = File::create(cd.join(name))
-            .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create {name} file : {e}")));
+    fn save_to_file(self, folder: &str, name: &str) -> Result<(), Error> {
+        let mut file = create_file(folder, name)?;
         for event in self {
-            writeln!(&mut file, "{0},{1}",event.get_time(),event.get_data())
-                .unwrap_or_else(|e| log_then_panic_t(format!("Cannot write to {name} file : {e}")))
+            writeln!(&mut file, "{0},{1}", event.get_time(), event.get_data())?
         }
         Ok(())
     }
 }
 
-pub trait SavePulsesToFile<I> where
+pub trait SavePulsesToFile<I>
+where
     I: Iterator<Item = Pulse>,
 {
-    fn save_to_file(self, name: &str) -> Result<(), Error>;
+    fn save_to_file(self, folder: &str, name: &str) -> Result<(), Error>;
 }
 
-impl<I> SavePulsesToFile<I> for I where
+impl<I> SavePulsesToFile<I> for I
+where
     I: Iterator<Item = Pulse>,
 {
-    fn save_to_file(self, name: &str) -> Result<(), Error> {
-        let cd = env::current_dir()
-            .unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
-        let mut file = File::create(cd.join(name))
-            .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create {name} file : {e}")));
+    fn save_to_file(self, folder: &str, name: &str) -> Result<(), Error> {
+        let mut file = create_file(folder, name)?;
         for pulse in self {
-            writeln!(&mut file, "{pulse}")
-                .unwrap_or_else(|e| log_then_panic_t(format!("Cannot write to {name} file : {e}")))
+            writeln!(&mut file, "{pulse}")?;
         }
         Ok(())
     }

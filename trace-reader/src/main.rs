@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
 use rdkafka::producer::FutureProducer;
-use trace_reader::{load_trace_file, dispatch_trace_file};
 use std::net::SocketAddr;
+use trace_reader::{dispatch_trace_file, load_trace_file};
 
 // cargo run -- --broker localhost:19092
 

@@ -2,14 +2,17 @@ use crate::Real;
 
 use crate::window::Window;
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub struct ExponentialSmoothingWindow {
     smoothing_factor: Real,
     value: Real,
 }
 impl ExponentialSmoothingWindow {
     pub fn new(smoothing_factor: Real) -> Self {
-        ExponentialSmoothingWindow { smoothing_factor,..Default::default() }
+        ExponentialSmoothingWindow {
+            smoothing_factor,
+            ..Default::default()
+        }
     }
 }
 impl Window for ExponentialSmoothingWindow {
@@ -18,13 +21,15 @@ impl Window for ExponentialSmoothingWindow {
     type OutputType = Real;
 
     fn push(&mut self, value: Real) -> bool {
-        self.value = value*self.smoothing_factor + self.value*(1. - self.smoothing_factor);
+        self.value = value * self.smoothing_factor + self.value * (1. - self.smoothing_factor);
         true
     }
     fn stats(&self) -> Option<Real> {
         Some(self.value)
     }
-    fn apply_time_shift(&self, time : Real) -> Real { time } //time - (self.size - 1.)/2.0 }
+    fn apply_time_shift(&self, time: Real) -> Real {
+        time
+    } //time - (self.size - 1.)/2.0 }
 }
 
 #[cfg(test)]

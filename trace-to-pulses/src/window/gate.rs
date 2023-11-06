@@ -2,7 +2,7 @@ use crate::Real;
 
 use super::Window;
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub struct Gate {
     threshold: Real,
     value: Option<Real>,
@@ -39,7 +39,9 @@ impl Window for Gate {
     fn stats(&self) -> Option<Real> {
         self.value
     }
-    fn apply_time_shift(&self, time : Real) -> Real { time }
+    fn apply_time_shift(&self, time: Real) -> Real {
+        time
+    }
 }
 
 #[cfg(test)]

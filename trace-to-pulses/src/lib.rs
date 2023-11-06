@@ -1,6 +1,6 @@
 //! This crate provides tools for converting raw trace data into
 //! a stream of events which represent pulses in the trace stream.
-//! 
+//!
 //! A raw trace takes the form of a Vec (or some other similar container)
 //! of scalar values. Typical usage of this crate may look like:
 //! ```rust
@@ -14,28 +14,22 @@
 //!                                                     //average window
 //! ```
 
-
 pub mod detectors;
 pub mod events;
-pub mod tracedata;
 pub mod ode;
 pub mod pulse;
+pub mod tracedata;
 //pub mod partition;
 
-use std::{fmt::{Debug, Display}, ops::{Index, IndexMut}};
+use std::{
+    fmt::{Debug, Display},
+    ops::{Index, IndexMut},
+};
 
 pub use detectors::{
-    peak_detector,
-    pulse_detector,
-    change_detector,
-    basic_muon_detector,
-    Detector
+    basic_muon_detector, change_detector, peak_detector, pulse_detector, Detector,
 };
-pub use events::{
-    EventFilter,
-    EventIter,
-    EventsWithFeedbackFilter,
-};
+pub use events::{EventFilter, EventIter, EventsWithFeedbackFilter};
 
 pub mod trace_iterators;
 
@@ -45,52 +39,80 @@ pub use window::smoothing_window::SmoothingWindow;
 pub type Real = f64;
 pub type Integer = i16;
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TraceArray<const N: usize, T>(pub [T; N]) where T : Default + Clone + Debug + Display;
-impl<const N: usize, T> TraceArray<N,T> where T : Default + Clone + Debug + Display {
-    pub fn new(value : [T; N]) -> Self { Self(value) }
-}
-impl<const N: usize,T> Display for TraceArray<N,T> where T : Default + Clone + Debug + Display {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let TraceArray(array) = self;
-        for i in 0..(N - 1) {
-            write!(f,"{0},", array[i])?;
-        }
-        write!(f,"{0}", array[N - 1])
+pub struct TraceArray<const N: usize, T>(pub [T; N])
+where
+    T: Default + Clone + Debug + Display;
+impl<const N: usize, T> TraceArray<N, T>
+where
+    T: Default + Clone + Debug + Display,
+{
+    pub fn new(value: [T; N]) -> Self {
+        Self(value)
     }
 }
-impl<const N: usize,T> Default for TraceArray<N,T> where T : Default + Copy + Debug + Display {
+impl<const N: usize, T> Display for TraceArray<N, T>
+where
+    T: Default + Clone + Debug + Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let TraceArray(array) = self;
+        for val in array.iter().take(N - 1) {
+            write!(f, "{val},")?;
+        }
+        write!(f, "{0}", array[N - 1])
+    }
+}
+impl<const N: usize, T> Default for TraceArray<N, T>
+where
+    T: Default + Copy + Debug + Display,
+{
     fn default() -> Self {
         Self([T::default(); N])
     }
 }
-impl<const N: usize,T> Index<usize> for TraceArray<N,T> where T : Default + Copy + Debug + Display {
+impl<const N: usize, T> Index<usize> for TraceArray<N, T>
+where
+    T: Default + Copy + Debug + Display,
+{
     type Output = T;
 
     fn index(&self, idx: usize) -> &T {
         &self.0[idx]
     }
 }
-impl<const N: usize,T> IndexMut<usize> for TraceArray<N,T> where T : Default + Copy + Debug + Display {
+impl<const N: usize, T> IndexMut<usize> for TraceArray<N, T>
+where
+    T: Default + Copy + Debug + Display,
+{
     fn index_mut(&mut self, idx: usize) -> &mut T {
         &mut self.0[idx]
     }
 }
-pub type RealArray<const N: usize> = TraceArray<N,Real>;
-
+pub type RealArray<const N: usize> = TraceArray<N, Real>;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TracePair<T1,T2>(pub T1, pub T2) where T1 : Default + Clone + Debug + Display, T2 : Default + Clone + Debug + Display;
-impl<T1,T2> Display for TracePair<T1,T2> where T1 : Default + Clone + Debug + Display, T2 : Default + Clone + Debug + Display {
+pub struct TracePair<T1, T2>(pub T1, pub T2)
+where
+    T1: Default + Clone + Debug + Display,
+    T2: Default + Clone + Debug + Display;
+impl<T1, T2> Display for TracePair<T1, T2>
+where
+    T1: Default + Clone + Debug + Display,
+    T2: Default + Clone + Debug + Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"({0},{1})", self.0,self.1)
+        write!(f, "({0},{1})", self.0, self.1)
     }
 }
-impl<T1,T2> Default for TracePair<T1,T2> where T1 : Default + Clone + Debug + Display, T2 : Default + Clone + Debug + Display {
+impl<T1, T2> Default for TracePair<T1, T2>
+where
+    T1: Default + Clone + Debug + Display,
+    T2: Default + Clone + Debug + Display,
+{
     fn default() -> Self {
-        Self(T1::default(),T2::default())
+        Self(T1::default(), T2::default())
     }
 }
-
 
 pub mod processing {
     use super::*;
@@ -129,10 +151,10 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real));
-            //.finite_differences()
-            //.window(CompositeWindow::<1,Real>::trivial())
-            //.events(EventsDetector::new())
-            //.collect();
+        //.finite_differences()
+        //.window(CompositeWindow::<1,Real>::trivial())
+        //.events(EventsDetector::new())
+        //.collect();
         for line in output {
             println!("{line:?}")
         }

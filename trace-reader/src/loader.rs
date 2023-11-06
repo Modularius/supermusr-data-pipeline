@@ -89,13 +89,13 @@ impl TraceFileHeader {
         )
     }
     fn get_event(&self, file: &mut File) -> Result<TraceFileEvent, Error> {
-        Ok(TraceFileEvent::load_raw(
+        TraceFileEvent::load_raw(
             file,
             self.number_of_channels as usize,
             self.number_of_samples as usize,
             &self.volts_scale_factor,
             &self.channel_offset_volts,
-        )?)
+        )
     }
 }
 
@@ -146,7 +146,13 @@ impl TraceFileEvent {
         })
     }
 
-    pub fn load_raw(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
+    pub fn load_raw(
+        file: &mut File,
+        num_channels: usize,
+        num_samples: usize,
+        scale: &[f64],
+        offset: &[f64],
+    ) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         let event = Self::load(file, num_channels, num_samples)?;
         Ok(TraceFileEvent {
@@ -157,13 +163,19 @@ impl TraceFileEvent {
             trigger_time: event.trigger_time,
             raw_trace: (0..num_channels)
                 .map(|c| load_raw_trace(file, num_samples, &mut total_bytes))
-                .collect::<Result<_,_>>()?,
-            total_bytes:event.total_bytes + total_bytes,
+                .collect::<Result<_, _>>()?,
+            total_bytes: event.total_bytes + total_bytes,
             ..Default::default()
         })
     }
 
-    pub fn load_real(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
+    pub fn load_real(
+        file: &mut File,
+        num_channels: usize,
+        num_samples: usize,
+        scale: &[f64],
+        offset: &[f64],
+    ) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         let event = Self::load(file, num_channels, num_samples)?;
         Ok(TraceFileEvent {
@@ -174,8 +186,8 @@ impl TraceFileEvent {
             trigger_time: event.trigger_time,
             trace: (0..num_channels)
                 .map(|c| load_trace(file, num_samples, &mut total_bytes, scale[c], offset[c]))
-                .collect::<Result<_,_>>()?,
-            total_bytes:event.total_bytes + total_bytes,
+                .collect::<Result<_, _>>()?,
+            total_bytes: event.total_bytes + total_bytes,
             ..Default::default()
         })
     }
@@ -202,14 +214,19 @@ impl TraceFile {
             ))
         }
     }
-    pub fn get_num_event(&self) -> usize { self.num_events }
-    pub fn get_num_channels(&self) -> usize { self.header.number_of_channels as usize }
-    pub fn get_num_samples(&self) -> usize { self.header.number_of_samples as usize }
+    pub fn get_num_event(&self) -> usize {
+        self.num_events
+    }
+    pub fn get_num_channels(&self) -> usize {
+        self.header.number_of_channels as usize
+    }
+    pub fn get_num_samples(&self) -> usize {
+        self.header.number_of_samples as usize
+    }
 }
 
 pub fn load_trace_file(name: &str) -> Result<TraceFile, Error> {
-    let cd = env::current_dir()
-        .unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
+    let cd = env::current_dir().unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
     let mut file = File::open(cd.join(name))?;
     let header: TraceFileHeader = TraceFileHeader::load(&mut file)?;
     let file_size = file.metadata().unwrap().len() as usize;
@@ -307,8 +324,8 @@ pub fn load_trace(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
-    scale : f64,
-    offset : f64,
+    scale: f64,
+    offset: f64,
 ) -> Result<Vec<f64>, Error> {
     let mut trace_bytes = Vec::<u8>::new();
     let bytes = (Intensity::BITS / u8::BITS) as usize * size;
@@ -318,7 +335,7 @@ pub fn load_trace(
     file.read_exact(&mut trace_bytes).unwrap();
     Ok((0..size)
         .map(|i| Intensity::from_be_bytes([trace_bytes[2 * i], trace_bytes[2 * i + 1]]))
-        .map(|i| i as f64*scale - offset)
+        .map(|i| i as f64 * scale - offset)
         .collect())
 }
 pub fn load_raw_trace(
