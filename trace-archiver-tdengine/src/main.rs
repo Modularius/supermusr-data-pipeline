@@ -4,7 +4,6 @@
 #![warn(missing_docs)]
 
 use clap::Parser;
-use std::time::Instant;
 
 use log::{debug, info, warn};
 
@@ -23,6 +22,12 @@ use rdkafka::{
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
+
+#[cfg(feature = "benchmark")]
+mod benchmark;
+
+#[cfg(feature = "benchmark")]
+use benchmark::BenchmarkData;
 
 //mod full_test;
 
@@ -74,62 +79,6 @@ pub(crate) struct Cli {
         default_value = "0"
     )]
     benchmark_number: usize,
-}
-
-#[cfg(feature = "benchmark")]
-type BenchmarkRecord = (u128, u128, u128);
-
-#[cfg(feature = "benchmark")]
-struct BenchmarkData {
-    times: Vec<BenchmarkRecord>,
-    messages_to_benchmark: usize,
-    current_time: Instant,
-    processing_time: Instant,
-    posting_time: Instant,
-}
-
-#[cfg(feature = "benchmark")]
-impl BenchmarkData {
-    fn new(messages_to_benchmark: usize) -> Self {
-        BenchmarkData {
-            times: Vec::with_capacity(messages_to_benchmark),
-            messages_to_benchmark,
-            current_time: Instant::now(),
-            processing_time: Instant::now(),
-            posting_time: Instant::now(),
-        }
-    }
-
-    fn begin_processing_timer(&mut self) {
-        if self.messages_to_benchmark > 0 {
-            self.processing_time = Instant::now();
-        }
-    }
-
-    fn begin_posting_timer(&mut self) {
-        if self.messages_to_benchmark > 0 {
-            self.posting_time = Instant::now();
-        }
-    }
-    fn end_timers(&mut self) {
-        if self.messages_to_benchmark > 0 {
-            let duration1 = self.processing_time.elapsed().as_micros();
-            let duration2 = self.posting_time.elapsed().as_micros();
-            let duration3 = (Instant::now() - self.current_time).as_micros();
-            self.current_time = Instant::now();
-            self.messages_to_benchmark -= 1;
-            self.times.push((duration1, duration2, duration3));
-        }
-    }
-
-    fn print_times(&mut self) {
-        if self.messages_to_benchmark == 0 {
-            for (process, post, interval) in self.times.iter() {
-                println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
-            }
-            self.times.clear();
-        }
-    }
 }
 
 #[tokio::main]
