@@ -163,8 +163,7 @@ impl TimeSeriesEngine for TDEngine {
         let channels = message.channels().ok_or(TDEngineError::TraceMessage(
             TraceMessageErrorCode::ChannelsMissing,
         ))?;
-        let frame_column_views =
-            create_frame_column_views(&self.frame_data, &self.error, &channels)?;
+        let frame_column_views = create_frame_column_views(&self.frame_data, &self.error, &channels)?;
         let column_views = create_column_views(&self.frame_data, &channels)?;
         let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
 

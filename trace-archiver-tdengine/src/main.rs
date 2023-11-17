@@ -3,8 +3,8 @@
 //#![allow(dead_code, unused_variables, unused_imports)]
 #![warn(missing_docs)]
 
-//use anyhow::{anyhow,Result};
 use clap::Parser;
+use std::time::{Duration, Instant};
 
 use log::{debug, info, warn};
 
@@ -67,8 +67,8 @@ pub(crate) struct Cli {
     td_num_channels: usize,
 
     #[cfg(feature = "benchmark")]
-    #[clap(long, help = "If set, will record benchmarking data")]
-    benchmark: bool,
+    #[clap(short = 'n', long, help = "If set, will record benchmarking data", default_value = "0")]
+    benchmark_number: usize,
 }
 
 #[tokio::main]
@@ -112,6 +112,17 @@ async fn main() -> Result<()> {
         .create()?;
     consumer.subscribe(&[&cli.kafka_topic])?;
 
+    #[cfg(feature = "benchmark")]
+    let mut times = Vec::<(u128,u128,u128)>::with_capacity(cli.benchmark_number);
+    #[cfg(feature = "benchmark")]
+    let mut messages_benchmarked = usize::default();
+    #[cfg(feature = "benchmark")]
+    let mut current_time = Instant::now();
+    #[cfg(feature = "benchmark")]
+    let mut processing_time = Instant::now();
+    #[cfg(feature = "benchmark")]
+    let mut posting_time = Instant::now();
+
     debug!("Begin Listening For Messages");
     loop {
         match consumer.recv().await {
@@ -126,11 +137,29 @@ async fn main() -> Result<()> {
                                         message.digitizer_id(),
                                         message.metadata()
                                     );
+                                    
+                                    #[cfg(feature = "benchmark")]
+                                    if messages_benchmarked < cli.benchmark_number {
+                                        processing_time = Instant::now();
+                                    }
                                     if let Err(e) = tdengine.process_message(&message).await {
                                         warn!("Error processing message : {e}");
                                     }
+                                    #[cfg(feature = "benchmark")]
+                                    if messages_benchmarked < cli.benchmark_number {
+                                        posting_time = Instant::now();
+                                    }
                                     if let Err(e) = tdengine.post_message().await {
                                         warn!("Error posting message to tdengine : {e}");
+                                    }
+                                    #[cfg(feature = "benchmark")]
+                                    if messages_benchmarked < cli.benchmark_number {
+                                        let duration1 = processing_time.elapsed().as_micros();
+                                        let duration2 = posting_time.elapsed().as_micros();
+                                        let duration3 = (Instant::now() - current_time).as_micros();
+                                        current_time = Instant::now();
+                                        messages_benchmarked += 1;
+                                        times.push((duration1,duration2,duration3));
                                     }
                                 }
                                 Err(e) => warn!("Failed to parse message: {0}", e),
@@ -146,6 +175,13 @@ async fn main() -> Result<()> {
                     .unwrap();
             }
             Err(e) => warn!("Error recieving message from server: {e}"),
+        }
+        #[cfg(feature = "benchmark")]
+        if messages_benchmarked == cli.benchmark_number {
+            for (process, post, interval) in times.iter() {
+                println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
+            }
+            times.clear();
         }
     }
 }
