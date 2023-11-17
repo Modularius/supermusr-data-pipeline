@@ -4,7 +4,7 @@
 #![warn(missing_docs)]
 
 use clap::Parser;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use log::{debug, info, warn};
 
@@ -67,8 +67,69 @@ pub(crate) struct Cli {
     td_num_channels: usize,
 
     #[cfg(feature = "benchmark")]
-    #[clap(short = 'n', long, help = "If set, will record benchmarking data", default_value = "0")]
+    #[clap(
+        short = 'n',
+        long,
+        help = "If set, will record benchmarking data",
+        default_value = "0"
+    )]
     benchmark_number: usize,
+}
+
+#[cfg(feature = "benchmark")]
+type BenchmarkRecord = (u128, u128, u128);
+
+#[cfg(feature = "benchmark")]
+struct BenchmarkData {
+    times: Vec<BenchmarkRecord>,
+    messages_to_benchmark: usize,
+    current_time: Instant,
+    processing_time: Instant,
+    posting_time: Instant,
+}
+
+#[cfg(feature = "benchmark")]
+impl BenchmarkData {
+    fn new(messages_to_benchmark: usize) -> Self {
+        BenchmarkData {
+            times: Vec::with_capacity(messages_to_benchmark),
+            messages_to_benchmark,
+            current_time: Instant::now(),
+            processing_time: Instant::now(),
+            posting_time: Instant::now(),
+        }
+    }
+
+    fn begin_processing_timer(&mut self) {
+        if self.messages_to_benchmark > 0 {
+            self.processing_time = Instant::now();
+        }
+    }
+
+    fn begin_posting_timer(&mut self) {
+        if self.messages_to_benchmark > 0 {
+            self.posting_time = Instant::now();
+        }
+    }
+    fn end_timers(&mut self) {
+        if self.messages_to_benchmark > 0 {
+            let duration1 = self.processing_time.elapsed().as_micros();
+            let duration2 = self.posting_time.elapsed().as_micros();
+            let duration3 = (Instant::now() - self.current_time).as_micros();
+            self.current_time = Instant::now();
+            self.messages_to_benchmark -= 1;
+            self.times.push((duration1, duration2, duration3));
+        }
+    }
+
+    fn print_times(&mut self) {
+        if self.messages_to_benchmark == 0 {
+            for (process, post, interval) in self.times.iter() {
+                println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
+            }
+            self.times.clear();
+        }
+    }
 }
 
 #[tokio::main]
@@ -113,16 +174,7 @@ async fn main() -> Result<()> {
     consumer.subscribe(&[&cli.kafka_topic])?;
 
     #[cfg(feature = "benchmark")]
-    let mut times = Vec::<(u128,u128,u128)>::with_capacity(cli.benchmark_number);
-    #[cfg(feature = "benchmark")]
-    let mut messages_benchmarked = usize::default();
-    #[cfg(feature = "benchmark")]
-    let mut current_time = Instant::now();
-    #[cfg(feature = "benchmark")]
-    let mut processing_time = Instant::now();
-    #[cfg(feature = "benchmark")]
-    let mut posting_time = Instant::now();
-
+    let mut benchmark_data = BenchmarkData::new(cli.benchmark_number);
     debug!("Begin Listening For Messages");
     loop {
         match consumer.recv().await {
@@ -137,30 +189,22 @@ async fn main() -> Result<()> {
                                         message.digitizer_id(),
                                         message.metadata()
                                     );
-                                    
+
                                     #[cfg(feature = "benchmark")]
-                                    if messages_benchmarked < cli.benchmark_number {
-                                        processing_time = Instant::now();
-                                    }
+                                    benchmark_data.begin_processing_timer();
+
                                     if let Err(e) = tdengine.process_message(&message).await {
                                         warn!("Error processing message : {e}");
                                     }
+
                                     #[cfg(feature = "benchmark")]
-                                    if messages_benchmarked < cli.benchmark_number {
-                                        posting_time = Instant::now();
-                                    }
+                                    benchmark_data.begin_posting_timer();
+
                                     if let Err(e) = tdengine.post_message().await {
                                         warn!("Error posting message to tdengine : {e}");
                                     }
                                     #[cfg(feature = "benchmark")]
-                                    if messages_benchmarked < cli.benchmark_number {
-                                        let duration1 = processing_time.elapsed().as_micros();
-                                        let duration2 = posting_time.elapsed().as_micros();
-                                        let duration3 = (Instant::now() - current_time).as_micros();
-                                        current_time = Instant::now();
-                                        messages_benchmarked += 1;
-                                        times.push((duration1,duration2,duration3));
-                                    }
+                                    benchmark_data.end_timers();
                                 }
                                 Err(e) => warn!("Failed to parse message: {0}", e),
                             }
@@ -176,12 +220,8 @@ async fn main() -> Result<()> {
             }
             Err(e) => warn!("Error recieving message from server: {e}"),
         }
+
         #[cfg(feature = "benchmark")]
-        if messages_benchmarked == cli.benchmark_number {
-            for (process, post, interval) in times.iter() {
-                println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
-            }
-            times.clear();
-        }
+        benchmark_data.print_times();
     }
 }
