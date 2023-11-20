@@ -70,6 +70,8 @@ pub(super) fn create_column_views(num_channels: usize,
         }
         voltage
     }).collect();
+    
+    
     let channel_voltage_view = channel_voltage.into_iter().map(|c|ColumnView::from_unsigned_small_ints(c));
 
     Ok(once(timestamp_view)
@@ -85,6 +87,7 @@ pub(super) fn create_column_views(num_channels: usize,
 /// #Returns
 /// A vector of taos_query values
 pub(super) fn create_frame_column_views(
+    num_channels : usize,
     frame_data: &[FrameData],
     error: &TDEngineErrorReporter,
 ) -> Result<Vec<ColumnView>> {
@@ -93,19 +96,11 @@ pub(super) fn create_frame_column_views(
     let mut sample_rate = Vec::<u32>::new();
     let mut frame_number = Vec::<u32>::new();
     let mut error = Vec::<u32>::new();
-    let mut channel_id = Vec::<Vec<Channel>>::new();
+    let mut channel_id = vec![Vec::<Channel>::new(); num_channels];
     for fd in frame_data {
-        let channel_padding = repeat(0)
-            .take(fd.num_channels)
-            .skip(fd.channel_index.len());
-
-        channel_id.push(fd.channel_index
-            .iter()
-            .map(|c|*c)
-            .take(fd.num_channels) // Cap the channel list at the given channel count
-            .chain(channel_padding)
-            .collect()
-        ); // Append any additional channels if needed
+        for c in 0..num_channels {
+            channel_id[c].push(fd.channel_index[c]);
+        }
 
         timestamp.push(fd.calc_measurement_time(0)
             .timestamp_nanos_opt()
@@ -121,6 +116,7 @@ pub(super) fn create_frame_column_views(
         ColumnView::from_unsigned_ints(num_samples),
         ColumnView::from_unsigned_ints(sample_rate),
         ColumnView::from_unsigned_ints(frame_number), 
+        ColumnView::from_unsigned_ints(error), 
     ]
     .into_iter()
     .chain(channel_id

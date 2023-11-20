@@ -1,6 +1,7 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 
+use itertools::Itertools;
 use log::debug;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
 
@@ -22,6 +23,7 @@ pub(crate) struct TDEngine {
     num_channels: usize,
     frame_data: Vec<FrameData>,
     batch_size: usize,
+    num_batches: usize,
 }
 
 impl TDEngine {
@@ -62,6 +64,7 @@ impl TDEngine {
             frame_data: Vec::<FrameData>::new(),
             num_channels,
             batch_size,
+            num_batches: usize::default(),
         })
     }
 
@@ -159,9 +162,11 @@ impl TimeSeriesEngine for TDEngine {
         self.error
             .test_channels(&frame_data, &message.channels().unwrap());
 
-        frame_data.extract_channel_data(message)?;
+        frame_data.extract_channel_data(self.num_channels, message)?;
 
+        self.frame_data.clear();
         self.frame_data.push(frame_data);
+        self.num_batches += 1;
         Ok(())
     }
 
@@ -169,10 +174,6 @@ impl TimeSeriesEngine for TDEngine {
     /// #Returns
     /// The number of rows affected by the post or an error
     async fn post_message(&mut self) -> Result<usize> {
-        if self.frame_data.len() < self.batch_size {
-            return Ok(0)
-        }
-
         let mut table_name = self.frame_data[0].get_table_name();
 
         let mut frame_table_name = self.frame_data[0].get_frame_table_name();
@@ -180,9 +181,11 @@ impl TimeSeriesEngine for TDEngine {
         frame_table_name.insert_str(0, &self.database);
         table_name.insert(0, '.');
         table_name.insert_str(0, &self.database);
-        
+
+
+
         // collate views
-        let frame_column_views = create_frame_column_views(self.frame_data.as_slice(), &self.error)?;
+        let frame_column_views = create_frame_column_views(self.num_channels, self.frame_data.as_slice(), &self.error)?;
         let column_views = create_column_views(self.num_channels, self.frame_data.as_slice())?;
         let tags = [Value::UTinyInt(self.frame_data[0].digitizer_id)];
 
@@ -191,48 +194,65 @@ impl TimeSeriesEngine for TDEngine {
         self.stmt
             .set_tbname(&table_name)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))
+            .unwrap();
         self.stmt
             .set_tags(&tags)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))
+            .unwrap();
         self.stmt
             .bind(&column_views)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
+            .unwrap();
         self.stmt
             .add_batch()
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))
+            .unwrap();
 
         self.frame_stmt
             .set_tbname(&frame_table_name)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))
+            .unwrap();
         self.frame_stmt
             .set_tags(&tags)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))
+            .unwrap();
+        
         self.frame_stmt
             .bind(&frame_column_views)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
+            .unwrap();
         self.frame_stmt
             .add_batch()
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))
+            .unwrap();
+
+        //println!("{0}",self.frame_data.len());
+        if self.num_batches < self.batch_size {
+            return Ok(0)
+        }
+        self.num_batches = usize::default();
 
 
         let result = self
             .stmt
             .execute()
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Execute, e))?
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Execute, e))
+            .unwrap()
             + self
                 .frame_stmt
                 .execute()
                 .await
                 .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Execute, e))?;
+
         Ok(result)
     }
 }

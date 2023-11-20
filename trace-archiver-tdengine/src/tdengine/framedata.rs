@@ -13,7 +13,7 @@ use super::{TDEngineError, TraceMessageErrorCode};
 /// * `frame_number` - The frame number of the current frame.
 /// * `digitizer_id` - The id of the digitizer.
 /// * `sample_time` - The duration of each sample in the current frame.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct FrameData {
     pub timestamp: DateTime<Utc>,
     pub digitizer_id: DigitizerId,
@@ -101,10 +101,10 @@ impl FrameData {
         format!("m{0}", self.digitizer_id)
     }
 
-    pub(super) fn extract_channel_data(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
+    pub(super) fn extract_channel_data(&mut self, num_channels : usize, message: &DigitizerAnalogTraceMessage) -> Result<()> {
         let null_channel_samples = repeat(Intensity::default()).take(self.num_samples);
         let channel_padding = repeat(null_channel_samples)
-            .take(self.num_channels)
+            .take(num_channels)
             .skip(message.channels().unwrap().len())
             .map(|v| v.collect());
         
@@ -112,22 +112,26 @@ impl FrameData {
             .channels()
             .unwrap()
             .iter()
-            .take(self.num_channels) // Cap the channel list at the given channel count
+            .take(num_channels) // Cap the channel list at the given channel count
             .map(|c|self.create_voltage_values_from_channel_trace(&c))
             .chain(channel_padding)
             .collect();
+        assert_eq!(self.trace_data.len(), num_channels);
         
         let channel_padding = repeat(0)
-            .take(self.num_channels)
+            .take(num_channels)
             .skip(message.channels().unwrap().len());
+
         self.channel_index = message
             .channels()
             .unwrap()
             .iter()
-            .take(self.num_channels) // Cap the channel list at the given channel count
+            .take(num_channels) // Cap the channel list at the given channel count
             .map(|c|c.channel())
             .chain(channel_padding)
             .collect();
+
+        assert_eq!(self.channel_index.len(), num_channels);
         Ok(())
     }
 
