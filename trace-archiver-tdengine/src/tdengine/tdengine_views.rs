@@ -1,15 +1,11 @@
 use anyhow::Result;
-use std::iter::{once, repeat, Chain, Skip, Take, Repeat};
+use std::iter::{once, repeat};
 
 use itertools::Itertools;
 
 use taos::{taos_query::common::views::TimestampView, ColumnView};
 
 use common::{Intensity, Channel};
-use streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
-    flatbuffers::{ForwardsUOffset, Vector, VectorIter},
-};
 
 use super::{TDEngineError, TraceMessageErrorCode};
 

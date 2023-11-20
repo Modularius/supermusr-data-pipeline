@@ -3,9 +3,7 @@ use std::{ops::Div, iter::repeat};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use common::{DigitizerId, FrameNumber, Intensity, Channel};
-use streaming_types::{dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, ChannelTrace}, flatbuffers::VectorIter};
-
-use std::iter::{Chain, Skip, Take, Repeat};
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, ChannelTrace};
 
 use super::{TDEngineError, TraceMessageErrorCode};
 
@@ -43,11 +41,6 @@ impl Default for FrameData {
     }
 }
 impl FrameData {
-    pub(super) fn set_channel_count(&mut self, num_channels: usize) {
-        self.num_channels = num_channels;
-        self.trace_data.resize(self.num_channels, Vec::new());
-    }
-
     /// Extracts some of the data from a DigitizerAnalogTraceMessage message.
     /// Note that no channel trace data is extracted.
     /// # Arguments

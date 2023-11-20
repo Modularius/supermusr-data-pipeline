@@ -1,7 +1,6 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 
-use common::Intensity;
 use log::debug;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
 
