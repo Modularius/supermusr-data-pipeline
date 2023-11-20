@@ -9,16 +9,18 @@ pub(crate) struct BenchmarkData {
     current_time: Instant,
     processing_time: Instant,
     posting_time: Instant,
+    batch_size: usize,
 }
 
 impl BenchmarkData {
-    pub(crate) fn new(messages_to_benchmark: usize) -> Self {
+    pub(crate) fn new(messages_to_benchmark: usize, batch_size: usize) -> Self {
         BenchmarkData {
             times: Vec::with_capacity(messages_to_benchmark),
             messages_to_benchmark,
             current_time: Instant::now(),
             processing_time: Instant::now(),
             posting_time: Instant::now(),
+            batch_size,
         }
     }
 
@@ -46,8 +48,19 @@ impl BenchmarkData {
 
     pub(crate) fn print_times(&mut self) {
         if self.messages_to_benchmark == 0 {
-            for (process, post, interval) in self.times.iter() {
-                println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
+            let mut (mean_process, mean_post, mean_interval) = (0, 0, 0);
+            for (index,(process, post, interval)) in self.times.iter().enumerate() {
+                // println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
+                mean_process += process;
+                mean_post += post;
+                mean_interval += interval;
+                if index % self.batch_size == 0 {
+                    mean_process /= self.batch_size;
+                    mean_post /= self.batch_size;
+                    mean_interval /= self.batch_size;
+                    println!("Batch sent with MEAN PROCESS = {mean_process} us, MEAN POST = {mean_post} us, MEAN INTERVAL = {mean_interval} us");
+                    (mean_process, mean_post, mean_interval) = (0, 0, 0);
+                }
             }
             self.times.clear();
         }

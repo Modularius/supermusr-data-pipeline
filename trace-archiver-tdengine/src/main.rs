@@ -127,7 +127,7 @@ async fn main() -> Result<()> {
     consumer.subscribe(&[&cli.kafka_topic])?;
 
     #[cfg(feature = "benchmark")]
-    let mut benchmark_data = BenchmarkData::new(cli.benchmark_number);
+    let mut benchmark_data = BenchmarkData::new(cli.benchmark_number, cli.batch_size);
     debug!("Begin Listening For Messages");
     loop {
         match consumer.recv().await {
