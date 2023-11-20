@@ -1,6 +1,7 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 
+use common::Intensity;
 use log::debug;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
 
@@ -10,7 +11,7 @@ use super::{
     error_reporter::TDEngineErrorReporter,
     framedata::FrameData,
     tdengine_views::{create_column_views, create_frame_column_views},
-    StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
+    StatementErrorCode, TDEngineError, TimeSeriesEngine,
 };
 
 pub(crate) struct TDEngine {
@@ -19,15 +20,19 @@ pub(crate) struct TDEngine {
     stmt: Stmt,
     frame_stmt: Stmt,
     error: TDEngineErrorReporter,
-    frame_data: FrameData,
+    num_channels: usize,
+    frame_data: Vec<FrameData>,
+    batch_size: usize,
 }
 
 impl TDEngine {
-    pub(crate) async fn from_optional(
+    pub(crate) async fn new(
         broker: String,
         username: Option<String>,
         password: Option<String>,
         database: String,
+        num_channels: usize,
+        batch_size: usize,
     ) -> Result<Self, Error> {
         let url = match Option::zip(username, password) {
             Some((username, password)) => format!("taos+ws://{broker}@{username}:{password}"),
@@ -55,7 +60,9 @@ impl TDEngine {
             stmt,
             frame_stmt,
             error: TDEngineErrorReporter::new(),
-            frame_data: FrameData::default(),
+            frame_data: Vec::<FrameData>::new(),
+            num_channels,
+            batch_size,
         })
     }
 
@@ -74,17 +81,15 @@ impl TDEngine {
             .map_err(TDEngineError::TaosBuilder)
     }
 
-    pub(crate) async fn init_with_channel_count(
+    pub(crate) async fn init(
         &mut self,
-        num_channels: usize,
     ) -> Result<(), TDEngineError> {
-        self.frame_data.set_channel_count(num_channels);
         self.create_supertable().await?;
 
         let template_table = self.database.to_owned() + ".template";
         let stmt_sql = format!(
             "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})",
-            ", ?".repeat(num_channels)
+            ", ?".repeat(self.num_channels)
         );
 
         self.stmt
@@ -95,7 +100,7 @@ impl TDEngine {
         let frame_template_table = self.database.to_owned() + ".frame_template";
         let frame_stmt_sql = format!(
             "INSERT INTO ? USING {frame_template_table} TAGS (?) VALUES (?, ?, ?, ?, ?{0})",
-            ", ?".repeat(num_channels)
+            ", ?".repeat(self.num_channels)
         );
 
         self.frame_stmt
@@ -108,7 +113,7 @@ impl TDEngine {
     async fn create_supertable(&self) -> Result<(), TDEngineError> {
         let metrics_string = format!(
             "ts TIMESTAMP, frametime TIMESTAMP{0}",
-            (0..self.frame_data.num_channels)
+            (0..self.num_channels)
                 .map(|ch| format!(", c{ch} SMALLINT UNSIGNED"))
                 .fold(String::new(), |a, b| a + &b)
         );
@@ -120,7 +125,7 @@ impl TDEngine {
             .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
 
         let frame_metrics_string = format!("frame_ts TIMESTAMP, sample_count INT UNSIGNED, sampling_rate INT UNSIGNED, frame_number INT UNSIGNED, error_code INT UNSIGNED{0}",
-            (0..self.frame_data.num_channels)
+            (0..self.num_channels)
                 .map(|ch|format!(", cid{ch} INT UNSIGNED"))
                 .fold(String::new(),|a,b|a + &b)
         );
@@ -148,25 +153,41 @@ impl TimeSeriesEngine for TDEngine {
         self.error.test_metadata(message);
 
         // Obtain message data, and error check
-        self.frame_data.init(message)?;
+        let mut frame_data = FrameData::default();
+        frame_data.init(message)?;
 
         // Obtain the channel data, and error check
         self.error
-            .test_channels(&self.frame_data, &message.channels().unwrap());
+            .test_channels(&frame_data, &message.channels().unwrap());
 
-        let mut table_name = self.frame_data.get_table_name();
-        let mut frame_table_name = self.frame_data.get_frame_table_name();
+        frame_data.extract_channel_data(message)?;
+
+        self.frame_data.push(frame_data);
+        Ok(())
+    }
+
+    /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
+    /// #Returns
+    /// The number of rows affected by the post or an error
+    async fn post_message(&mut self) -> Result<usize> {
+        if self.frame_data.len() < self.batch_size {
+            return Ok(0)
+        }
+
+        let mut table_name = self.frame_data[0].get_table_name();
+
+        let mut frame_table_name = self.frame_data[0].get_frame_table_name();
         frame_table_name.insert(0, '.');
         frame_table_name.insert_str(0, &self.database);
         table_name.insert(0, '.');
         table_name.insert_str(0, &self.database);
-        let channels = message.channels().ok_or(TDEngineError::TraceMessage(
-            TraceMessageErrorCode::ChannelsMissing,
-        ))?;
-        let frame_column_views = create_frame_column_views(&self.frame_data, &self.error, &channels)?;
-        let column_views = create_column_views(&self.frame_data, &channels)?;
-        let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
+        
+        // collate views
+        let frame_column_views = create_frame_column_views(self.frame_data.as_slice(), &self.error)?;
+        let column_views = create_column_views(self.num_channels, self.frame_data.as_slice())?;
+        let tags = [Value::UTinyInt(self.frame_data[0].digitizer_id)];
 
+        // Put this in another method
         //  Initialise Statement
         self.stmt
             .set_tbname(&table_name)
@@ -201,13 +222,8 @@ impl TimeSeriesEngine for TDEngine {
             .add_batch()
             .await
             .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))?;
-        Ok(())
-    }
 
-    /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
-    /// #Returns
-    /// The number of rows affected by the post or an error
-    async fn post_message(&mut self) -> Result<usize> {
+
         let result = self
             .stmt
             .execute()

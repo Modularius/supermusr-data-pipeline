@@ -1,14 +1,14 @@
 use anyhow::Result;
-use std::iter::{once, repeat};
+use std::iter::{once, repeat, Chain, Skip, Take, Repeat};
 
 use itertools::Itertools;
 
 use taos::{taos_query::common::views::TimestampView, ColumnView};
 
-use common::Intensity;
+use common::{Intensity, Channel};
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
-    flatbuffers::{ForwardsUOffset, Vector},
+    flatbuffers::{ForwardsUOffset, Vector, VectorIter},
 };
 
 use super::{TDEngineError, TraceMessageErrorCode};
@@ -17,62 +17,34 @@ use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
 
 /// Creates a timestamp view from the current frame_data object
 pub(super) fn create_timestamp_views(
-    frame_data: &FrameData,
+    frame_data: &[FrameData],
 ) -> Result<(TimestampView, TimestampView)> {
-    let frame_timestamp_ns =
-        frame_data
-            .timestamp
+    let mut frame_timestamp = Vec::<i64>::new();
+    let mut sample_timestamp = Vec::<i64>::new();
+    for fd in frame_data {
+        let frame_timestamp_ns = fd.timestamp
             .timestamp_nanos_opt()
             .ok_or(TDEngineError::TraceMessage(
                 TraceMessageErrorCode::TimestampMissing,
             ))?;
-    let sample_time_ns =
-        frame_data
-            .sample_time
+        let sample_time_ns = fd.sample_time
             .num_nanoseconds()
             .ok_or(TDEngineError::TraceMessage(
                 TraceMessageErrorCode::SampleTimeMissing,
             ))?;
+        for i in 0..fd.num_samples as i64 {
+            frame_timestamp.push(frame_timestamp_ns);
+            sample_timestamp.push(frame_timestamp_ns + sample_time_ns * i);
+        }
+    }
 
-    // Create the timestamps for each sample
+    // Create the views
     Ok((
-        TimestampView::from_nanos(
-            (0..frame_data.num_samples)
-                .map(|i| i as i64)
-                .map(|i| frame_timestamp_ns + sample_time_ns * i)
-                .collect(),
-        ),
-        TimestampView::from_nanos(
-            (0..frame_data.num_samples)
-                .map(|_| frame_timestamp_ns)
-                .collect(),
-        ),
+        TimestampView::from_nanos(frame_timestamp),
+        TimestampView::from_nanos(sample_timestamp)
     ))
 }
 
-/// Creates a vector of intensity values of size equal to the correct number of samples
-/// These are extracted from the channel trace if available. If not then a vector of zero
-/// Values is created
-/// #Arguments
-/// *channel - a reference to the channel trace to extract from
-/// #Return
-/// A vector of intensities
-pub(super) fn create_voltage_values_from_channel_trace(
-    frame_data: &FrameData,
-    channel: &ChannelTrace,
-) -> Vec<Intensity> {
-    let voltage = channel.voltage().unwrap_or_default();
-    if frame_data.num_samples == voltage.len() {
-        // Can this be replaced with a pointer to the memory buffer? TODO
-        voltage.iter().collect_vec()
-    } else {
-        let padding = repeat(Intensity::default())
-            .take(frame_data.num_samples)
-            .skip(voltage.len());
-
-        voltage.iter().chain(padding).collect_vec()
-    }
-}
 
 /// CreateCreates a vector of column views which can be bound to a TDEngine statement
 /// consisting of a timestamp view and the predefined number of channel views. If the
@@ -83,9 +55,8 @@ pub(super) fn create_voltage_values_from_channel_trace(
 /// *message - the DigitizerAnalogTraceMessage instance to extract from
 /// #Return
 /// A vector of column views
-pub(super) fn create_column_views(
-    frame_data: &FrameData,
-    channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
+pub(super) fn create_column_views(num_channels: usize,
+    frame_data: &[FrameData],
 ) -> Result<Vec<ColumnView>> {
     let (timestamp_view, frame_timestamp_view) = {
         let (timestamp_view, frame_timestamp_view) = create_timestamp_views(frame_data)?;
@@ -95,27 +66,19 @@ pub(super) fn create_column_views(
         )
     };
 
-    let num_channels = frame_data.num_channels;
-
-    let null_channel_samples = repeat(Intensity::default()).take(frame_data.num_samples);
-    let channel_padding = repeat(null_channel_samples)
-        .take(num_channels)
-        .skip(channels.len())
-        .map(|v| ColumnView::from_unsigned_small_ints(v.collect_vec()));
-
-    let channel_views = channels
-        .iter()
-        .map(|c| {
-            ColumnView::from_unsigned_small_ints(create_voltage_values_from_channel_trace(
-                frame_data, &c,
-            ))
-        })
-        .take(num_channels) // Cap the channel list at the given channel count
-        .chain(channel_padding); // Append any additional channels if needed
+    let num_batch_samples = frame_data.iter().map(|f|f.num_samples).sum();
+    let channel_voltage : Vec<_> = (0..num_channels).map(|c|{
+        let mut voltage = Vec::<Intensity>::with_capacity(num_batch_samples);
+        for fd in frame_data {
+            voltage.extend(fd.trace_data[c].iter());
+        }
+        voltage
+    }).collect();
+    let channel_voltage_view = channel_voltage.into_iter().map(|c|ColumnView::from_unsigned_small_ints(c));
 
     Ok(once(timestamp_view)
         .chain(once(frame_timestamp_view))
-        .chain(channel_views)
+        .chain(channel_voltage_view)
         .collect_vec())
 }
 
@@ -126,33 +89,47 @@ pub(super) fn create_column_views(
 /// #Returns
 /// A vector of taos_query values
 pub(super) fn create_frame_column_views(
-    frame_data: &FrameData,
+    frame_data: &[FrameData],
     error: &TDEngineErrorReporter,
-    channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
 ) -> Result<Vec<ColumnView>> {
-    let channel_padding = repeat(ColumnView::from_unsigned_ints(vec![0]))
-        .take(frame_data.num_channels)
-        .skip(channels.len());
+    let mut timestamp = Vec::<i64>::new();
+    let mut num_samples = Vec::<u32>::new();
+    let mut sample_rate = Vec::<u32>::new();
+    let mut frame_number = Vec::<u32>::new();
+    let mut error = Vec::<u32>::new();
+    let mut channel_id = Vec::<Vec<Channel>>::new();
+    for fd in frame_data {
+        let channel_padding = repeat(0)
+            .take(fd.num_channels)
+            .skip(fd.channel_index.len());
 
-    let channel_id_views = channels
-        .iter()
-        .map(|c| ColumnView::from_unsigned_ints(vec![c.channel()]))
-        .take(frame_data.num_channels) // Cap the channel list at the given channel count
-        .chain(channel_padding); // Append any additional channels if needed
+        channel_id.push(fd.channel_index
+            .iter()
+            .map(|c|*c)
+            .take(fd.num_channels) // Cap the channel list at the given channel count
+            .chain(channel_padding)
+            .collect()
+        ); // Append any additional channels if needed
 
-    Ok([
-        ColumnView::from_nanos_timestamp(vec![frame_data
-            .calc_measurement_time(0)
+        timestamp.push(fd.calc_measurement_time(0)
             .timestamp_nanos_opt()
-            .ok_or(TDEngineError::TraceMessage(
-                TraceMessageErrorCode::CannotCalcMeasurementTime,
-            ))?]),
-        ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
-        ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
-        ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),
-        ColumnView::from_unsigned_ints(vec![error.error_code()]),
+            .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::CannotCalcMeasurementTime))?
+        );
+        num_samples.push(fd.num_samples as u32);
+        sample_rate.push(fd.sample_rate as u32);
+        frame_number.push(fd.frame_number);
+        error.push(0);
+    }
+    Ok([
+        ColumnView::from_nanos_timestamp(timestamp),
+        ColumnView::from_unsigned_ints(num_samples),
+        ColumnView::from_unsigned_ints(sample_rate),
+        ColumnView::from_unsigned_ints(frame_number), 
     ]
     .into_iter()
-    .chain(channel_id_views)
+    .chain(channel_id
+        .into_iter()
+        .map(|c|ColumnView::from_unsigned_ints(c))
+    )
     .collect_vec())
 }

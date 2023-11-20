@@ -1,9 +1,11 @@
-use std::ops::Div;
+use std::{ops::Div, iter::repeat};
 
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use common::{DigitizerId, FrameNumber};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use common::{DigitizerId, FrameNumber, Intensity, Channel};
+use streaming_types::{dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, ChannelTrace}, flatbuffers::VectorIter};
+
+use std::iter::{Chain, Skip, Take, Repeat};
 
 use super::{TDEngineError, TraceMessageErrorCode};
 
@@ -22,6 +24,8 @@ pub(super) struct FrameData {
     pub num_samples: usize,
     pub sample_time: Duration,
     pub sample_rate: u64,
+    pub trace_data: Vec<Vec<Intensity>>,
+    pub channel_index: Vec<Channel>,
 }
 impl Default for FrameData {
     fn default() -> Self {
@@ -33,12 +37,15 @@ impl Default for FrameData {
             num_samples: usize::default(),
             sample_time: Duration::nanoseconds(0),
             sample_rate: u64::default(),
+            trace_data: Vec::new(),
+            channel_index: Vec::new(),
         }
     }
 }
 impl FrameData {
     pub(super) fn set_channel_count(&mut self, num_channels: usize) {
         self.num_channels = num_channels;
+        self.trace_data.resize(self.num_channels, Vec::new());
     }
 
     /// Extracts some of the data from a DigitizerAnalogTraceMessage message.
@@ -101,6 +108,36 @@ impl FrameData {
         format!("m{0}", self.digitizer_id)
     }
 
+    pub(super) fn extract_channel_data(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
+        let null_channel_samples = repeat(Intensity::default()).take(self.num_samples);
+        let channel_padding = repeat(null_channel_samples)
+            .take(self.num_channels)
+            .skip(message.channels().unwrap().len())
+            .map(|v| v.collect());
+        
+        self.trace_data = message
+            .channels()
+            .unwrap()
+            .iter()
+            .take(self.num_channels) // Cap the channel list at the given channel count
+            .map(|c|self.create_voltage_values_from_channel_trace(&c))
+            .chain(channel_padding)
+            .collect();
+        
+        let channel_padding = repeat(0)
+            .take(self.num_channels)
+            .skip(message.channels().unwrap().len());
+        self.channel_index = message
+            .channels()
+            .unwrap()
+            .iter()
+            .take(self.num_channels) // Cap the channel list at the given channel count
+            .map(|c|c.channel())
+            .chain(channel_padding)
+            .collect();
+        Ok(())
+    }
+
     /// Calculates the timestamp of a particular measurement relative to the timestamp of this frame.
     /// # Arguments
     /// * `measurement_number` - The measurement number to calculate the timestamp for.
@@ -108,5 +145,25 @@ impl FrameData {
     /// A `DateTime<Utc>` representing the measurement timestamp.
     pub(super) fn calc_measurement_time(&self, measurment_number: usize) -> DateTime<Utc> {
         self.timestamp + self.sample_time * measurment_number as i32
+    }
+
+    
+    /// Creates a vector of intensity values of size equal to the correct number of samples
+    /// These are extracted from the channel trace if available. If not then a vector of zero
+    /// Values is created
+    /// #Arguments
+    /// *channel - a reference to the channel trace to extract from
+    /// #Return
+    /// A vector of intensities
+    fn create_voltage_values_from_channel_trace<'a>(
+        &self,
+        channel: &'a ChannelTrace,
+    ) -> Vec<Intensity> {
+        let voltage = channel.voltage().unwrap_or_default();
+        let padding = repeat(Intensity::default())
+            .take(self.num_samples)
+            .skip(voltage.len());
+
+        voltage.iter().chain(padding).collect()
     }
 }

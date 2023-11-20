@@ -71,6 +71,9 @@ pub(crate) struct Cli {
     #[clap(long, short = 'C', env = "TDENGINE_NUM_CHANNELS")]
     td_num_channels: usize,
 
+    #[clap(long, short = 's', env = "TDENGINE_BATCH_SIZE", default_value = "1")]
+    batch_size: usize,
+
     #[cfg(feature = "benchmark")]
     #[clap(
         short = 'n',
@@ -91,18 +94,20 @@ async fn main() -> Result<()> {
 
     //  All other modes require a TDEngine instance
     debug!("Createing TDEngine instance");
-    let mut tdengine: TDEngine = TDEngine::from_optional(
+    let mut tdengine: TDEngine = TDEngine::new(
         cli.td_broker,
         cli.td_username,
         cli.td_password,
         cli.td_database,
+        cli.td_num_channels,
+        cli.batch_size,
     )
     .await?;
 
     //  All other modes require the TDEngine to be initialised
     tdengine.create_database().await?;
     tdengine
-        .init_with_channel_count(cli.td_num_channels)
+        .init()
         .await?;
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
