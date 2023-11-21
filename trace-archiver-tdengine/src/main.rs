@@ -149,6 +149,18 @@ async fn main() -> Result<()> {
                                     if let Err(e) = tdengine.process_message(&message).await {
                                         warn!("Error processing message : {e}");
                                     }
+                                    #[cfg(feature = "benchmark")]
+                                    benchmark_data.end_processing_timer();
+
+
+                                    #[cfg(feature = "benchmark")]
+                                    benchmark_data.begin_binding_timer();
+                                    
+                                    if let Err(e) = tdengine.bind_samples().await {
+                                        warn!("Error binding message to tdengine : {e}");
+                                    }
+                                    #[cfg(feature = "benchmark")]
+                                    benchmark_data.end_binding_timer();
 
                                     #[cfg(feature = "benchmark")]
                                     benchmark_data.begin_posting_timer();
@@ -157,6 +169,8 @@ async fn main() -> Result<()> {
                                         warn!("Error posting message to tdengine : {e}");
                                     }
                                     #[cfg(feature = "benchmark")]
+                                    benchmark_data.end_posting_timer();
+
                                     benchmark_data.end_timers();
                                 }
                                 Err(e) => warn!("Failed to parse message: {0}", e),

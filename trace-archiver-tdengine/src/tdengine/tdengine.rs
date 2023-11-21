@@ -3,7 +3,7 @@ use async_trait::async_trait;
 
 use itertools::Itertools;
 use log::debug;
-use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
+use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value, ColumnView};
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
@@ -24,6 +24,7 @@ pub(crate) struct TDEngine {
     frame_data: Vec<FrameData>,
     batch_size: usize,
     num_batches: usize,
+    column_views: Vec<ColumnView>,
 }
 
 impl TDEngine {
@@ -61,10 +62,11 @@ impl TDEngine {
             stmt,
             frame_stmt,
             error: TDEngineErrorReporter::new(),
-            frame_data: Vec::<FrameData>::new(),
+            frame_data: Vec::new(),
             num_channels,
             batch_size,
             num_batches: usize::default(),
+            column_views: Vec::new(),
         })
     }
 
@@ -139,6 +141,15 @@ impl TDEngine {
             .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
         Ok(())
     }
+
+    pub(crate) async fn bind_samples(&mut self) -> Result<()> {
+        self.stmt
+            .bind(&self.column_views)
+            .await
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
+            .unwrap();
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -167,13 +178,6 @@ impl TimeSeriesEngine for TDEngine {
         self.frame_data.clear();
         self.frame_data.push(frame_data);
         self.num_batches += 1;
-        Ok(())
-    }
-
-    /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
-    /// #Returns
-    /// The number of rows affected by the post or an error
-    async fn post_message(&mut self) -> Result<usize> {
         let mut table_name = self.frame_data[0].get_table_name();
 
         let mut frame_table_name = self.frame_data[0].get_frame_table_name();
@@ -186,7 +190,7 @@ impl TimeSeriesEngine for TDEngine {
 
         // collate views
         let frame_column_views = create_frame_column_views(self.num_channels, self.frame_data.as_slice(), &self.error)?;
-        let column_views = create_column_views(self.num_channels, self.frame_data.as_slice())?;
+        self.column_views = create_column_views(self.num_channels, self.frame_data.as_slice())?;
         let tags = [Value::UTinyInt(self.frame_data[0].digitizer_id)];
 
         // Put this in another method
@@ -200,16 +204,6 @@ impl TimeSeriesEngine for TDEngine {
             .set_tags(&tags)
             .await
             .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))
-            .unwrap();
-        self.stmt
-            .bind(&column_views)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
-            .unwrap();
-        self.stmt
-            .add_batch()
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))
             .unwrap();
 
         self.frame_stmt
@@ -229,6 +223,18 @@ impl TimeSeriesEngine for TDEngine {
             .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
             .unwrap();
         self.frame_stmt
+            .add_batch()
+            .await
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))
+            .unwrap();
+        Ok(())
+    }
+
+    /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
+    /// #Returns
+    /// The number of rows affected by the post or an error
+    async fn post_message(&mut self) -> Result<usize> {
+        self.stmt
             .add_batch()
             .await
             .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))

@@ -18,16 +18,17 @@ pub(super) fn create_timestamp_views(
     let mut frame_timestamp = Vec::<i64>::new();
     let mut sample_timestamp = Vec::<i64>::new();
     for fd in frame_data {
+        use TraceMessageErrorCode as Code;
+        use TDEngineError as TDErr;
         let frame_timestamp_ns = fd.timestamp
             .timestamp_nanos_opt()
-            .ok_or(TDEngineError::TraceMessage(
-                TraceMessageErrorCode::TimestampMissing,
-            ))?;
+            .ok_or(TDErr::TraceMessage(Code::TimestampMissing))?;
         let sample_time_ns = fd.sample_time
             .num_nanoseconds()
-            .ok_or(TDEngineError::TraceMessage(
-                TraceMessageErrorCode::SampleTimeMissing,
-            ))?;
+            .ok_or(TDErr::TraceMessage(Code::SampleTimeMissing))?;
+
+        assert_ne!(sample_time_ns,0);
+
         for i in 0..fd.num_samples as i64 {
             frame_timestamp.push(frame_timestamp_ns);
             sample_timestamp.push(frame_timestamp_ns + sample_time_ns * i);
@@ -35,10 +36,7 @@ pub(super) fn create_timestamp_views(
     }
 
     // Create the views
-    Ok((
-        TimestampView::from_nanos(frame_timestamp),
-        TimestampView::from_nanos(sample_timestamp)
-    ))
+    Ok((TimestampView::from_nanos(frame_timestamp),TimestampView::from_nanos(sample_timestamp)))
 }
 
 
@@ -54,12 +52,9 @@ pub(super) fn create_timestamp_views(
 pub(super) fn create_column_views(num_channels: usize,
     frame_data: &[FrameData],
 ) -> Result<Vec<ColumnView>> {
-    let (timestamp_view, frame_timestamp_view) = {
-        let (timestamp_view, frame_timestamp_view) = create_timestamp_views(frame_data)?;
-        (
-            ColumnView::Timestamp(timestamp_view),
-            ColumnView::Timestamp(frame_timestamp_view),
-        )
+    let (frame_timestamp_view, timestamp_view) = {
+        let (frame_timestamp_view, timestamp_view) = create_timestamp_views(frame_data)?;
+        (ColumnView::Timestamp(frame_timestamp_view),ColumnView::Timestamp(timestamp_view))
     };
 
     let num_batch_samples = frame_data.iter().map(|f|f.num_samples).sum();
@@ -71,6 +66,9 @@ pub(super) fn create_column_views(num_channels: usize,
         voltage
     }).collect();
     
+    //let mut i = timestamp_view.iter();
+    //println!("{0:?} : {1:?}", i.next().unwrap(), i.next().unwrap());
+
     
     let channel_voltage_view = channel_voltage.into_iter().map(|c|ColumnView::from_unsigned_small_ints(c));
 
@@ -102,9 +100,11 @@ pub(super) fn create_frame_column_views(
             channel_id[c].push(fd.channel_index[c]);
         }
 
-        timestamp.push(fd.calc_measurement_time(0)
+        use TraceMessageErrorCode as Code;
+        use TDEngineError as TDErr;
+        timestamp.push(fd.timestamp
             .timestamp_nanos_opt()
-            .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::CannotCalcMeasurementTime))?
+            .ok_or(TDErr::TraceMessage(Code::CannotCalcMeasurementTime))?
         );
         num_samples.push(fd.num_samples as u32);
         sample_rate.push(fd.sample_rate as u32);
@@ -112,11 +112,11 @@ pub(super) fn create_frame_column_views(
         error.push(0);
     }
     Ok([
-        ColumnView::from_nanos_timestamp(timestamp),
+        ColumnView::Timestamp(TimestampView::from_nanos(timestamp)),
         ColumnView::from_unsigned_ints(num_samples),
         ColumnView::from_unsigned_ints(sample_rate),
         ColumnView::from_unsigned_ints(frame_number), 
-        ColumnView::from_unsigned_ints(error), 
+        ColumnView::from_unsigned_ints(error),
     ]
     .into_iter()
     .chain(channel_id
