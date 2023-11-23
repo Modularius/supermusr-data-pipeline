@@ -23,15 +23,15 @@ pub enum ErrorCode {
 /// and records them as both an error code, and a vector of string messages.
 /// The error code is read into the database, and the vector of strings logged.
 #[derive(Default)]
-pub struct TDEngineErrorReporter {
+pub struct ErrorReporter {
     error: bool,
     code: u32,
     error_reports: Vec<String>,
 }
 
-impl TDEngineErrorReporter {
+impl ErrorReporter {
     pub(super) fn new() -> Self {
-        TDEngineErrorReporter {
+        ErrorReporter {
             error: false,
             code: 0,
             error_reports: Vec::<String>::new(),

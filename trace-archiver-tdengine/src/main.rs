@@ -7,12 +7,11 @@ use clap::Parser;
 
 use log::{debug, info, warn};
 
-mod tdengine;
-use tdengine as engine;
+mod database;
 
 use anyhow::Result;
 
-use engine::{tdengine::TDEngine, TimeSeriesEngine};
+use database::{tdengine::TDEngine, influxdb::InfluxDBEngine, TimeSeriesEngine};
 
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -100,6 +99,7 @@ async fn main() -> Result<()> {
         cli.td_database,
         cli.td_num_channels,
         cli.batch_size,
+        false,
     )
     .await?;
 
