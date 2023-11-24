@@ -34,7 +34,7 @@ use benchmark::BenchmarkData;
 //mod full_test;
 
 //cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
-//RUST_LOG=warn cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:8086 --td-database=tracelogs --td-num-channels=8 -n10
+//RUST_LOG=warn cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=localhost:8086 --td-database=tracelogs --td-num-channels=8 -n10
 
 #[derive(Parser)]
 #[clap(author, version, about)]
