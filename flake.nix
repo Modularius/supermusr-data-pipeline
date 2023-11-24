@@ -22,7 +22,6 @@
           inherit system;
           overlays = [
             (import ./nix/overlays/hdf5.nix)
-            (import ./nix/overlays/tdengine.nix)
           ];
         };
 
@@ -53,8 +52,8 @@
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain pkgs.tdengine];
-          buildInputs = buildInputs ++ [pkgs.tdengine];
+          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
+          buildInputs = buildInputs;
 
           packages = with pkgs; [
             # Newer version of nix is required to use `dirtyShortRev`
@@ -67,12 +66,12 @@
             # Container image management
             skopeo
 
-            tdengine
+            influxdb2
           ];
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
 
-          TAOS_LIBRARY_PATH = "${pkgs.tdengine}/usr/local/taos/driver/";
+          #TAOS_LIBRARY_PATH = "${pkgs.tdengine}/usr/local/taos/driver/";
         };
 
         packages =

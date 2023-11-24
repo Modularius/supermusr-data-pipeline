@@ -9,7 +9,7 @@ use common::{Intensity, Channel};
 
 use super::{TDEngineError, TraceMessageErrorCode};
 
-use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
+use super::{ErrorReporter, FrameData};
 
 /// Creates a timestamp view from the current frame_data object
 pub(super) fn create_timestamp_views(
@@ -87,7 +87,7 @@ pub(super) fn create_column_views(num_channels: usize,
 pub(super) fn create_frame_column_views(
     num_channels : usize,
     frame_data: &[FrameData],
-    error: &TDEngineErrorReporter,
+    error: &ErrorReporter,
 ) -> Result<Vec<ColumnView>> {
     let mut timestamp = Vec::<i64>::new();
     let mut num_samples = Vec::<u32>::new();

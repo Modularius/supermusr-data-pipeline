@@ -2,15 +2,10 @@ use anyhow::{Error, Result};
 use async_trait::async_trait;
 
 
+use itertools::Itertools;
 use log::debug;
-use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value, ColumnView};
-
+use libtaos::{TaosPool, stmt::Stmt, TaosCfg};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
-
-mod libtaos;
-
-mod views;
-use views::{create_column_views, create_frame_column_views};
 
 use super::{
     framedata::FrameData,
@@ -19,16 +14,16 @@ use super::{
 };
 
 pub(crate) struct TDEngine {
-    client: Taos,
+    pool: TaosPool,
     database: String,
-    stmt: Stmt,
-    frame_stmt: Stmt,
+    stmt: Option<Stmt>,
+    frame_stmt: Option<Stmt>,
     error: ErrorReporter,
     num_channels: usize,
     frame_data: Vec<FrameData>,
     batch_size: usize,
     num_batches: usize,
-    column_views: Vec<ColumnView>,
+    //column_views: Vec<ColumnView>,
 }
 
 impl TDEngine {
@@ -52,45 +47,34 @@ impl TDEngine {
         };
 
         debug!("Creating TaosBuilder with url {url}");
-        let client = TaosBuilder::from_dsn(url)
-            .map_err(TDEngineError::TaosBuilder)?
-            .build()
-            .await
-            .map_err(TDEngineError::TaosBuilder)?;
-
-        let stmt = Stmt::init(&client)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Init, e))?;
-
-        let frame_stmt = Stmt::init(&client)
-            .await
-            .map_err(TDEngineError::TaosBuilder)?;
-
+        let pool = TaosPool::new(TaosCfg::from_dsn(url).map_err(TDEngineError::TaosBuilder)?)?;
+        
         Ok(TDEngine {
-            client,
+            pool,
             database,
-            stmt,
-            frame_stmt,
+            stmt: None,
+            frame_stmt: None,
             error: ErrorReporter::new(),
             frame_data: Vec::new(),
             num_channels,
             batch_size,
             num_batches: usize::default(),
-            column_views: Vec::new(),
+            //column_views: Vec::new(),
         })
     }
 
     pub(crate) async fn create_database(&self) -> Result<(), TDEngineError> {
-        self.client
-            .exec(&format!(
+        let client = self.pool
+            .get()
+            .unwrap();
+        client.exec(&format!(
                 "CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",
                 self.database
             ))
             .await
             .map_err(TDEngineError::TaosBuilder)?;
 
-        self.client
-            .use_database(&self.database)
+        client.use_database(&self.database)
             .await
             .map_err(TDEngineError::TaosBuilder)
     }
@@ -106,10 +90,9 @@ impl TDEngine {
             ", ?".repeat(self.num_channels)
         );
 
-        self.stmt
-            .prepare(&stmt_sql)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Prepare, e))?;
+        let client = self.pool.get().unwrap();
+
+        self.stmt = Some(client.stmt(&stmt_sql).unwrap());
 
         let frame_template_table = self.database.to_owned() + ".frame_template";
         let frame_stmt_sql = format!(
@@ -117,10 +100,7 @@ impl TDEngine {
             ", ?".repeat(self.num_channels)
         );
 
-        self.frame_stmt
-            .prepare(&frame_stmt_sql)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Prepare, e))?;
+        self.frame_stmt = Some(client.stmt(&frame_stmt_sql).unwrap());
         Ok(())
     }
 
@@ -133,8 +113,9 @@ impl TDEngine {
         );
         let template_table = self.database.to_owned() + ".template";
         let string = format!("CREATE STABLE IF NOT EXISTS {template_table} ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
-        self.client
-            .exec(&string)
+
+        let client = self.pool.get().unwrap();
+        client.exec(&string)
             .await
             .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
 
@@ -145,21 +126,12 @@ impl TDEngine {
         );
         let frame_template_table = self.database.to_owned() + ".frame_template";
         let string = format!("CREATE STABLE IF NOT EXISTS {frame_template_table} ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
-        self.client
-            .exec(&string)
+        client.exec(&string)
             .await
             .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
         Ok(())
     }
 
-    pub(crate) async fn bind_samples(&mut self) -> Result<()> {
-        self.stmt
-            .bind(&self.column_views)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
-            .unwrap();
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -199,44 +171,34 @@ impl TimeSeriesEngine for TDEngine {
 
 
         // collate views
-        let frame_column_views = create_frame_column_views(self.num_channels, self.frame_data.as_slice(), &self.error)?;
-        self.column_views = create_column_views(self.num_channels, self.frame_data.as_slice())?;
-        let tags = [Value::UTinyInt(self.frame_data[0].digitizer_id)];
+        //let frame_column_views = create_frame_column_views(self.num_channels, self.frame_data.as_slice(), &self.error)?;
+        //self.column_views = create_column_views(self.num_channels, self.frame_data.as_slice())?;
+        let tags = [self.frame_data[0].digitizer_id];
 
         // Put this in another method
         //  Initialise Statement
-        self.stmt
-            .set_tbname(&table_name)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))
+        self.stmt.unwrap()
+            .set_tbname_tags(&table_name, &tags)
             .unwrap();
-        self.stmt
-            .set_tags(&tags)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))
-            .unwrap();
+        for i in 0..self.frame_data[0].num_samples {
+            self.stmt
+                .unwrap()
+                .bind([self.frame_data[0].calc_measurement_time(i)]
+                    .iter()
+                    .chain((0..self.num_channels).map(|c|self.frame_data[0].trace_data[c].get(i))
 
-        self.frame_stmt
-            .set_tbname(&frame_table_name)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))
-            .unwrap();
-        self.frame_stmt
-            .set_tags(&tags)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))
+                    )
+                    .collect_vec())
+                .unwrap();
+        }
+
+        self.frame_stmt.unwrap()
+            .set_tbname_tags(&frame_table_name, &tags)
             .unwrap();
         
-        self.frame_stmt
+        /*self.frame_stmt.unwrap()
             .bind(&frame_column_views)
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
-            .unwrap();
-        self.frame_stmt
-            .add_batch()
-            .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))
-            .unwrap();
+            .unwrap();*/
         Ok(())
     }
 
