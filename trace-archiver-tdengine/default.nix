@@ -5,7 +5,6 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-  hdf5-joined,
 }: rec {
   trace-archiver-tdengine = naersk'.buildPackage {
     name = "trace-archiver-tdengine";
