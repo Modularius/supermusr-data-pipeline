@@ -10,7 +10,6 @@ target
 *.svg
 .direnv/
 .vscode/
-.nixd.json
 result
+*/Saves
 .env
-*/Saves/
