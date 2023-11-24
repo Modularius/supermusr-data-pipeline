@@ -18,10 +18,10 @@ rdkafka.workspace = true
 
 async-trait = "0.1.68"
 clap.workspace = true
-#itertools = "0.11.0"
+itertools = "0.11.0"
 #libtaos = { version = "0.4.5", default_features = false, features = ["stmt", "r2d2"] }
-#taos = { version = "0.10.16", default_features = false, features = ["ws"] }
-influxdb = { version = "0.7.1", features = ["derive", "reqwest-client"] }
+taos = { version = "0.10.16", default_features = false, features = ["ws"] }
+#influxdb = { version = "0.7.1", features = ["derive", "reqwest-client"] }
 
 [dev-dependencies]
 serde = "1.0.164"

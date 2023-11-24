@@ -14,9 +14,8 @@ use super::{ErrorReporter, FrameData};
 /// Creates a timestamp view from the current frame_data object
 pub(super) fn create_timestamp_views(
     frame_data: &[FrameData],
-) -> Result<(TimestampView, TimestampView)> {
-    let mut frame_timestamp = Vec::<i64>::new();
-    let mut sample_timestamp = Vec::<i64>::new();
+) -> Result<Vec<Option<i64>>> {
+    let mut sample_timestamp = Vec::<Option<i64>>::new();
     for fd in frame_data {
         use TraceMessageErrorCode as Code;
         use TDEngineError as TDErr;
@@ -29,14 +28,13 @@ pub(super) fn create_timestamp_views(
 
         assert_ne!(sample_time_ns,0);
 
-        for i in 0..fd.num_samples as i64 {
-            frame_timestamp.push(frame_timestamp_ns);
-            sample_timestamp.push(frame_timestamp_ns + sample_time_ns * i);
+        for i in 0..fd.num_samples {
+            sample_timestamp.push(fd.calc_measurement_time(i).timestamp_nanos_opt());
         }
     }
 
     // Create the views
-    Ok((TimestampView::from_nanos(frame_timestamp),TimestampView::from_nanos(sample_timestamp)))
+    Ok(sample_timestamp)
 }
 
 
@@ -52,10 +50,7 @@ pub(super) fn create_timestamp_views(
 pub(super) fn create_column_views(num_channels: usize,
     frame_data: &[FrameData],
 ) -> Result<Vec<ColumnView>> {
-    let (frame_timestamp_view, timestamp_view) = {
-        let (frame_timestamp_view, timestamp_view) = create_timestamp_views(frame_data)?;
-        (ColumnView::Timestamp(frame_timestamp_view),ColumnView::Timestamp(timestamp_view))
-    };
+    let timestamp_view = ColumnView::from_nanos_timestamp(create_timestamp_views(frame_data)?);
 
     let num_batch_samples = frame_data.iter().map(|f|f.num_samples).sum();
     let channel_voltage : Vec<_> = (0..num_channels).map(|c|{
@@ -72,8 +67,7 @@ pub(super) fn create_column_views(num_channels: usize,
     
     let channel_voltage_view = channel_voltage.into_iter().map(|c|ColumnView::from_unsigned_small_ints(c));
 
-    Ok(once(timestamp_view)
-        .chain(once(frame_timestamp_view))
+    Ok([timestamp_view].into_iter()
         .chain(channel_voltage_view)
         .collect_vec())
 }

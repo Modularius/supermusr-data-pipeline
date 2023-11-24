@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-//use taos::taos_query::RawError;
+use taos::taos_query::RawError;
 //use libtaos::Error as RawError;
 
 #[derive(Debug)]
@@ -27,9 +27,9 @@ pub(crate) enum TraceMessageErrorCode {
 /* */
 #[derive(Debug)]
 pub(crate) enum TDEngineError {
-    //TaosBuilder(RawError),
-    //TaosStmt(StatementErrorCode, RawError),
-    //SqlError(String, RawError),
+    TaosBuilder(RawError),
+    TaosStmt(StatementErrorCode, RawError),
+    SqlError(String, RawError),
     TraceMessage(TraceMessageErrorCode),
 }
 impl Display for TDEngineError {

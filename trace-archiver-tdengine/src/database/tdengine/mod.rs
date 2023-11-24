@@ -7,8 +7,6 @@ use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-mod libtaos;
-
 mod views;
 use views::{create_column_views, create_frame_column_views};
 
@@ -102,7 +100,7 @@ impl TDEngine {
 
         let template_table = self.database.to_owned() + ".template";
         let stmt_sql = format!(
-            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})",
+            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?{0})",
             ", ?".repeat(self.num_channels)
         );
 
@@ -126,7 +124,7 @@ impl TDEngine {
 
     async fn create_supertable(&self) -> Result<(), TDEngineError> {
         let metrics_string = format!(
-            "ts TIMESTAMP, frametime TIMESTAMP{0}",
+            "ts TIMESTAMP{0}",
             (0..self.num_channels)
                 .map(|ch| format!(", c{ch} SMALLINT UNSIGNED"))
                 .fold(String::new(), |a, b| a + &b)

@@ -4,9 +4,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-//pub mod tdengine;
+pub mod tdengine;
 //pub mod libtaos;
-pub mod influxdb;
+//pub mod influxdb;
 pub mod error_reporter;
 pub mod framedata;
 

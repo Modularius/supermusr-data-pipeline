@@ -12,8 +12,8 @@ mod database;
 use anyhow::Result;
 
 use database::{
-    //tdengine::TDEngine,
-    influxdb::InfluxDBEngine,
+    tdengine::TDEngine,
+    //influxdb::InfluxDBEngine,
     TimeSeriesEngine};
 
 use rdkafka::{
@@ -33,7 +33,7 @@ use benchmark::BenchmarkData;
 
 //mod full_test;
 
-//cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
+//RUST_LOG=warn cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
 //RUST_LOG=warn cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=localhost:8086 --td-database=tracelogs --td-num-channels=8 -n10
 
 #[derive(Parser)]
@@ -95,7 +95,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     //  All other modes require a TDEngine instance
-    debug!("Createing TDEngine instance");
+/*
+    debug!("Createing InfluxDBEngine instance");
     let mut influxdb: InfluxDBEngine = InfluxDBEngine::new(
         cli.td_broker,
         cli.td_username,
@@ -105,7 +106,7 @@ async fn main() -> Result<()> {
         cli.batch_size,
     )
     .await;
-/*
+ */
     //  All other modes require a TDEngine instance
     debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::new(
@@ -124,7 +125,6 @@ async fn main() -> Result<()> {
     tdengine
         .init()
         .await?;
- */
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
 
@@ -163,7 +163,7 @@ async fn main() -> Result<()> {
                                     benchmark_data.begin_processing_timer();
 
                                     //if let Err(e) = tdengine.process_message(&message).await {
-                                    if let Err(e) = influxdb.process_message(&message).await {
+                                    if let Err(e) = tdengine.process_message(&message).await {
                                         warn!("Error processing message : {e}");
                                     }
                                     #[cfg(feature = "benchmark")]
@@ -173,9 +173,9 @@ async fn main() -> Result<()> {
                                     #[cfg(feature = "benchmark")]
                                     benchmark_data.begin_binding_timer();
                                     
-                                    /*if let Err(e) = tdengine.bind_samples().await {
+                                    if let Err(e) = tdengine.bind_samples().await {
                                         warn!("Error binding message to tdengine : {e}");
-                                    }*/
+                                    }
                                     #[cfg(feature = "benchmark")]
                                     benchmark_data.end_binding_timer();
 
@@ -183,7 +183,7 @@ async fn main() -> Result<()> {
                                     benchmark_data.begin_posting_timer();
 
                                     //if let Err(e) = tdengine.post_message().await {
-                                    if let Err(e) = influxdb.post_message().await {
+                                    if let Err(e) = tdengine.post_message().await {
                                         warn!("Error posting message to tdengine : {e}");
                                     }
                                     #[cfg(feature = "benchmark")]
