@@ -1,6 +1,8 @@
 use std::time::{Instant, Duration};
 
-type BenchmarkRecord = (u128, u128, u128, u128);
+use itertools::Itertools;
+
+type BenchmarkRecord = (u128, u128, u128, u128, usize);
 
 
 pub(crate) struct BenchmarkData {
@@ -64,30 +66,33 @@ impl BenchmarkData {
             self.posting_duration = self.posting_time.elapsed();
         }
     }
-    pub(crate) fn end_timers(&mut self) {
+    pub(crate) fn end_timers(&mut self, num_samples : usize) {
         if self.messages_to_benchmark > 0 {
             let duration = (Instant::now() - self.current_time).as_micros();
             self.current_time = Instant::now();
             self.messages_to_benchmark -= 1;
-            self.times.push((self.processing_duration.as_micros(), self.binding_duration.as_micros(), self.posting_duration.as_micros(),duration));
+            self.times.push((self.processing_duration.as_micros(), self.binding_duration.as_micros(), self.posting_duration.as_micros(),duration, num_samples));
         }
     }
 
     pub(crate) fn print_times(&mut self) {
         if self.messages_to_benchmark == 0 {
             let (mut mean_process, mut mean_binding, mut mean_post, mut mean_interval) = (0, 0, 0, 0);
-            for (index,(process, binding, post, interval)) in self.times.iter().enumerate() {
+            if !self.times.iter().map(|tup|tup.4).all_equal() {
+                println!("Not all batches have same number of samples");
+            }
+            for (index,(process, binding, post, interval, num_samples)) in self.times.iter().enumerate() {
                 // println!("Message took {interval} us, taking {process} us to process and {post} us to post.");
-                mean_process += process;
-                mean_binding += binding;
-                mean_post += post;
-                mean_interval += interval;
+                mean_process += *process;
+                mean_binding += *binding;
+                mean_post += *post;
+                mean_interval += *interval;
                 if index % self.batch_size == (self.batch_size - 1) {
                     mean_process /= self.batch_size as u128;
                     mean_binding /= self.batch_size as u128;
                     mean_post /= self.batch_size as u128;
                     mean_interval /= self.batch_size as u128;
-                    println!("Batch sent with MEAN PROCESS = {mean_process} us, MEAN BIND = {mean_binding} us, MEAN POST = {mean_post} us, MEAN INTERVAL = {mean_interval} us");
+                    println!("Batch ({num_samples}) sent with MEAN PROCESS = {mean_process} us, MEAN BIND = {mean_binding} us, MEAN POST = {mean_post} us, MEAN INTERVAL = {mean_interval} us");
                     (mean_process, mean_binding, mean_post, mean_interval) = (0, 0, 0, 0);
                 }
             }

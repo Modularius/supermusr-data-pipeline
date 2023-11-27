@@ -189,7 +189,7 @@ async fn main() -> Result<()> {
                                     #[cfg(feature = "benchmark")]
                                     benchmark_data.end_posting_timer();
 
-                                    benchmark_data.end_timers();
+                                    benchmark_data.end_timers(message.channels().unwrap().get(0).voltage().unwrap().len());
                                 }
                                 Err(e) => warn!("Failed to parse message: {0}", e),
                             }
