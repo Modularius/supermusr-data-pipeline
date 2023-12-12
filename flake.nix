@@ -22,6 +22,7 @@
           inherit system;
           overlays = [
             (import ./nix/overlays/hdf5.nix)
+            (import ./nix/overlays/tdengine.nix)
           ];
         };
 
@@ -65,13 +66,11 @@
 
             # Container image management
             skopeo
-
-            influxdb2
           ];
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
 
-          #TAOS_LIBRARY_PATH = "${pkgs.tdengine}/usr/local/taos/driver/";
+          TAOS_LIBRARY_PATH = "${pkgs.tdengine}/build/lib";
         };
 
         packages =

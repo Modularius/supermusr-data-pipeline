@@ -1,5 +1,5 @@
 [package]
-name = "simulator"
+name = "kafka-daq-report"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -8,11 +8,14 @@ edition.workspace = true
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
-clap.workspace = true
+anyhow.workspace = true
 chrono.workspace = true
+clap.workspace = true
+crossterm = "0.26.1"
 env_logger.workspace = true
+lazy_static.workspace = true
 log.workspace = true
+ndarray.workspace = true
+ratatui = "0.22.0"
 rdkafka.workspace = true
-#serde.workspace = true
 tokio.workspace = true
-#toml = "0.7"
