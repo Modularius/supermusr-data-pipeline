@@ -1,5 +1,5 @@
 [package]
-name = "stream-to-file"
+name = "trace-reader"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -9,12 +9,8 @@ anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-hdf5.workspace = true
-kagiyama.workspace = true
-lazy_static.workspace = true
 log.workspace = true
-ndarray.workspace = true
-ndarray-stats.workspace = true
+rand.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true

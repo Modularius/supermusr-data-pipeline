@@ -1,134 +1,92 @@
 //! This crate uses the benchmarking tool for testing the performance of implementated time-series databases.
 //!
-//#![allow(dead_code, unused_variables, unused_imports)]
-#![warn(missing_docs)]
+
+mod tdengine;
 
 use clap::Parser;
-
 use log::{debug, info, warn};
-
-mod database;
-
-use anyhow::Result;
-
-use database::{
-    tdengine::TDEngine,
-    //influxdb::InfluxDBEngine,
-    TimeSeriesEngine};
-
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-
-#[cfg(feature = "benchmark")]
-mod benchmark;
-
-#[cfg(feature = "benchmark")]
-use benchmark::BenchmarkData;
-
-//mod full_test;
-
-//RUST_LOG=warn cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
-//RUST_LOG=warn cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=localhost:8086 --td-database=tracelogs --td-num-channels=8 -n10
+use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    #[clap(long, short = 'b', env = "KAFKA_BROKER")]
+    /// The kafka broker to use e.g. --broker localhost:19092
+    #[clap(long)]
     kafka_broker: String,
 
-    #[clap(long, short = 'u', env = "KAFKA_USER")]
+    /// Optional Kafka username
+    #[clap(long)]
     kafka_username: Option<String>,
 
-    #[clap(long, short = 'p', env = "KAFKA_PASSWORD")]
+    /// Optional Kafka password
+    #[clap(long)]
     kafka_password: Option<String>,
 
-    #[clap(
-        long,
-        short = 'g',
-        env = "KAFKA_CONSUMER_GROUP",
-        default_value = "trace-consumer"
-    )]
+    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
+    #[clap(long)]
     kafka_consumer_group: String,
 
-    #[clap(long, short = 'k', env = "KAFKA_TOPIC")]
+    /// Kafka topic e.g. --kafka-topic Traces
+    #[clap(long)]
     kafka_topic: String,
 
-    #[clap(long, short = 'B', env = "TDENGINE_BROKER")]
-    td_broker: String,
+    /// TDengine dsn  e.g. --td_dsn localhost:6041
+    #[clap(long)]
+    td_dsn: String,
 
-    #[clap(long, short = 'U', env = "TDENGINE_USER")]
+    /// Optional TDengine username
+    #[clap(long)]
     td_username: Option<String>,
 
-    #[clap(long, short = 'P', env = "TDENGINE_PASSWORD")]
+    /// Optional TDengine password
+    #[clap(long)]
     td_password: Option<String>,
 
-    #[clap(long, short = 'D', env = "TDENGINE_DATABASE")]
+    /// TDengine database name e.g. --td_database tracelogs
+    #[clap(long)]
     td_database: String,
 
-    #[clap(long, short = 'C', env = "TDENGINE_NUM_CHANNELS")]
-    td_num_channels: usize,
-
-    #[clap(long, short = 's', env = "TDENGINE_BATCH_SIZE", default_value = "1")]
-    batch_size: usize,
-
-    #[cfg(feature = "benchmark")]
-    #[clap(
-        short = 'n',
-        long,
-        help = "If set, will record benchmarking data",
-        default_value = "0"
-    )]
-    benchmark_number: usize,
+    /// Number of expected channels in a message e.g. --num_channels 8
+    #[clap(long)]
+    num_channels: usize,
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     env_logger::init();
 
-    debug!("Parsing Cli");
     let cli = Cli::parse();
 
-    //  All other modes require a TDEngine instance
-/*
-    debug!("Createing InfluxDBEngine instance");
-    let mut influxdb: InfluxDBEngine = InfluxDBEngine::new(
-        cli.td_broker,
-        cli.td_username,
-        cli.td_password,
-        cli.td_database,
-        cli.td_num_channels,
-        cli.batch_size,
-    )
-    .await;
- */
-    //  All other modes require a TDEngine instance
     debug!("Createing TDEngine instance");
-    let mut tdengine: TDEngine = TDEngine::new(
-        cli.td_broker,
+    let mut tdengine: TDEngine = TDEngine::from_optional(
+        cli.td_dsn,
         cli.td_username,
         cli.td_password,
         cli.td_database,
-        cli.td_num_channels,
-        cli.batch_size,
-        false,
     )
-    .await?;
+    .await
+    .expect("TDengine should be created");
 
     //  All other modes require the TDEngine to be initialised
-    tdengine.create_database().await?;
     tdengine
-        .init()
-        .await?;
+        .create_database()
+        .await
+        .expect("TDengine database should be created");
+    tdengine
+        .init_with_channel_count(cli.num_channels)
+        .await
+        .expect("TDengine should initialise with given channel count");
+
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
-
-    let mut client_config = common::generate_kafka_client_config(
+    let mut client_config = supermusr_common::generate_kafka_client_config(
         &cli.kafka_broker,
         &cli.kafka_username,
         &cli.kafka_password,
@@ -139,11 +97,12 @@ async fn main() -> Result<()> {
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
-        .create()?;
-    consumer.subscribe(&[&cli.kafka_topic])?;
+        .create()
+        .expect("Kafka Consumer should be created");
+    consumer
+        .subscribe(&[&cli.kafka_topic])
+        .expect("Kafka Consumer should subscribe to kafka-topic");
 
-    #[cfg(feature = "benchmark")]
-    let mut benchmark_data = BenchmarkData::new(cli.benchmark_number, cli.batch_size);
     debug!("Begin Listening For Messages");
     loop {
         match consumer.recv().await {
@@ -158,38 +117,12 @@ async fn main() -> Result<()> {
                                         message.digitizer_id(),
                                         message.metadata()
                                     );
-
-                                    #[cfg(feature = "benchmark")]
-                                    benchmark_data.begin_processing_timer();
-
-                                    //if let Err(e) = tdengine.process_message(&message).await {
                                     if let Err(e) = tdengine.process_message(&message).await {
                                         warn!("Error processing message : {e}");
                                     }
-                                    #[cfg(feature = "benchmark")]
-                                    benchmark_data.end_processing_timer();
-
-
-                                    #[cfg(feature = "benchmark")]
-                                    benchmark_data.begin_binding_timer();
-                                    
-                                    if let Err(e) = tdengine.bind_samples().await {
-                                        warn!("Error binding message to tdengine : {e}");
-                                    }
-                                    #[cfg(feature = "benchmark")]
-                                    benchmark_data.end_binding_timer();
-
-                                    #[cfg(feature = "benchmark")]
-                                    benchmark_data.begin_posting_timer();
-
-                                    //if let Err(e) = tdengine.post_message().await {
                                     if let Err(e) = tdengine.post_message().await {
                                         warn!("Error posting message to tdengine : {e}");
                                     }
-                                    #[cfg(feature = "benchmark")]
-                                    benchmark_data.end_posting_timer();
-
-                                    benchmark_data.end_timers(message.channels().unwrap().get(0).voltage().unwrap().len());
                                 }
                                 Err(e) => warn!("Failed to parse message: {0}", e),
                             }
@@ -205,8 +138,5 @@ async fn main() -> Result<()> {
             }
             Err(e) => warn!("Error recieving message from server: {e}"),
         }
-
-        #[cfg(feature = "benchmark")]
-        benchmark_data.print_times();
     }
 }

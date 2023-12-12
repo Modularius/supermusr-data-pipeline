@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  trace-archiver-tdengine = naersk'.buildPackage {
-    name = "trace-archiver-tdengine";
+  trace-reader = naersk'.buildPackage {
+    name = "trace-reader";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "trace-archiver-tdengine"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-reader"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -21,8 +21,8 @@
     };
   };
 
-  trace-archiver-tdengine-container-image = pkgs.dockerTools.buildImage {
-    name = "trace-archiver-tdengine";
+  trace-reader-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-trace-reader";
     tag = "latest";
     created = "now";
 
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-archiver-tdengine}/bin/trace-archiver-tdengine"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-reader}/bin/trace-reader"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
