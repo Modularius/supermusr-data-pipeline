@@ -1,7 +1,7 @@
 //! This crate uses the benchmarking tool for testing the performance of implementated time-series databases.
 //!
 
-mod tdengine;
+mod database;
 
 use clap::Parser;
 use log::{debug, info, warn};
