@@ -66,6 +66,8 @@
 
             # Container image management
             skopeo
+
+            parallel
           ];
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
