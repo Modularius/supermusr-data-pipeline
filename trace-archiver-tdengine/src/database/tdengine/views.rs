@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 use taos::{taos_query::common::views::TimestampView, ColumnView};
 
-use common::{Intensity, Channel};
+use supermusr_common::{Intensity, Channel};
 
 use super::{TDEngineError, TraceMessageErrorCode};
 

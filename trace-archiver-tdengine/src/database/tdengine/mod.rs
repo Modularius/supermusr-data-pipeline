@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use log::debug;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value, ColumnView};
 
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 mod views;
 use views::{create_column_views, create_frame_column_views};

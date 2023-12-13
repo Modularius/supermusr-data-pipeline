@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 pub mod tdengine;
 //pub mod libtaos;

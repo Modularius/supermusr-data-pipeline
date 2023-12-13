@@ -2,6 +2,7 @@
 //!
 
 mod database;
+mod benchmark;
 
 use clap::Parser;
 use log::{debug, info, warn};
@@ -12,7 +13,9 @@ use rdkafka::{
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
+use database::{tdengine::TDEngine, TimeSeriesEngine};
+
+//RUST_LOG=warn cargo run --release -- --kafka-broker=localhost:19092 --kafka-topic=Traces --kafka-consumer-group trace-consumer --td-dsn 172.16.105.238:6030 --td-database=tracelogs --num-channels=8 -n 50 -s1
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -56,6 +59,14 @@ pub(crate) struct Cli {
     /// Number of expected channels in a message e.g. --num_channels 8
     #[clap(long)]
     num_channels: usize,
+
+    /// Number of expected channels in a message e.g. --num_channels 8
+    #[clap(long, short = 's', default_value = "1")]
+    batch_size: usize,
+
+    /// Number of expected channels in a message e.g. --num_channels 8
+    #[clap(long, short = 'n', default_value = "0")]
+    num_tests: usize,
 }
 
 #[tokio::main]
@@ -65,11 +76,15 @@ async fn main() {
     let cli = Cli::parse();
 
     debug!("Createing TDEngine instance");
-    let mut tdengine: TDEngine = TDEngine::from_optional(
+    let mut tdengine: TDEngine = TDEngine::new(
         cli.td_dsn,
         cli.td_username,
         cli.td_password,
         cli.td_database,
+        cli.num_channels,
+        cli.batch_size,
+        false
+
     )
     .await
     .expect("TDengine should be created");
@@ -80,7 +95,7 @@ async fn main() {
         .await
         .expect("TDengine database should be created");
     tdengine
-        .init_with_channel_count(cli.num_channels)
+        .init()
         .await
         .expect("TDengine should initialise with given channel count");
 
@@ -103,6 +118,8 @@ async fn main() {
         .subscribe(&[&cli.kafka_topic])
         .expect("Kafka Consumer should subscribe to kafka-topic");
 
+    let mut benchmarker = benchmark::BenchmarkData::new(cli.num_tests, cli.batch_size);
+
     debug!("Begin Listening For Messages");
     loop {
         match consumer.recv().await {
@@ -117,12 +134,24 @@ async fn main() {
                                         message.digitizer_id(),
                                         message.metadata()
                                     );
+                                    benchmarker.begin_processing_timer();
                                     if let Err(e) = tdengine.process_message(&message).await {
                                         warn!("Error processing message : {e}");
                                     }
+                                    benchmarker.end_processing_timer();
+
+                                    benchmarker.begin_binding_timer();
+                                    if let Err(e) = tdengine.bind_samples().await {
+                                        warn!("Error binding message to tdengine : {e}");
+                                    }
+                                    benchmarker.end_binding_timer();
+
+                                    benchmarker.begin_posting_timer();
                                     if let Err(e) = tdengine.post_message().await {
                                         warn!("Error posting message to tdengine : {e}");
                                     }
+                                    benchmarker.end_posting_timer();
+                                    benchmarker.end_timers(message.channels().unwrap().get(0).voltage().unwrap().len());
                                 }
                                 Err(e) => warn!("Failed to parse message: {0}", e),
                             }
@@ -138,5 +167,6 @@ async fn main() {
             }
             Err(e) => warn!("Error recieving message from server: {e}"),
         }
+        benchmarker.print_times();
     }
 }

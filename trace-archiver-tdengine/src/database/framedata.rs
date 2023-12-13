@@ -2,8 +2,8 @@ use std::{ops::Div, iter::repeat};
 
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use common::{DigitizerId, FrameNumber, Intensity, Channel};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, ChannelTrace};
+use supermusr_common::{DigitizerId, FrameNumber, Intensity, Channel};
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, ChannelTrace};
 
 use super::{TDEngineError, TraceMessageErrorCode};
 
