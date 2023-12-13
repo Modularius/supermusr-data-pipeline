@@ -73,6 +73,7 @@
           ];
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
+          TAOS_LIBRARY_PATH = "${pkgs.tdengine}/build/lib";
         };
 
         packages =

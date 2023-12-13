@@ -20,15 +20,21 @@ pub(crate) struct TDEngine {
 }
 
 impl TDEngine {
-    pub(crate) async fn from_optional(
-        broker: String,
+    pub(crate) async fn new(
+        dsn: String,
         username: Option<String>,
         password: Option<String>,
         database: String,
+        use_websockets: bool,
     ) -> Result<Self, Error> {
+        let protocol = if use_websockets {
+            "taos+ws"
+        } else {
+            "taos"
+        };
         let url = match Option::zip(username, password) {
-            Some((username, password)) => format!("taos+ws://{broker}@{username}:{password}"),
-            None => format!("taos+ws://{broker}"),
+            Some((username, password)) => format!("{protocol}://{dsn}@{username}:{password}"),
+            None => format!("{protocol}://{dsn}"),
         };
 
         debug!("Creating TaosBuilder with url {url}");

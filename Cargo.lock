@@ -223,6 +223,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstr"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "542f33a8835a0884b006a0c3df3dadd99c0c3f296ed26c2fdc8028e01ad6230c"
+dependencies = [
+ "memchr",
+ "regex-automata",
+ "serde",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -663,6 +674,35 @@ dependencies = [
  "redox_users",
  "winapi",
 ]
+
+[[package]]
+name = "dlopen2"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b121caccfc363e4d9a4589528f3bef7c71b83c6ed01c8dc68cbeeb7fd29ec698"
+dependencies = [
+ "dlopen2_derive",
+ "libc",
+ "once_cell",
+ "winapi",
+]
+
+[[package]]
+name = "dlopen2_derive"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a09ac8bb8c16a282264c379dffba707b9c998afc7506009137f3c6136888078"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "dotenv"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
 name = "dtoa"
@@ -2388,6 +2428,7 @@ dependencies = [
  "futures",
  "log",
  "taos-query",
+ "taos-sys",
  "taos-ws",
 ]
 
@@ -2403,6 +2444,17 @@ dependencies = [
  "rustc_version",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "taos-macros"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "052bf816a74ae99f443eb4251907ad86a5cb76337be6be854a2243c1264696ed"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2442,6 +2494,30 @@ dependencies = [
  "thiserror",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "taos-sys"
+version = "0.10.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5185a17b68d087c9bad9fafa8449e3053eb6009b4f0f65510409b1f895836b2b"
+dependencies = [
+ "async-trait",
+ "bitvec",
+ "bstr",
+ "bytes",
+ "cfg-if",
+ "derive_more",
+ "dlopen2",
+ "dotenv",
+ "futures",
+ "itertools 0.11.0",
+ "log",
+ "num_enum 0.7.1",
+ "once_cell",
+ "serde_json",
+ "taos-macros",
+ "taos-query",
 ]
 
 [[package]]

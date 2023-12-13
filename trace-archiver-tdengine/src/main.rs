@@ -65,11 +65,12 @@ async fn main() {
     let cli = Cli::parse();
 
     debug!("Createing TDEngine instance");
-    let mut tdengine: TDEngine = TDEngine::from_optional(
+    let mut tdengine: TDEngine = TDEngine::new(
         cli.td_dsn,
         cli.td_username,
         cli.td_password,
         cli.td_database,
+        false,
     )
     .await
     .expect("TDengine should be created");
