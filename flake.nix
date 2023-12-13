@@ -23,6 +23,7 @@
           inherit system;
           overlays = [
             (import ./nix/overlays/hdf5.nix)
+            (import ./nix/overlays/tdengine.nix)
           ];
         };
 
@@ -66,6 +67,9 @@
 
             # Container image management
             skopeo
+
+            # tdengine
+            tdengine
           ];
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
