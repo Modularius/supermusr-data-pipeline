@@ -40,8 +40,7 @@ pub(crate) async fn dispatch_trace_file(
             frame_number,
             digitizer_id,
             trace_file.get_num_channels(),
-            trace_file.get_num_samples(),
-            (1.0/trace_file.get_sample_time()) as u64,
+            (1.0 / trace_file.get_sample_time()) as u64,
             &event,
         )?;
 
@@ -80,7 +79,6 @@ pub(crate) fn create_message(
     frame_number: u32,
     digitizer_id: u8,
     number_of_channels: usize,
-    number_of_samples: usize,
     sampling_rate: u64,
     event: &TraceFileEvent,
 ) -> Result<String, Error> {
@@ -109,5 +107,5 @@ pub(crate) fn create_message(
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels, and {number_of_samples} measurements."))
+    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels."))
 }

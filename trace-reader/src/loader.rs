@@ -185,10 +185,6 @@ impl TraceFile {
         self.header.number_of_channels as usize
     }
 
-    pub(crate) fn get_num_samples(&self) -> usize {
-        self.header.number_of_samples as usize
-    }
-
     pub(crate) fn get_sample_time(&self) -> f64 {
         self.header.sample_time
     }
