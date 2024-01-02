@@ -1,5 +1,4 @@
 use super::{
-    threshold_detector::ThresholdDuration,
     Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue,
 };
 use std::fmt::Display;
@@ -113,18 +112,7 @@ impl State {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct BasicMuonDetector {
-/*
-    // Value of the derivative at which an event is said to have been detected
-    // Time for which the voltage should rise for the rise to be considered genuine.
-    onset_detector: ThresholdDetector<UpperThreshold>,
-    // Value of the derivative at which an event is said to have peaked
-    // Time for which the voltage should drop for the peak to be considered genuine
-    fall_detector: ThresholdDetector<LowerThreshold>,
-    // Value of the derivative at which an event is said to have finished
-    // Time for which the voltage should level for the finish to be considered genuine
-    termination_detector: ThresholdDetector<UpperThreshold>,
- */
+pub(crate) struct AdvancedMuonDetector {
     onset_threshold: Real,
     fall_threshold: Real,
     termination_threshold: Real,
@@ -136,7 +124,7 @@ pub(crate) struct BasicMuonDetector {
     time_crossed: Option<Real>,
 }
 
-impl BasicMuonDetector {
+impl AdvancedMuonDetector {
     pub(crate) fn new(
         onset: Real,
         fall: Real,
@@ -177,7 +165,7 @@ impl BasicMuonDetector {
     }
 }
 
-impl Detector for BasicMuonDetector {
+impl Detector for AdvancedMuonDetector {
     type TracePointType = (Real, RealArray<2>);
     type EventPointType = (Real, Data);
 
@@ -230,7 +218,7 @@ pub(crate) struct BasicMuonAssembler {
 }
 
 impl Assembler for BasicMuonAssembler {
-    type DetectorType = BasicMuonDetector;
+    type DetectorType = AdvancedMuonDetector;
 
     fn assemble_pulses(&mut self, source: (Real, Data)) -> Option<Pulse> {
         match self.mode.clone() {
@@ -305,7 +293,7 @@ mod tests {
     #[test]
     fn test_threshold() {
         let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        let detector = BasicMuonDetector::new(1.0, 1.0, 1.0, 0.0);
+        let detector = AdvancedMuonDetector::new(1.0, 1.0, 1.0, 0.0);
         let mut iter = data
             .into_iter()
             .enumerate()
