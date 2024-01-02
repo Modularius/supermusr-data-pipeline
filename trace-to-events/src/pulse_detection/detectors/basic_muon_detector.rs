@@ -138,15 +138,16 @@ pub(crate) struct BasicMuonDetector {
 
 impl BasicMuonDetector {
     pub(crate) fn new(
-        onset: &ThresholdDuration,
-        fall: &ThresholdDuration,
-        termination: &ThresholdDuration,
+        onset: Real,
+        fall: Real,
+        termination: Real,
+        duration: Real,
     ) -> Self {
         Self {
-            onset_threshold: onset.threshold,
-            fall_threshold: fall.threshold,
-            termination_threshold: termination.threshold,
-            duration: onset.duration as Real,
+            onset_threshold: onset,
+            fall_threshold: fall,
+            termination_threshold: termination,
+            duration: duration,
             ..Default::default()
         }
     }
@@ -304,23 +305,7 @@ mod tests {
     #[test]
     fn test_threshold() {
         let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        let detector = BasicMuonDetector::new(
-            &ThresholdDuration {
-                threshold: 1.0,
-                cool_off: 0,
-                duration: 0,
-            },
-            &ThresholdDuration {
-                threshold: 1.0,
-                cool_off: 0,
-                duration: 1,
-            },
-            &ThresholdDuration {
-                threshold: 1.0,
-                cool_off: 0,
-                duration: 1,
-            },
-        );
+        let detector = BasicMuonDetector::new(1.0, 1.0, 1.0, 0.0);
         let mut iter = data
             .into_iter()
             .enumerate()

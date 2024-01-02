@@ -120,9 +120,10 @@ fn find_advanced_events(
         .clone()
         .window(FiniteDifferences::<2>::new())
         .events(BasicMuonDetector::new(
-            &parameters.muon_onset.0,
-            &parameters.muon_fall.0,
-            &parameters.muon_termination.0,
+            parameters.muon_onset,
+            parameters.muon_fall,
+            parameters.muon_termination,
+            parameters.duration,
         ));
 
     let pulses = events
