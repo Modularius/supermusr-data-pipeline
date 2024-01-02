@@ -1,7 +1,7 @@
 use crate::{
     parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode},
     pulse_detection::{
-        basic_muon_detector::{BasicMuonAssembler, AdvancedMuonDetector},
+        advanced_muon_detector::{BasicMuonAssembler, AdvancedMuonDetector},
         threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
