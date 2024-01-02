@@ -1,6 +1,4 @@
-use super::{
-    Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue,
-};
+use super::{Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue};
 use std::fmt::Display;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -13,7 +11,11 @@ pub(crate) enum Class {
 
 impl Display for Class {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self { Self::Onset => "0", Self::Peak => "2", Self::End => "-1", })
+        f.write_str(match self {
+            Self::Onset => "0",
+            Self::Peak => "2",
+            Self::End => "-1",
+        })
     }
 }
 
@@ -63,31 +65,39 @@ struct State(Mode, SuperlativeValue, SuperlativeDiff);
 
 impl State {
     fn from_mode(mode: Option<Mode>, time: Real, value: &RealArray<2>) -> Option<Self> {
-        mode.map(|mode| State(
-            mode,
-            SuperlativeValue { time, value: value[0] },
-            SuperlativeDiff { time, value: value.clone() },
-        ))
+        mode.map(|mode| {
+            State(
+                mode,
+                SuperlativeValue {
+                    time,
+                    value: value[0],
+                },
+                SuperlativeDiff {
+                    time,
+                    value: *value,
+                },
+            )
+        })
     }
 
-    fn test_and_update_superlative(&mut self,  time: Real, value: &RealArray<2>) {
+    fn test_and_update_superlative(&mut self, time: Real, value: &RealArray<2>) {
         match self {
             State(Mode::Rise, peak, steepest_rise) => {
                 //  Update Steepest Rise
                 if value[1] >= steepest_rise.value[1] {
                     steepest_rise.time = time;
-                    steepest_rise.value = value.clone();
+                    steepest_rise.value = *value;
                 }
                 //  Update Peak
                 if value[0] >= peak.value {
                     peak.time = time;
                     peak.value = value[0];
                 }
-            },
+            }
             State(Mode::Fall, nadir, sharpest_fall) => {
                 if value[1] <= sharpest_fall.value[1] {
                     sharpest_fall.time = time;
-                    sharpest_fall.value = value.clone();
+                    sharpest_fall.value = *value;
                 }
                 //  Update Nadir
                 if value[0] <= nadir.value {
@@ -103,7 +113,10 @@ impl State {
         (
             extreme.time,
             Data {
-                class:  match mode { Mode::Rise => Class::Peak, Mode::Fall => Class::End, },
+                class: match mode {
+                    Mode::Rise => Class::Peak,
+                    Mode::Fall => Class::End,
+                },
                 value: extreme.value,
                 superlative: Some(extreme_diff.clone()),
             },
@@ -125,17 +138,12 @@ pub(crate) struct AdvancedMuonDetector {
 }
 
 impl AdvancedMuonDetector {
-    pub(crate) fn new(
-        onset: Real,
-        fall: Real,
-        termination: Real,
-        duration: Real,
-    ) -> Self {
+    pub(crate) fn new(onset: Real, fall: Real, termination: Real, duration: Real) -> Self {
         Self {
             onset_threshold: onset,
             fall_threshold: fall,
             termination_threshold: termination,
-            duration: duration,
+            duration,
             ..Default::default()
         }
     }
@@ -149,7 +157,9 @@ impl AdvancedMuonDetector {
     }
 
     fn test_threshold_duration(&self, time: Real) -> bool {
-        self.time_crossed.map(|time_crossed|time - time_crossed >= self.duration).unwrap_or(false)
+        self.time_crossed
+            .map(|time_crossed| time - time_crossed >= self.duration)
+            .unwrap_or(false)
     }
 
     fn test_and_update_threshold(&mut self, time: Real, value: &RealArray<2>) {
@@ -157,10 +167,8 @@ impl AdvancedMuonDetector {
             if !self.test_threshold(value) {
                 self.time_crossed = None;
             }
-        } else {
-            if self.test_threshold(value) {
-                self.time_crossed = Some(time);
-            }
+        } else if self.test_threshold(value) {
+            self.time_crossed = Some(time);
         }
     }
 }
@@ -179,21 +187,35 @@ impl Detector for AdvancedMuonDetector {
                 if self.test_threshold_duration(time) {
                     let event = state.generate_event();
                     let State(mode, _, _) = &state;
-                    self.state = State::from_mode(match mode { Mode::Rise => Some(Mode::Fall), Mode::Fall => None }, time, &value);
+                    self.state = State::from_mode(
+                        match mode {
+                            Mode::Rise => Some(Mode::Fall),
+                            Mode::Fall => None,
+                        },
+                        time,
+                        &value,
+                    );
                     Some(event)
                 } else {
                     None
                 }
-            },
+            }
             None => {
                 if self.test_threshold_duration(time) {
-                    let event = (time, Data { class: Class::Onset, value: value[0], ..Default::default() });
+                    let event = (
+                        time,
+                        Data {
+                            class: Class::Onset,
+                            value: value[0],
+                            ..Default::default()
+                        },
+                    );
                     self.state = State::from_mode(Some(Mode::Rise), time, &value);
                     Some(event)
                 } else {
                     None
                 }
-            },
+            }
         }
     }
 }
