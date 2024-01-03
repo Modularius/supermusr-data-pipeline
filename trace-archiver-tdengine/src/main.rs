@@ -14,6 +14,8 @@ use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
 
+// cargo run -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 400 --random-sample
+// cargo run -- --kafka-broker=localhost:19092 --kafka-consumer-group=trace-producer --kafka-topic=Traces --td-dsn=172.16.105.238:6030 --td-database=tracelogs --num-channels=8
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {

@@ -32,9 +32,10 @@ impl TDEngine {
         } else {
             "taos"
         };
+        let params = "configDir=config";
         let url = match Option::zip(username, password) {
-            Some((username, password)) => format!("{protocol}://{dsn}@{username}:{password}"),
-            None => format!("{protocol}://{dsn}"),
+            Some((username, password)) => format!("{protocol}://{dsn}@{username}:{password}?{params}"),
+            None => format!("{protocol}://{dsn}?{params}"),
         };
 
         debug!("Creating TaosBuilder with url {url}");
