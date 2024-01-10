@@ -1,6 +1,7 @@
 pub(crate) mod baseline;
 pub(crate) mod finite_differences;
 pub(crate) mod smoothing_window;
+pub(crate) mod adaptive_bin;
 
 use super::{Real, RealArray, Stats, Temporal, TracePoint};
 pub(crate) use baseline::Baseline;

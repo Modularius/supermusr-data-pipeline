@@ -402,4 +402,46 @@ mod tests {
         );
         assert_eq!(iter.next(), None);
     }
+
+    #[test]
+    fn test_cosine_data() {
+        const PI : Real = 3.141592653589793238462643;
+        let data = (0..200).map(|t|
+            // The detector settings should pick up all pulses as distinct signals,
+            // except for the one at 153 (too thin), and the one at 178 (too soon after the one at 173).
+            [(25,8.0,16.0),(57,8.0,20.0),(125,8.0,18.0),(153,8.0,2.0),(173,8.0,9.0),(178,8.0,9.0)]
+            .iter()
+            .map(|(c,peak,width)| {
+                let z = (t - c) as Real/width;
+                if Real::abs(z) <= 1.0 {
+                    peak*(Real::cos(8.0*z/PI) + 1.0)/2.0
+                } else {
+                    0.0
+                }
+            }).sum()
+        ).collect::<Vec<Real>>();
+
+        for i in data.iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, *v as Real))
+            .window(FiniteDifferences::<2>::new()).collect::<Vec<_>>() {
+            println!("{i:?}");
+        }
+        
+        let detector = AdvancedMuonDetector::new(1.0,1.0,1.0,1.0);
+
+        let mut iter = data
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .window(FiniteDifferences::<2>::new())
+            .events(detector);
+
+        assert_eq!(iter.next(), Some((17.0, Data { class: Class::Onset, value: 2.8799999999999994, superlative: None })));
+        assert_eq!(iter.next(), Some((21.0, Data { class: Class::Peak, value: 6.72, superlative: Some(TimeValue { time: 17.0, value: TraceArray([2.8799999999999994, 1.3599999999999999]) }) })));
+        assert_eq!(iter.next(), Some((151.0, Data { class: Class::End, value: 0.0, superlative: Some(TimeValue { time: 35.0, value: TraceArray([0.0, -1.5199999999999996]) }) })));
+        assert_eq!(iter.next(), Some((166.0, Data { class: Class::Onset, value: 3.1604938271604937, superlative: None })));
+        assert_eq!(iter.next(), Some((175.0, Data { class: Class::Peak, value: 14.71604938271605, superlative: Some(TimeValue { time: 170.0, value: TraceArray([8.790123456790125, 2.370370370370372]) }) })));
+        assert_eq!(iter.next(), None);
+    }
 }
