@@ -19,13 +19,6 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
 
-struct ChannnelEvents {
-    channel_number: Channel,
-
-    time: Vec<Time>,
-    voltage: Vec<Intensity>,
-}
-
 fn find_channel_events(
     trace: &ChannelTrace,
     sample_time: Real,

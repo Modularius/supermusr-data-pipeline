@@ -52,7 +52,9 @@ impl Timer {
 pub(crate) struct TimerSuite {
     pub(crate) full : Timer,
     pub(crate) iteration : Timer,
+    pub(crate) unpack : Timer,
     pub(crate) processing : Timer,
+    pub(crate) publishing : Timer,
     num_messages : u128,
     target_messages : u128,
     num_bytes_in : usize,
@@ -75,15 +77,21 @@ impl TimerSuite {
         println!("Timing for {0} messages, with {1} total bytes in and {2} total bytes out.", self.num_messages, self.num_bytes_in, self.num_bytes_out);
         self.full.print      ("Total      ", self.num_messages);
         self.iteration.print ("Loop       ", self.num_messages);
+        self.unpack.print    ("Unpack     ", self.num_messages);
         self.processing.print("Processing ", self.num_messages);
+        self.publishing.print("Publishing ", self.num_messages);
     }
 
     pub(crate) fn next_message(&mut self, num_bytes_in : usize, num_bytes_out : usize) {
         self.num_messages += 1;
         self.iteration.accumulate();
         self.processing.accumulate();
+        self.unpack.accumulate();
+        self.publishing.accumulate();
         self.iteration.accumulate_per_byte(num_bytes_in,num_bytes_out);
         self.processing.accumulate_per_byte(num_bytes_in,num_bytes_out);
+        self.unpack.accumulate_per_byte(num_bytes_in,num_bytes_out);
+        self.publishing.accumulate_per_byte(num_bytes_in,num_bytes_out);
         self.num_bytes_in += num_bytes_in;
         self.num_bytes_out += num_bytes_out;
     }

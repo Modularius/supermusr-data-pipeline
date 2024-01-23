@@ -80,13 +80,13 @@ async fn main() {
     let trace_event_indices: Vec<_> = if args.random_sample {
         (0..num_trace_events)
             .map(|_| {
-                (0..num_trace_events)
+                (0..total_trace_events)
                     .choose(&mut thread_rng())
                     .unwrap_or_default()
             })
             .collect()
     } else {
-        (0..num_trace_events)
+        (0..total_trace_events)
             .cycle()
             .take(num_trace_events)
             .collect()

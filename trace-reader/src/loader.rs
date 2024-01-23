@@ -163,16 +163,16 @@ pub(crate) struct TraceFile {
 }
 
 impl TraceFile {
-    pub(crate) fn get_trace_event(&mut self, event: usize) -> Result<TraceFileEvent, Error> {
-        if event < self.num_trace_events {
+    pub(crate) fn get_trace_event(&mut self, trace_event: usize) -> Result<TraceFileEvent, Error> {
+        if trace_event < self.num_trace_events {
             self.file.seek(SeekFrom::Start(
-                (self.header.get_size() + event * self.header.get_event_size()) as u64,
+                (self.header.get_size() + trace_event * self.header.get_event_size()) as u64,
             ))?;
             self.header.get_trace_event(&mut self.file)
         } else {
             Err(Error::new(
                 ErrorKind::InvalidInput,
-                "Invalid event index: {event} should be less than {num_events}",
+                format!("Invalid event index: {trace_event} should be less than {0}",self.num_trace_events),
             ))
         }
     }
