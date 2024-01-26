@@ -15,6 +15,8 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 }, flatbuffers::FlatBufferBuilder};
+use tracing::{span, Level, event};
+use tracing_subscriber::{fmt, fmt::time};
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
 // RUST_LOG=off cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
@@ -74,9 +76,11 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    //env_logger::init();
 
     let args = Cli::parse();
+    
+    fmt().pretty().with_timer(time::UtcTime::rfc_3339()).init();
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&watcher);
@@ -148,12 +152,16 @@ async fn main() {
                                 // Begin Timer
                                 timer_suite.processing.record();
                                 let mut fbb = FlatBufferBuilder::new();
-                                processing::process(
-                                    &mut fbb,
-                                    &thing,
-                                    &args.mode,
-                                    args.save_file.as_deref(),
-                                );
+                                {
+                                    //let span = span!(Level::TRACE, "Processing Span");
+                                    //let _guard = span.enter();
+                                    processing::process(
+                                        &mut fbb,
+                                        &thing,
+                                        &args.mode,
+                                        args.save_file.as_deref(),
+                                    );
+                                }
                                 // End Timer
                                 timer_suite.processing.end();
                                 timer_suite.publishing.record();

@@ -18,6 +18,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
+use tracing;
 
 fn find_channel_events(
     trace: &ChannelTrace,
@@ -158,17 +159,18 @@ fn get_save_file_name(path: &Path, channel: Channel, subscript: &str) -> PathBuf
     }
 }
 
+#[tracing::instrument]
 pub(crate) fn process<'a>(
     fbb : &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
     mode: &Mode,
     save_options: Option<&Path>,
 ) {
-    log::info!(
+    /*log::info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
-    );
+    );*/
 
     let sample_time_in_ns: Real = 1_000_000_000.0 / trace.sample_rate() as Real;
 

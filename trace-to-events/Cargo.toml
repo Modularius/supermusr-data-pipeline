@@ -7,7 +7,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-env_logger.workspace = true
+#env_logger.workspace = true
 kagiyama.workspace = true
 lazy_static.workspace = true
 log.workspace = true
@@ -16,6 +16,8 @@ rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
+tracing = "0.1.40"
+tracing-subscriber = {version = "0.3.18", features = ["time", "fmt", "tracing-log"]}
 
 [dev-dependencies]
 assert_approx_eq.workspace = true
