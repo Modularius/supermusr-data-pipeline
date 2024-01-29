@@ -51,6 +51,14 @@ struct Cli {
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
     random_sample: bool,
+
+    /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
+    #[clap(long, default_value = "1")]
+    channel_multiplier: usize,
+
+    /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
+    #[clap(long, default_value = "1")]
+    message_multiplier: usize,
 }
 
 #[tokio::main]
@@ -66,6 +74,7 @@ async fn main() {
     );
 
     let producer: FutureProducer = client_config
+        //.set("max.request.size","100000000")
         .create()
         .expect("Kafka Producer should be created");
 
@@ -100,6 +109,8 @@ async fn main() {
         &producer,
         &args.trace_topic,
         6000,
+        args.channel_multiplier,
+        args.message_multiplier,
     )
     .await
     .expect("Trace File should be dispatched to Kafka");

@@ -53,8 +53,7 @@ fn find_constant_events(
         .clone()
         .events(ThresholdDetector::<UpperThreshold>::new(
             &parameters.threshold_trigger.0,
-        ))
-        .assemble(ThresholdAssembler::<UpperThreshold>::default());
+        ));
 
     if let Some(save_path) = save_path {
         raw.clone()
@@ -63,6 +62,7 @@ fn find_constant_events(
 
         pulses
             .clone()
+            .assemble(ThresholdAssembler::<UpperThreshold>::default())
             .save_to_file(&get_save_file_name(save_path, trace.channel(), "pulses"))
             .unwrap();
     }
@@ -70,8 +70,8 @@ fn find_constant_events(
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     for pulse in pulses {
-        time.push(pulse.start.time.unwrap_or_default() as Time);
-        voltage.push(pulse.start.value.unwrap_or_default() as Intensity);
+        time.push(pulse.0 as Time);
+        voltage.push(0 /*pulse.1. as Intensity*/);
     }
     (time,voltage)
 }
@@ -166,11 +166,11 @@ pub(crate) fn process<'a>(
     mode: &Mode,
     save_options: Option<&Path>,
 ) {
-    /*log::info!(
+    log::info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
-    );*/
+    );
 
     let sample_time_in_ns: Real = 1_000_000_000.0 / trace.sample_rate() as Real;
 
