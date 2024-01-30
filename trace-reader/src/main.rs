@@ -94,9 +94,9 @@ async fn main() {
             .collect()
     };
 
-    send_run_start_command(&producer)
+    /*send_run_start_command(&producer)
         .await
-        .expect("Run Start command should send");
+        .expect("Run Start command should send");*/
     dispatch_trace_file(
         trace_file,
         trace_event_indices,
@@ -108,7 +108,7 @@ async fn main() {
     )
     .await
     .expect("Trace File should be dispatched to Kafka");
-    send_run_stop_command(&producer)
+    /*send_run_stop_command(&producer)
         .await
-        .expect("Run Stop command should send");
+        .expect("Run Stop command should send");*/
 }

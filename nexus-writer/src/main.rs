@@ -20,14 +20,21 @@ use supermusr_streaming_types::{
 };
 use tokio::{sync::Mutex, time};
 
+//  To run run-simulator
+// cargo run --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test run-start --instrument-name SuperMuSR
+
 //  To run trace-reader
-// cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
+/*
+cargo run --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test run-start --instrument-name SuperMuSR
+cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
+cargo run --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test run-stop
+*/
 
 // To run trace-to-events
 // cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 
 // To run nexus-writer
-// cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --control-topic controls --event-topic Events --file-name output/Saves
+// cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --control-topic Control --event-topic Events --file-name output/Saves
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
