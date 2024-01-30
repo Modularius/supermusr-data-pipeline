@@ -1,12 +1,5 @@
 use std::time::{Instant, Duration};
 
-    /*
-        The trace-to-event tool transforms raw trace data collected by the detectors into a stream event data in real-time.
-        An event in SuperMuSR refers to a discrete muon detections, and consists of a timestamp, a peak intensity value, and other optional parameters such as pulse width.
-        Determing events from trace data is challenging because muon signals may merge if they arrive at the detector in quick succession,
-        or may be double counted if a single muon triggers more than one detector.
-        The challenge is to develop robust and accurate signal processing algorithms which are performant enough to meet the requirements of operating on 1000 detectors every 20ms.
-     */
 #[derive(Default)]
 pub(crate) struct DescStats {
     num: usize,
