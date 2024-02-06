@@ -2,7 +2,7 @@ use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
-use supermusr_common::{DigitizerId, FrameNumber};
+use supermusr_common::{DigitizerId, FrameNumber, Channel};
 
 mod loader;
 mod processing;
@@ -51,6 +51,10 @@ struct Cli {
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
     random_sample: bool,
+    
+    /// Every channel index is shifted by this amount
+    #[clap(long, default_value = "0")]
+    channel_index_shift: Channel,
 }
 
 #[tokio::main]
@@ -100,6 +104,7 @@ async fn main() {
         &producer,
         &args.trace_topic,
         6000,
+        &args.channel_index_shift,
     )
     .await
     .expect("Trace File should be dispatched to Kafka");
