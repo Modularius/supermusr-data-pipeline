@@ -30,6 +30,7 @@ pub(crate) async fn dispatch_trace_file(
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
+    channel_shift_index: Channel,
     channel_multiplier: usize,
     message_multiplier: usize
 ) -> Result<()> {
@@ -85,6 +86,7 @@ pub(crate) fn create_message(
     number_of_channels: usize,
     sampling_rate: u64,
     event: &TraceFileEvent,
+    channel_shift_index: Channel,
     channel_multiplier: usize
 ) -> Result<String, Error> {
     fbb.reset();
@@ -100,7 +102,7 @@ pub(crate) fn create_message(
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
     let channels: Vec<_> = (0..number_of_channels*channel_multiplier)
-        .map(|c| create_channel(fbb, c as u32, event.raw_trace[c % number_of_channels].as_slice()))
+        .map(|c| create_channel(fbb, c as u32 + channel_shift_index, event.raw_trace[c % number_of_channels].as_slice()))
         .collect();
 
     let message = DigitizerAnalogTraceMessageArgs {
