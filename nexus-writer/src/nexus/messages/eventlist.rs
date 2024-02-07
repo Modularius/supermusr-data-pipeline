@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 use supermusr_common::{Channel, Time};
-use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
+use supermusr_streaming_types::{aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage, dev1_digitizer_event_v1_generated::DigitizerEventListMessage};
 
 const TIMESTAMP_FORMAT : &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
@@ -24,9 +24,10 @@ pub(crate) struct EventMessage {
 }
 
 impl InstanceType for EventMessage {
-    type MessageType<'a> = DigitizerEventListMessage<'a>;
+    type MessageType<'a> = FrameAssembledEventListMessage<'a>;
 
     fn extract_message(data: &Self::MessageType<'_>) -> Result<Self> {
+        println!("{data:?}");
         //  Number of Events
         let voltage = data
             .voltage()
@@ -159,7 +160,7 @@ impl ListType for EventList {
 
 #[cfg(test)]
 mod test {
-    use supermusr_streaming_types::{dev1_digitizer_event_v1_generated::{finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message, root_as_digitizer_event_list_message_with_opts, DigitizerEventListMessageArgs}, flatbuffers::FlatBufferBuilder};
+    use supermusr_streaming_types::{aev1_frame_assembled_event_v1_generated::root_as_frame_assembled_event_list_message, dev1_digitizer_event_v1_generated::{finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message, root_as_digitizer_event_list_message_with_opts, DigitizerEventListMessageArgs}, flatbuffers::FlatBufferBuilder};
 
     use super::*;
 
@@ -195,7 +196,7 @@ mod test {
         let mut fbb = FlatBufferBuilder::new();
         let message = DigitizerEventListMessage::create(&mut fbb, &args);
         finish_digitizer_event_list_message_buffer(&mut fbb, message);
-        let message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+        let message = root_as_frame_assembled_event_list_message(fbb.finished_data()).unwrap();
         let msg = EventMessage::extract_message(&message).unwrap();
 
         assert_eq!(*msg.timestamp(), DateTime::<Utc>::default());

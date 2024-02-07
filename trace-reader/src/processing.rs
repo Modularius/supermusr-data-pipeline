@@ -3,7 +3,7 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::{debug, error};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -24,6 +24,7 @@ use supermusr_streaming_types::{
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
+    timestamp : Option<DateTime<Utc>>,
     trace_event_indices: Vec<usize>,
     frame_number: FrameNumber,
     digitizer_id: DigitizerId,
@@ -37,7 +38,7 @@ pub(crate) async fn dispatch_trace_file(
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
-            Utc::now().into(),
+            timestamp.unwrap_or(Utc::now()).into(),
             frame_number,
             digitizer_id,
             trace_file.get_num_channels(),

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
@@ -51,6 +52,10 @@ struct Cli {
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
     random_sample: bool,
+
+    /// If set, then the timestamp is applied to all messages, otherwise the current time is used.
+    #[clap(long)]
+    timestamp: Option<DateTime<Utc>>,
     
     /// Every channel index is shifted by this amount
     #[clap(long, default_value = "0")]
@@ -98,13 +103,14 @@ async fn main() {
 
     dispatch_trace_file(
         trace_file,
+        args.timestamp,
         trace_event_indices,
         args.frame_number,
         args.digitizer_id,
         &producer,
         &args.trace_topic,
         6000,
-        &args.channel_index_shift,
+        args.channel_index_shift,
     )
     .await
     .expect("Trace File should be dispatched to Kafka");

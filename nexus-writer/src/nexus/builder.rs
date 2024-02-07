@@ -69,13 +69,17 @@ impl<L: ListType> Nexus<L> {
         Ok(())
     }
 
-    pub(crate) fn write_files(&mut self, filename: &PathBuf, delay: u64) -> Result<()> {
+    pub(crate) fn write_files(&mut self, filename: &PathBuf, delay: u64, current_time: Option<Duration>) -> Result<()> {
         if let Some(until) = self
             .runs
             .front()
             .and_then(|run| run.parameters().collect_until)
         {
-            if Utc::now().timestamp_millis() > (until + delay) as i64 {
+            let now = Utc::now()
+                .checked_sub_signed(current_time.unwrap_or_default())
+                .unwrap_or(Utc::now())
+                .timestamp_millis();
+            if now > (until + delay) as i64 {
                 if let Some(mut run) = self.runs.pop_front() {
                     run.repatriate_lost_messsages(&mut self.lost_messages)?;
                     log::debug!("Popped completed run, {0} runs remaining.", self.runs.len());

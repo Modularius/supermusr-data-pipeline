@@ -86,6 +86,7 @@ async fn main() {
     let mut cache = FrameCache::<EventData>::new(ttl, args.digitiser_ids);
 
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
+
     loop {
         tokio::select! {
             event = consumer.recv() => {
