@@ -15,8 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v9
+      # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
+
+      # Evaluate the devshell here so that the time reported for subsequent
+      # steps that use it reflect what is actually done there.
+      - name: Evaluate devshell
+        run: nix develop
 
       - name: Format
         run: nix develop --command treefmt --fail-on-change
@@ -36,8 +42,10 @@ jobs:
     strategy:
       matrix:
         package:
+          - digitiser-aggregator
           - events-to-histogram
           - kafka-daq-report
+          - run-simulator
           - simulator
           - stream-to-file
           - trace-archiver
@@ -46,8 +54,14 @@ jobs:
           - trace-to-events
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v9
+      # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
+
+      # Evaluate the devshell here so that the time reported for subsequent
+      # steps that use it reflect what is actually done there.
+      - name: Evaluate devshell
+        run: nix develop
 
       - name: Build
         run: nix build -L .#${{ matrix.package }}
