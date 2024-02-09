@@ -45,7 +45,8 @@ pub(crate) async fn dispatch_trace_file(
             trace_file.get_num_channels(),
             (1.0 / trace_file.get_sample_time()) as u64,
             &event,
-            channel_multiplier,
+            channel_shift_index,
+            channel_multiplier
         )?;
         let timeout = Timeout::After(Duration::from_millis(timeout_ms));
         for _ in 0..message_multiplier {
