@@ -9,6 +9,7 @@
 
     naersk.url = "github:nix-community/naersk";
   };
+
   outputs = {
     self,
     nixpkgs,
@@ -22,7 +23,6 @@
           inherit system;
           overlays = [
             (import ./nix/overlays/hdf5.nix)
-            (import ./nix/overlays/tdengine.nix)
           ];
         };
 
@@ -69,8 +69,6 @@
           ];
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
-
-          TAOS_LIBRARY_PATH = "${pkgs.tdengine}/build/lib";
         };
 
         packages =
