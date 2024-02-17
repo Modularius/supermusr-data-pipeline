@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  trace-to-events = naersk'.buildPackage {
-    name = "trace-to-events";
+  events-analyser = naersk'.buildPackage {
+    name = "events-analyser";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "trace-to-events"];
+    cargoBuildOptions = x: x ++ ["--package" "events-analyser"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -21,8 +21,8 @@
     };
   };
 
-  trace-to-events-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-trace-to-events";
+  events-analyser-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-events-analyser";
     tag = "latest";
     created = "now";
 
@@ -36,7 +36,7 @@
       ExposedPorts = {
         "9090/tcp" = {};
       };
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-to-events}/bin/trace-to-events"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${events-analyser}/bin/events-analyser"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
