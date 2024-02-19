@@ -168,7 +168,14 @@ fn perform_analysis(list1 : &ChannelList, list2 : &ChannelList) {
         println!("Analysing Channel {c}");
         let event_list1 = list1.get(c).unwrap();
         let event_list2 = list2.get(c).unwrap();
-        println!("Number of events in, list 1 = {0}, list 2 = {1}", event_list1.time.len(), event_list2.time.len());
+        println!("Number of events in, list 1 = {0}, list 2 = {1}",
+            event_list1.time.len(),
+            event_list2.time.len()
+        );
         
+        println!("Lifetime estimator for, list 1 = {0}, list 2 = {1}",
+            (event_list1.time.len() as f64 - 2.0)/event_list1.time.iter().sum::<Time>() as f64,
+            (event_list2.time.len() as f64 - 2.0)/event_list2.time.iter().sum::<Time>() as f64
+        );
     }
 }
