@@ -121,7 +121,7 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
-    let mut timer = StatTimer::new(500,1500);
+    let mut timer = StatTimer::new(5,10);
 
     loop {
         if timer.has_finished() {

@@ -4,8 +4,8 @@
     "sample-rate": 100000000,
     "traces": [
         {
-            "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 1 } }],
-            "frames": [1, 2, 3, 4, 5],
+            "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 8 } }],
+            "frames": [1],
             "pulses": [
                 {
                     "weight": 1,
