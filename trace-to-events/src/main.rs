@@ -8,14 +8,14 @@ use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
 use parameters::Mode;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer}, message::Message, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout
+    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer}, message::{Header, Message}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout
 };
 use timer::StatTimer;
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 }, flatbuffers::FlatBufferBuilder};
-use tracing::{span, Level, event};
+use tracing::{event, span, Instrument, Level};
 use tracing_subscriber::{fmt, fmt::time};
 
 use crate::timer::Data;
@@ -153,6 +153,10 @@ async fn main() {
                                 metrics::MessageKind::Trace,
                             ))
                             .inc();
+                        let headers = m.headers()
+                            .map(|h|h.detach())
+                            .unwrap_or_default()
+                            .insert(Header { key : "trace-to-events time_ns", value : Some(&[0]) });
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
@@ -166,6 +170,7 @@ async fn main() {
                                 let future = producer.send_result(
                                     FutureRecord::to(&args.event_topic)
                                         .payload(fbb.finished_data())
+                                        .headers(headers)
                                         .key("test")
                                 )
                                 .expect("Producer sends");
