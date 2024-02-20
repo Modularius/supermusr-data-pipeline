@@ -102,7 +102,7 @@ async fn main() {
         &args.username,
         &args.password,
     );
-
+    
     let producer: FutureProducer = client_config
         .set("linger.ms", "0")
         .create()
