@@ -2,13 +2,12 @@ use crate::{
     parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode},
     pulse_detection::{
         advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
-        threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
+        threshold_detector::{ThresholdDetector, UpperThreshold},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
 };
 use std::path::{Path, PathBuf};
-use supermusr_common::{Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_common::{Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
@@ -22,7 +21,6 @@ use supermusr_streaming_types::{
 use tracing;
 
 fn find_channel_events(
-    metadata: &FrameMetadataV1,
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
     sample_time: Real,
@@ -40,7 +38,6 @@ fn find_channel_events(
 }
 
 fn find_constant_events(
-    metadata: &FrameMetadataV1,
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
     sample_time : Real,
@@ -63,12 +60,10 @@ fn find_constant_events(
     if let Some(save_path) = save_path {
         raw.clone()
             .save_to_file(&get_save_file_name(save_path, metadata.frame_number(),trace.channel(), "raw"))
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(),trace.channel(), "raw"))
             .unwrap();
 
         pulses
             .clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "pulses"))
             .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "pulses"))
             .unwrap();
     }
@@ -83,7 +78,6 @@ fn find_constant_events(
 }
 
 fn find_advanced_events(
-    metadata: &FrameMetadataV1,
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
     sample_time : Real,
@@ -137,12 +131,10 @@ fn find_advanced_events(
         smoothed
             .clone()
             .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "smoothed"))
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "smoothed"))
             .unwrap();
 
         pulses
             .clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "pulses"))
             .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "pulses"))
             .unwrap();
     }
@@ -157,9 +149,7 @@ fn find_advanced_events(
 }
 
 fn get_save_file_name(path: &Path, frame_number: FrameNumber, channel: Channel, subscript: &str) -> PathBuf {
-fn get_save_file_name(path: &Path, frame_number: FrameNumber, channel: Channel, subscript: &str) -> PathBuf {
     let file_name = format!(
-        "{0}f{frame_number}c{channel}_{subscript}",
         "{0}f{frame_number}c{channel}_{subscript}",
         path.file_stem()
             .and_then(|os_str| os_str.to_str())
