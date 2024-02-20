@@ -1,10 +1,20 @@
+mod muon;
+mod noise;
+mod json;
+mod message;
+
 use chrono::Utc;
 use clap::{Parser, Subcommand};
+use json::Simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::time::{Duration, SystemTime};
+use std::{
+    fs::File,
+    path::PathBuf,
+    time::{Duration, SystemTime},
+};
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -43,9 +53,9 @@ struct Cli {
     #[clap(long)]
     trace_topic: Option<String>,
 
-    /// Number of channels to create
-    #[clap(long, default_value = "1")]
-    num_channels: u32,
+    /// Topic to publish analog trace packets to
+    #[clap(long)]
+    json_settings: Option<PathBuf>,
 
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
@@ -70,6 +80,9 @@ enum Mode {
 
     /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
     Continuous(Continuous),
+
+    /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
+    Json(Json),
 }
 
 #[derive(Clone, Parser)]
@@ -90,10 +103,16 @@ struct Continuous {
     frame_time: u64,
 }
 
+#[derive(Clone, Parser)]
+struct Json {
+    /// Number of first frame to be sent
+    #[clap(long)]
+    path: PathBuf,
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
-
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
@@ -128,6 +147,34 @@ async fn main() {
 
                 frame_number += 1;
                 frame.tick().await;
+            }
+        }
+        Mode::Json(Json { path }) => {
+            let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
+            for trace in obj.traces {
+                let now = Utc::now();
+                for (frame_index, frame) in trace.frames.iter().enumerate() {
+                    let ts = trace.create_time_stamp(&now, frame_index);
+                    let templates = trace
+                        .create_frame_templates(frame_index, *frame, &ts)
+                        .expect("Templates created");
+
+                    for template in templates {
+                        if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                            template
+                                .send_trace_messages(&producer, &mut fbb, trace_topic, &obj.voltage_transformation)
+                                .await
+                                .expect("Trace messages should send.");
+                        }
+
+                        if let Some(event_topic) = cli.event_topic.as_deref() {
+                            template
+                                .send_event_messages(&producer, &mut fbb, event_topic, &obj.voltage_transformation)
+                                .await
+                                .expect("Trace messages should send.");
+                        }
+                    }
+                }
             }
         }
     }
