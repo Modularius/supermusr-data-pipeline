@@ -1,17 +1,15 @@
 mod timer;
-mod metrics;
 mod parameters;
 mod processing;
 mod pulse_detection;
 
 use clap::Parser;
-use kagiyama::{AlwaysReady, Watcher};
 use parameters::Mode;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer}, message::{Header, Message}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout
 };
 use timer::StatTimer;
-use std::{net::SocketAddr, path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration};
 use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 }, flatbuffers::FlatBufferBuilder};
@@ -75,9 +73,6 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
-
     #[clap(long)]
     save_file: Option<PathBuf>,
 
@@ -93,16 +88,12 @@ async fn main() {
     
     //fmt().pretty().with_timer(time::UtcTime::rfc_3339()).init();
 
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&watcher);
-    watcher.start_server(args.observability_address).await;
-
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
         &args.password,
     );
-    
+
     let producer: FutureProducer = client_config
         .set("linger.ms", "0")
         .create()
@@ -148,11 +139,6 @@ async fn main() {
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         let bytes_in = payload.len();
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Trace,
-                            ))
-                            .inc();
                         let headers = m.headers()
                             .map(|h|h.detach())
                             .unwrap_or_default()
@@ -178,15 +164,9 @@ async fn main() {
                                     match future.await {
                                         Ok(_) => {
                                             log::trace!("Published event message");
-                                            metrics::MESSAGES_PROCESSED.inc();
                                         }
                                         Err(e) => {
                                             log::error!("{:?}", e);
-                                            metrics::FAILURES
-                                                .get_or_create(&metrics::FailureLabels::new(
-                                                    metrics::FailureKind::KafkaPublishFailed,
-                                                ))
-                                                .inc();
                                         }
                                     }
                                 });
@@ -197,20 +177,10 @@ async fn main() {
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
                             }
                         }
                     } else {
                         log::warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
                     }
                 }
                 consumer.commit_message(&m, CommitMode::Async).unwrap();

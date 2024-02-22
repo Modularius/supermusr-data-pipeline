@@ -59,12 +59,22 @@ fn find_constant_events(
 
     if let Some(save_path) = save_path {
         raw.clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(),trace.channel(), "raw"))
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "raw",
+            ))
             .unwrap();
 
         pulses
             .clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "pulses"))
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "pulses",
+            ))
             .unwrap();
     }
 
@@ -125,17 +135,32 @@ fn find_advanced_events(
 
     if let Some(save_path) = save_path {
         raw.clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "raw"))
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "raw",
+            ))
             .unwrap();
 
         smoothed
             .clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "smoothed"))
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "smoothed",
+            ))
             .unwrap();
 
         pulses
             .clone()
-            .save_to_file(&get_save_file_name(save_path, metadata.frame_number(), trace.channel(), "pulses"))
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "pulses",
+            ))
             .unwrap();
     }
 
@@ -148,7 +173,12 @@ fn find_advanced_events(
     (time,voltage)
 }
 
-fn get_save_file_name(path: &Path, frame_number: FrameNumber, channel: Channel, subscript: &str) -> PathBuf {
+fn get_save_file_name(
+    path: &Path,
+    frame_number: FrameNumber,
+    channel: Channel,
+    subscript: &str,
+) -> PathBuf {
     let file_name = format!(
         "{0}f{frame_number}c{channel}_{subscript}",
         path.file_stem()
