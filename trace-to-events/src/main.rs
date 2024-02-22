@@ -1,18 +1,25 @@
-mod timer;
 mod parameters;
 mod processing;
 mod pulse_detection;
+mod timer;
 
 use clap::Parser;
 use parameters::Mode;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer}, message::{Header, Message}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout
+    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    message::{Header, Message},
+    producer::{FutureProducer, FutureRecord, Producer},
+    util::Timeout,
+};
+use std::{path::PathBuf, time::Duration};
+use supermusr_streaming_types::{
+    dat1_digitizer_analog_trace_v1_generated::{
+        digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
+    },
+    flatbuffers::FlatBufferBuilder,
 };
 use timer::StatTimer;
-use std::{path::PathBuf, time::Duration};
-use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-}, flatbuffers::FlatBufferBuilder};
 use tracing::{event, span, Instrument, Level};
 use tracing_subscriber::{fmt, fmt::time};
 
@@ -85,7 +92,7 @@ async fn main() {
     //env_logger::init();
 
     let args = Cli::parse();
-    
+
     //fmt().pretty().with_timer(time::UtcTime::rfc_3339()).init();
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
@@ -98,7 +105,7 @@ async fn main() {
         .set("linger.ms", "0")
         .create()
         .expect("Kafka Producer should be created");
-    
+
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
@@ -107,19 +114,19 @@ async fn main() {
         .create()
         .expect("Kafka Consumer should be created");
 
-
     consumer
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
-    let mut timer = StatTimer::new(5,10);
+    let mut timer = StatTimer::new(5, 10);
 
     loop {
         if timer.has_finished() {
-            let (stats1,stats2) = timer.calculate_stats();
+            let (stats1, stats2) = timer.calculate_stats();
             stats1.print();
             stats2.print();
-            producer.flush(Timeout::After(Duration::from_millis(1000)))
+            producer
+                .flush(Timeout::After(Duration::from_millis(1000)))
                 .expect("Messages Flush");
             return;
         }
@@ -139,10 +146,14 @@ async fn main() {
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         let bytes_in = payload.len();
-                        let headers = m.headers()
-                            .map(|h|h.detach())
-                            .unwrap_or_default()
-                            .insert(Header { key : "trace-to-events time_ns", value : Some(&[0]) });
+                        let headers =
+                            m.headers()
+                                .map(|h| h.detach())
+                                .unwrap_or_default()
+                                .insert(Header {
+                                    key: "trace-to-events time_ns",
+                                    value: Some(&[0]),
+                                });
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
@@ -153,13 +164,14 @@ async fn main() {
                                     args.save_file.as_deref(),
                                 );
                                 // End Timer
-                                let future = producer.send_result(
-                                    FutureRecord::to(&args.event_topic)
-                                        .payload(fbb.finished_data())
-                                        .headers(headers)
-                                        .key("test")
-                                )
-                                .expect("Producer sends");
+                                let future = producer
+                                    .send_result(
+                                        FutureRecord::to(&args.event_topic)
+                                            .payload(fbb.finished_data())
+                                            .headers(headers)
+                                            .key("test"),
+                                    )
+                                    .expect("Producer sends");
                                 tokio::spawn(async {
                                     match future.await {
                                         Ok(_) => {
@@ -173,7 +185,10 @@ async fn main() {
                                 let bytes_out = fbb.finished_data().len();
                                 fbb.reset();
                                 // End Timer
-                                timer.end_record( Data {bytes_in, bytes_out} );
+                                timer.end_record(Data {
+                                    bytes_in,
+                                    bytes_out,
+                                });
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
@@ -187,7 +202,7 @@ async fn main() {
             }
             Err(e) => {
                 log::warn!("Kafka error: {}", e);
-            },
+            }
         }
     }
 }

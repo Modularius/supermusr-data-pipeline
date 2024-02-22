@@ -172,7 +172,10 @@ impl TraceFile {
         } else {
             Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("Invalid event index: {trace_event} should be less than {0}",self.num_trace_events),
+                format!(
+                    "Invalid event index: {trace_event} should be less than {0}",
+                    self.num_trace_events
+                ),
             ))
         }
     }

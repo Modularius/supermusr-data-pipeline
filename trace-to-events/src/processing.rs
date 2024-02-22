@@ -40,7 +40,7 @@ fn find_channel_events(
 fn find_constant_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
-    sample_time : Real,
+    sample_time: Real,
     parameters: &ConstantPhaseDiscriminatorParameters,
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
@@ -51,11 +51,9 @@ fn find_constant_events(
         .enumerate()
         .map(|(i, v)| (i as Real, -(v as Real)));
 
-    let pulses = raw
-        .clone()
-        .events(ThresholdDetector::<UpperThreshold>::new(
-            &parameters.threshold_trigger.0,
-        ));
+    let pulses = raw.clone().events(ThresholdDetector::<UpperThreshold>::new(
+        &parameters.threshold_trigger.0,
+    ));
 
     if let Some(save_path) = save_path {
         raw.clone()
@@ -84,13 +82,13 @@ fn find_constant_events(
         time.push(pulse.0 as Time);
         voltage.push(0 /*pulse.1. as Intensity*/);
     }
-    (time,voltage)
+    (time, voltage)
 }
 
 fn find_advanced_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
-    sample_time : Real,
+    sample_time: Real,
     parameters: &AdvancedMuonDetectorParameters,
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
@@ -170,7 +168,7 @@ fn find_advanced_events(
         time.push(pulse.steepest_rise.time.unwrap_or_default() as Time);
         voltage.push(pulse.peak.value.unwrap_or_default() as Intensity);
     }
-    (time,voltage)
+    (time, voltage)
 }
 
 fn get_save_file_name(
@@ -193,7 +191,7 @@ fn get_save_file_name(
 
 #[tracing::instrument]
 pub(crate) fn process<'a>(
-    fbb : &mut FlatBufferBuilder<'a>,
+    fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
     mode: &Mode,
     save_options: Option<&Path>,
@@ -208,20 +206,27 @@ pub(crate) fn process<'a>(
 
     let events = std::thread::scope(|scope| {
         let mut events = EventData::default();
-        let vec : Vec<(Channel,_)> = trace
+        let vec: Vec<(Channel, _)> = trace
             .channels()
             .unwrap()
             .iter()
-            .map(|channel_trace|
-                (channel_trace.channel(),
-                    scope.spawn(move ||
-                        find_channel_events(&trace.metadata(), &channel_trace, sample_time_in_ns, mode, save_options)
-                    )
+            .map(|channel_trace| {
+                (
+                    channel_trace.channel(),
+                    scope.spawn(move || {
+                        find_channel_events(
+                            &trace.metadata(),
+                            &channel_trace,
+                            sample_time_in_ns,
+                            mode,
+                            save_options,
+                        )
+                    }),
                 )
-            )
+            })
             .collect();
-        for (channel,handle) in vec {
-            let (time,voltage) = handle.join().unwrap();
+        for (channel, handle) in vec {
+            let (time, voltage) = handle.join().unwrap();
             events.channel.extend_from_slice(&vec![channel; time.len()]);
             events.time.extend_from_slice(&time);
             events.voltage.extend_from_slice(&voltage);
@@ -321,7 +326,9 @@ mod tests {
             None,
         );
 
-        assert!(digitizer_event_list_message_buffer_has_identifier(fbb.finished_data()));
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
         let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
 
         assert_eq!(
