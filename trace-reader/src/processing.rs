@@ -49,12 +49,10 @@ pub(crate) async fn dispatch_trace_file(
             channel_id_offset,
         )?;
         let timeout = Timeout::After(Duration::from_millis(timeout_ms));
-        for _ in 0..message_multiplier {
-            let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
-            match producer.send(future_record, timeout).await {
-                Ok(r) => debug!("Delivery: {:?}", r),
-                Err(e) => error!("Delivery failed: {:?}", e.0),
-            }
+        let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
+        match producer.send(future_record, timeout).await {
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e.0),
         }
     }
     Ok(())
