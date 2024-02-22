@@ -3,7 +3,7 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::{debug, error};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -22,31 +22,31 @@ use supermusr_streaming_types::{
 };
 
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
     trace_event_indices: Vec<usize>,
+    timestamp: DateTime<Utc>,
     frame_number: FrameNumber,
     digitizer_id: DigitizerId,
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
-    channel_shift_index: Channel,
-    channel_multiplier: usize,
-    message_multiplier: usize
+    channel_id_offset: Channel,
+    frame_interval_ms: i32,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    for index in trace_event_indices {
+    for (i, &index) in trace_event_indices.iter().enumerate() {
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
-            Utc::now().into(),
-            frame_number,
+            (timestamp + Duration::from_millis(i as u64 * frame_interval_ms as u64)).into(),
+            frame_number + i as FrameNumber,
             digitizer_id,
             trace_file.get_num_channels(),
             (1.0 / trace_file.get_sample_time()) as u64,
             &event,
-            channel_shift_index,
-            channel_multiplier
+            channel_id_offset,
         )?;
         let timeout = Timeout::After(Duration::from_millis(timeout_ms));
         for _ in 0..message_multiplier {
@@ -79,6 +79,7 @@ pub(crate) fn create_channel<'a>(
 /// * `num_channels` - The number of channels to simulate.
 /// #Returns
 /// A string result, or an error.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_message(
     fbb: &mut FlatBufferBuilder<'_>,
     time: GpsTime,
@@ -87,8 +88,7 @@ pub(crate) fn create_message(
     number_of_channels: usize,
     sampling_rate: u64,
     event: &TraceFileEvent,
-    channel_shift_index: Channel,
-    channel_multiplier: usize
+    channel_id_offset: Channel,
 ) -> Result<String, Error> {
     fbb.reset();
 
@@ -102,8 +102,14 @@ pub(crate) fn create_message(
     };
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
-    let channels: Vec<_> = (0..number_of_channels*channel_multiplier)
-        .map(|c| create_channel(fbb, c as u32 + channel_shift_index, event.raw_trace[c % number_of_channels].as_slice()))
+    let channels: Vec<_> = (0..number_of_channels)
+        .map(|c| {
+            create_channel(
+                fbb,
+                c as u32 + channel_id_offset,
+                event.raw_trace[c].as_slice(),
+            )
+        })
         .collect();
 
     let message = DigitizerAnalogTraceMessageArgs {
