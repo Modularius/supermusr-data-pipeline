@@ -45,6 +45,7 @@ jobs:
       matrix:
         package:
           - digitiser-aggregator
+          - events-analyser
           - events-to-histogram
           - kafka-daq-report
           - run-simulator

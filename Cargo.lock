@@ -738,6 +738,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "events-analyser"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_approx_eq",
+ "chrono",
+ "clap",
+ "env_logger",
+ "itertools 0.11.0",
+ "kagiyama",
+ "lazy_static",
+ "log",
+ "num 0.4.1",
+ "rand",
+ "rdkafka",
+ "supermusr-common",
+ "supermusr-streaming-types",
+ "tokio",
+]
+
+[[package]]
 name = "events-to-histogram"
 version = "0.1.0"
 dependencies = [
