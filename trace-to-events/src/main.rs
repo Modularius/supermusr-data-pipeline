@@ -1,17 +1,18 @@
 mod parameters;
 mod processing;
 mod pulse_detection;
-mod timer;
 
+use chrono::{DateTime, Utc};
 use clap::Parser;
+use num::traits::ToBytes;
 use parameters::Mode;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{Header, Message},
-    producer::{FutureProducer, FutureRecord, Producer},
-    util::Timeout,
+    message::{BorrowedMessage, Header, Message, OwnedHeaders},
+    producer::{FutureProducer, FutureRecord},
 };
-use std::{path::PathBuf, time::Duration};
+use std::time::{self, Duration, Instant};
+use std::path::PathBuf;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -19,11 +20,8 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use timer::StatTimer;
-use tracing::{event, span, Instrument, Level};
-use tracing_subscriber::{fmt, fmt::time};
-
-use crate::timer::Data;
+//use tracing::{event, span, Instrument, Level};
+//use tracing_subscriber::{fmt, fmt::time};
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
 // RUST_LOG=off cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
@@ -118,22 +116,9 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
-    let mut timer = StatTimer::new(5, 10);
-
     loop {
-        if timer.has_finished() {
-            let (stats1, stats2) = timer.calculate_stats();
-            stats1.print();
-            stats2.print();
-            producer
-                .flush(Timeout::After(Duration::from_millis(1000)))
-                .expect("Messages Flush");
-            return;
-        }
         match consumer.recv().await {
             Ok(m) => {
-                //timer_suite.unpack.record();
-                timer.begin_record();
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -145,25 +130,19 @@ async fn main() {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                        let bytes_in = payload.len();
-                        let headers =
-                            m.headers()
-                                .map(|h| h.detach())
-                                .unwrap_or_default()
-                                .insert(Header {
-                                    key: "trace-to-events time_ns",
-                                    value: Some(&[0]),
-                                });
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
+                                let time = Instant::now();
                                 processing::process(
                                     &mut fbb,
                                     &thing,
                                     &args.mode,
                                     args.save_file.as_deref(),
                                 );
-                                // End Timer
+                                
+                                let headers = append_headers(&m, time.elapsed(), payload.len(), fbb.finished_data().len());
+
                                 let future = producer
                                     .send_result(
                                         FutureRecord::to(&args.event_topic)
@@ -182,13 +161,7 @@ async fn main() {
                                         }
                                     }
                                 });
-                                let bytes_out = fbb.finished_data().len();
                                 fbb.reset();
-                                // End Timer
-                                timer.end_record(Data {
-                                    bytes_in,
-                                    bytes_out,
-                                });
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
@@ -205,4 +178,22 @@ async fn main() {
             }
         }
     }
+}
+
+fn append_headers(m : &BorrowedMessage, time : Duration, bytes_in : usize, bytes_out: usize) -> OwnedHeaders {
+    m.headers()
+    .map(|h| h.detach())
+    .unwrap_or_default()
+    .insert(Header {
+        key: "trace-to-events: time_ns",
+        value: Some(&time.as_nanos().to_be_bytes()),
+    })
+    .insert(Header {
+        key: "trace-to-events: size of trace",
+        value: Some(&bytes_in.to_be_bytes()),
+    })
+    .insert(Header {
+        key: "trace-to-events: size of events list",
+        value: Some(&bytes_out.to_be_bytes()),
+    })
 }
