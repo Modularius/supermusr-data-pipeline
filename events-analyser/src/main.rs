@@ -1,19 +1,12 @@
-mod metrics;
-
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use kagiyama::{AlwaysReady, Watcher};
-use itertools::Itertools;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
-    producer::{FutureProducer, FutureRecord},
+    message::{Headers, Message},
 };
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf, time::Duration};
-use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-}, dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message}};
+use std::collections::HashMap;
+use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -31,13 +24,10 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
-    first_topic: String,
+    trace_to_events_topic: String,
 
     #[clap(long)]
-    second_topic: String,
-
-    #[clap(long, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
+    simulated_events_topic: String,
 }
 
 #[derive(Default, Clone, PartialEq, Eq, Hash)]
@@ -51,7 +41,6 @@ type ChannelList = HashMap<Channel,EventList>;
 
 #[derive(Default)]
 struct EventList {
-    id: Channel,
     voltage: Vec<Intensity>,
     time : Vec<Time>,
 }
@@ -61,10 +50,6 @@ async fn main() {
     env_logger::init();
 
     let args = Cli::parse();
-
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&watcher);
-    watcher.start_server(args.observability_address).await;
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -81,7 +66,7 @@ async fn main() {
         .expect("Kafka Consumer should be created");
 
     consumer
-        .subscribe(&[&args.first_topic, &args.second_topic])
+        .subscribe(&[&args.trace_to_events_topic, &args.simulated_events_topic])
         .expect("Kafka Consumer should subscribe to given topics");
 
     let mut event_pairs = HashMap::new();
@@ -100,11 +85,6 @@ async fn main() {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_event_list_message_buffer_has_identifier(payload) {
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Trace,
-                            ))
-                            .inc();
                         match root_as_digitizer_event_list_message(payload) {
                             Ok(thing) => {
                                 let key = MessageKey {
@@ -116,13 +96,20 @@ async fn main() {
 
                                 let mut list = ChannelList::default();
                                 for (i,c) in thing.channel().unwrap().iter().enumerate() {
-                                    let event_list = list.entry(c).or_insert(EventList { id: c, ..Default::default() });
+                                    let event_list = list.entry(c).or_insert(EventList::default());
                                     event_list.time.push(thing.time().unwrap().get(i));
                                     event_list.voltage.push(thing.voltage().unwrap().get(i));
                                 }
-                                if m.topic() == args.first_topic {
+                                if m.topic() == args.trace_to_events_topic {
                                     event_pair.0 = Some(list);
-                                } else if m.topic() == args.second_topic {
+                                    if let Some(headers) = m.headers().map(|h|h.detach()) {
+                                        if let Some(time) = headers.iter().find(|h|h.key == "trace-to-events time") {
+                                            let vec = time.value.unwrap_or(&[]).to_owned();
+                                            let string = String::from_utf8(vec).unwrap();
+                                            println!("{0}",string);
+                                        }
+                                    }
+                                } else if m.topic() == args.simulated_events_topic {
                                     event_pair.1 = Some(list);
                                 }
                                 if let (Some(event1), Some(event2)) = event_pair {
@@ -132,20 +119,10 @@ async fn main() {
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
                             }
                         }
                     } else {
                         log::warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
                     }
                 }
 
