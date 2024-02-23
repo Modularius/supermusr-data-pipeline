@@ -2,16 +2,14 @@ mod parameters;
 mod processing;
 mod pulse_detection;
 
-use chrono::{DateTime, Utc};
 use clap::Parser;
-use num::traits::ToBytes;
 use parameters::Mode;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::{BorrowedMessage, Header, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
-use std::time::{self, Duration, Instant};
+use std::time::{Duration, Instant};
 use std::path::PathBuf;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -20,8 +18,8 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-//use tracing::{event, span, Instrument, Level};
-//use tracing_subscriber::{fmt, fmt::time};
+use tracing::{debug, warn, error};
+use tracing_subscriber;
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
 // RUST_LOG=off cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
@@ -87,11 +85,10 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    //env_logger::init();
 
     let args = Cli::parse();
 
-    //fmt().pretty().with_timer(time::UtcTime::rfc_3339()).init();
+    tracing_subscriber::fmt().init();
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -119,7 +116,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                log::debug!(
+                debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
                     m.topic(),
@@ -154,27 +151,27 @@ async fn main() {
                                 tokio::spawn(async {
                                     match future.await {
                                         Ok(_) => {
-                                            log::trace!("Published event message");
+                                            debug!("Published event message");
                                         }
                                         Err(e) => {
-                                            log::error!("{:?}", e);
+                                            error!("{:?}", e);
                                         }
                                     }
                                 });
                                 fbb.reset();
                             }
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                warn!("Failed to parse message: {}", e);
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", m.topic());
+                        warn!("Unexpected message type on topic \"{}\"", m.topic());
                     }
                 }
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
             Err(e) => {
-                log::warn!("Kafka error: {}", e);
+                warn!("Kafka error: {}", e);
             }
         }
     }
@@ -186,14 +183,14 @@ fn append_headers(m : &BorrowedMessage, time : Duration, bytes_in : usize, bytes
     .unwrap_or_default()
     .insert(Header {
         key: "trace-to-events: time_ns",
-        value: Some(&time.as_nanos().to_be_bytes()),
+        value: Some(&time.as_nanos().to_string()),
     })
     .insert(Header {
         key: "trace-to-events: size of trace",
-        value: Some(&bytes_in.to_be_bytes()),
+        value: Some(&bytes_in.to_string()),
     })
     .insert(Header {
         key: "trace-to-events: size of events list",
-        value: Some(&bytes_out.to_be_bytes()),
+        value: Some(&bytes_out.to_string()),
     })
 }

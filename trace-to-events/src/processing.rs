@@ -18,7 +18,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use tracing;
+use tracing::{self, info};
 
 fn find_channel_events(
     metadata: &FrameMetadataV1,
@@ -196,7 +196,7 @@ pub(crate) fn process<'a>(
     mode: &Mode,
     save_options: Option<&Path>,
 ) {
-    log::info!(
+    info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
