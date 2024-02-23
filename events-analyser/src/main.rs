@@ -1,8 +1,9 @@
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Headers, Message, ToBytes},
+    message::{BorrowedMessage, Headers, Message},
 };
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use std::{collections::HashMap, fmt::Debug, fs::File, io::Write};
@@ -102,21 +103,28 @@ async fn main() {
                                     event_list.voltage.push(thing.voltage().unwrap().get(i));
                                 }
                                 if m.topic() == args.trace_to_events_topic {
-                                    event_pair.0 = Some(list);
                                     let headers = extract_header(&m);
+                                    event_pair.0 = Some((headers,list));
+                                } else if m.topic() == args.simulated_events_topic {
+                                    event_pair.1 = Some(list);
+                                }
+                                if let (Some((headers,event1)), Some(event2)) = event_pair {
+                                    let analysis = perform_analysis(event1,event2)
+                                        .unwrap();
+
                                     if let Some(time_ns) = headers.get("trace-to-events: time_ns") {
                                         let file = File::options()
                                             .append(true)
                                             .create(true)
                                             .open("timings.csv")
                                             .unwrap();
-                                        writeln!(&file, "{0},{1},{2}", DateTime::<Utc>::from(*thing.metadata().timestamp().unwrap()), key.frame_number, time_ns).unwrap();
+                                        writeln!(&file, "{0},{1},{2},{3}",
+                                            DateTime::<Utc>::from(*thing.metadata().timestamp().unwrap()),
+                                            key.frame_number,
+                                            time_ns,
+                                            analysis
+                                        ).unwrap();
                                     }
-                                } else if m.topic() == args.simulated_events_topic {
-                                    event_pair.1 = Some(list);
-                                }
-                                if let (Some(event1), Some(event2)) = event_pair {
-                                    perform_analysis(event1,event2);
                                     event_pairs.remove(&key);
                                 } 
                             }
@@ -137,27 +145,28 @@ async fn main() {
 }
 
 
-fn perform_analysis(list1 : &ChannelList, list2 : &ChannelList) {
+fn perform_analysis(list1 : &ChannelList, list2 : &ChannelList) -> Result<String> {
     println!("Performing Event List Analysis");
     if list1.keys().collect::<Vec<_>>() != list2.keys().collect::<Vec<_>>() {
-        println!("Channel mismatch. Returning");
-        return;
+        return Err(anyhow!("Channel mismatch."));
     }
 
+    let mut ouput = String::new();
     for c in list1.keys() {
         println!("Analysing Channel {c}");
         let event_list1 = list1.get(c).unwrap();
         let event_list2 = list2.get(c).unwrap();
-        println!("Number of events in, list 1 = {0}, list 2 = {1}",
+        ouput.push_str(&format!("{0},{1}",
             event_list1.time.len(),
             event_list2.time.len()
-        );
+        ));
         
-        println!("Lifetime estimator for, list 1 = {0}, list 2 = {1}",
+        ouput.push_str(&format!("{0}, {1}",
             (event_list1.time.len() as f64 - 2.0)/event_list1.time.iter().sum::<Time>() as f64,
             (event_list2.time.len() as f64 - 2.0)/event_list2.time.iter().sum::<Time>() as f64
-        );
+        ));
     }
+    Ok(ouput)
 }
 
 fn extract_header(m : &BorrowedMessage) -> HashMap::<String, String>{
