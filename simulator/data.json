@@ -5,14 +5,14 @@
     "traces": [
         {
             "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 8 } }],
-            "frames": [1],
+            "frames": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "pulses": [
                 {
                     "weight": 1,
                     "attributes": {
                         "type": "biexp",
                         "height": { "min": 30, "max": 70 },
-                        "start": { "lifetime": 2200 },
+                        "start": { "lifetime": 5000 },
                         "rise": { "min": 20, "max": 30 },
                         "decay": { "min": 5, "max": 10 }
                     }
@@ -21,7 +21,7 @@
                     "weight": 1,
                     "attributes": {
                         "type": "flat",
-                        "start": { "lifetime": 2200 },
+                        "start": { "lifetime": 10000 },
                         "width": { "min": 20, "max": 50 },
                         "height": { "min": 30, "max": 70 }
                     }
@@ -30,7 +30,7 @@
                     "weight": 1,
                     "attributes": {
                         "type": "triangular",
-                        "start": { "lifetime": 2200 },
+                        "start": { "lifetime": 15000 },
                         "width": { "min": 20, "max": 50 },
                         "peak_time": { "min": 0.25, "max": 0.75 },
                         "height": { "min": 30, "max": 70 }
@@ -49,7 +49,7 @@
                     "bounds" : { "min": 0, "max": 30000 }
                 }
             ],
-            "num-pulses": 500,
+            "num-pulses": {"scale": 400, "translate": 600 },
             "frame-extra-pulses" : 0,
             "time-bins": 30000,
             "timestamp": "now",

@@ -2,10 +2,10 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{Headers, Message},
+    message::{BorrowedMessage, Headers, Message, ToBytes},
 };
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug, fs::File, io::Write};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message};
 
 #[derive(Debug, Parser)]
@@ -70,6 +70,7 @@ async fn main() {
         .expect("Kafka Consumer should subscribe to given topics");
 
     let mut event_pairs = HashMap::new();
+    File::options().truncate(true).write(true).create(true).open("timings.csv").unwrap();
 
     loop {
         match consumer.recv().await {
@@ -102,12 +103,14 @@ async fn main() {
                                 }
                                 if m.topic() == args.trace_to_events_topic {
                                     event_pair.0 = Some(list);
-                                    if let Some(headers) = m.headers().map(|h|h.detach()) {
-                                        if let Some(time) = headers.iter().find(|h|h.key == "trace-to-events time") {
-                                            let vec = time.value.unwrap_or(&[]).to_owned();
-                                            let string = String::from_utf8(vec).unwrap();
-                                            println!("{0}",string);
-                                        }
+                                    let headers = extract_header(&m);
+                                    if let Some(time_ns) = headers.get("trace-to-events: time_ns") {
+                                        let file = File::options()
+                                            .append(true)
+                                            .create(true)
+                                            .open("timings.csv")
+                                            .unwrap();
+                                        writeln!(&file, "{0},{1},{2}", DateTime::<Utc>::from(*thing.metadata().timestamp().unwrap()), key.frame_number, time_ns).unwrap();
                                     }
                                 } else if m.topic() == args.simulated_events_topic {
                                     event_pair.1 = Some(list);
@@ -155,4 +158,15 @@ fn perform_analysis(list1 : &ChannelList, list2 : &ChannelList) {
             (event_list2.time.len() as f64 - 2.0)/event_list2.time.iter().sum::<Time>() as f64
         );
     }
+}
+
+fn extract_header(m : &BorrowedMessage) -> HashMap::<String, String>{
+    let mut map = HashMap::<String, String>::new(); 
+    if let Some(headers) = m.headers().map(|h|h.detach()) {
+        for h in headers.iter() {
+            let val = String::from_utf8(h.value.unwrap().to_owned()).unwrap();
+            map.insert(h.key.to_owned(), val);
+        }
+    }
+    map
 }
