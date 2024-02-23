@@ -11,9 +11,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::{
-    fs::File,
-    path::PathBuf,
-    time::{Duration, SystemTime},
+    fs::File, net::SocketAddr, path::PathBuf, time::{Duration, SystemTime}
 };
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
@@ -52,6 +50,9 @@ struct Cli {
     /// Topic to publish analog trace packets to
     #[clap(long)]
     trace_topic: Option<String>,
+    
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
+    observability_address: SocketAddr,
 
     /// Topic to publish analog trace packets to
     #[clap(long)]

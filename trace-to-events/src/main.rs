@@ -2,6 +2,7 @@ mod parameters;
 mod processing;
 mod pulse_detection;
 
+use chrono as _;
 use clap::Parser;
 use parameters::Mode;
 use rdkafka::{
@@ -9,7 +10,7 @@ use rdkafka::{
     message::{BorrowedMessage, Header, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
-use std::time::{Duration, Instant};
+use std::{net::SocketAddr, time::{Duration, Instant}};
 use std::path::PathBuf;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -75,6 +76,9 @@ struct Cli {
 
     #[clap(long)]
     event_topic: String,
+    
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
+    observability_address: SocketAddr,
 
     #[clap(long)]
     save_file: Option<PathBuf>,
@@ -88,7 +92,7 @@ async fn main() {
 
     let args = Cli::parse();
 
-    tracing_subscriber::fmt().init();
+    //tracing_subscriber::fmt().init();
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,

@@ -186,12 +186,18 @@ impl Muon {
                 } else {
                     f64::default()
                 }
-            }
+            },
             Self::Gaussian {
                 mean,
                 sd,
                 peak_amplitude,
-            } => peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2)),
+            } => {
+                if mean - 10.0*sd > time || time > mean + 10.0*sd {
+                    f64::default()
+                } else {
+                    peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2))
+                }
+            },
             Self::Biexp {
                 start,
                 decay,
@@ -202,6 +208,8 @@ impl Muon {
             } => {
                 if time < start {
                     f64::default()
+                //} else if time > start - rise*f64::ln(1 - 0.0000001/coef) {
+                //    f64::default()
                 } else {
                     let time = time - start;
                     coef * (f64::exp(-time / decay) - f64::exp(-time / rise))
