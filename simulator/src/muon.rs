@@ -159,8 +159,7 @@ impl Muon {
         } as Intensity
     }
 
-    pub(crate) fn get_value_at(&self, time: Time) -> f64 {
-        let time = time as f64;
+    pub(crate) fn get_value_at(&self, time: f64) -> f64 {
         match *self {
             Self::Flat {
                 start,
@@ -192,7 +191,7 @@ impl Muon {
                 sd,
                 peak_amplitude,
             } => {
-                if mean - 10.0*sd > time || time > mean + 10.0*sd {
+                if mean - 6.0*sd > time || time > mean + 6.0*sd {
                     f64::default()
                 } else {
                     peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2))

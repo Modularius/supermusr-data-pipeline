@@ -49,7 +49,7 @@ fn find_constant_events(
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real, -(v as Real)));
+        .map(|(i, v)| (i as Real * sample_time, -(v as Real)));
 
     let pulses = raw.clone().events(ThresholdDetector::<UpperThreshold>::new(
         &parameters.threshold_trigger.0,
@@ -97,7 +97,7 @@ fn find_advanced_events(
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real, -(v as Real)));
+        .map(|(i, v)| (i as Real * sample_time, -(v as Real)));
 
     let smoothed = raw
         .clone()
