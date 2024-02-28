@@ -1,6 +1,6 @@
 use crate::pulse_detection::{detectors::threshold_detector::ThresholdDuration, Real};
 use anyhow::{anyhow, Error};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::str::FromStr;
 
 #[derive(Default, Debug, Clone)]
@@ -24,6 +24,12 @@ impl FromStr for ThresholdDurationWrapper {
         }
     }
 }
+
+#[derive(Clone, Debug, ValueEnum)]
+pub(crate) enum Polarity {
+    Pos, Neg
+}
+
 
 #[derive(Default, Debug, Clone, Parser)]
 pub(crate) struct ConstantPhaseDiscriminatorParameters {

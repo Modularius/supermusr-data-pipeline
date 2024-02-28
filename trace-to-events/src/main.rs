@@ -4,12 +4,13 @@ mod pulse_detection;
 
 use chrono as _;
 use clap::Parser;
-use parameters::Mode;
+use parameters::{Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::{BorrowedMessage, Header, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
+use supermusr_common::Intensity;
 use std::{net::SocketAddr, time::{Duration, Instant}};
 use std::path::PathBuf;
 use supermusr_streaming_types::{
@@ -76,6 +77,12 @@ struct Cli {
 
     #[clap(long)]
     event_topic: String,
+
+    #[clap(long)]
+    polarity: Polarity,
+
+    #[clap(long, default_value = "0")]
+    baseline: Intensity,
     
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -139,6 +146,8 @@ async fn main() {
                                     &mut fbb,
                                     &thing,
                                     &args.mode,
+                                    &args.polarity,
+                                    args.baseline,
                                     args.save_file.as_deref(),
                                 );
                                 
@@ -152,6 +161,7 @@ async fn main() {
                                             .key("test"),
                                     )
                                     .expect("Producer sends");
+
                                 tokio::spawn(async {
                                     match future.await {
                                         Ok(_) => {
