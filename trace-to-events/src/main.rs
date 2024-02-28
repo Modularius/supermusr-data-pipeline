@@ -22,6 +22,8 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, warn, error};
 use tracing_subscriber as _;
+
+use crate::parameters::DetectorSettings;
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 // cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
 // RUST_LOG=off cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
@@ -145,9 +147,7 @@ async fn main() {
                                 processing::process(
                                     &mut fbb,
                                     &thing,
-                                    &args.mode,
-                                    &args.polarity,
-                                    args.baseline,
+                                    &DetectorSettings { polarity: &args.polarity, baseline: args.baseline, mode: &args.mode },
                                     args.save_file.as_deref(),
                                 );
                                 

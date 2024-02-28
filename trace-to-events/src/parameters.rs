@@ -1,6 +1,7 @@
 use crate::pulse_detection::{detectors::threshold_detector::ThresholdDuration, Real};
 use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand, ValueEnum};
+use supermusr_common::Intensity;
 use std::str::FromStr;
 
 #[derive(Default, Debug, Clone)]
@@ -25,7 +26,15 @@ impl FromStr for ThresholdDurationWrapper {
     }
 }
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Debug)]
+pub(crate) struct DetectorSettings<'a> {
+    pub(crate)mode: &'a Mode,
+    pub(crate)polarity: &'a Polarity,
+    pub(crate)baseline : Intensity,
+
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
 pub(crate) enum Polarity {
     Pos, Neg
 }

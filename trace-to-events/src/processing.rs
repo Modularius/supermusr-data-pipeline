@@ -1,5 +1,5 @@
 use crate::{
-    parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode, Polarity},
+    parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, DetectorSettings, Mode, Polarity},
     pulse_detection::{
         advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
         threshold_detector::ThresholdDetector,
@@ -24,17 +24,15 @@ fn find_channel_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
     sample_time: Real,
-    polarity: &Polarity,
-    baseline : Real,
-    mode: &Mode,
+    detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
-    match &mode {
+    match &detector_settings.mode {
         Mode::ConstantPhaseDiscriminator(parameters) => {
-            find_constant_events(metadata, trace, sample_time, polarity, baseline, parameters, save_options)
+            find_constant_events(metadata, trace, sample_time, &detector_settings.polarity, detector_settings.baseline as Real, parameters, save_options)
         }
         Mode::AdvancedMuonDetector(parameters) => {
-            find_advanced_events(metadata, trace, sample_time, polarity, baseline, parameters, save_options)
+            find_advanced_events(metadata, trace, sample_time, &detector_settings.polarity, detector_settings.baseline as Real, parameters, save_options)
         }
     }
 }
@@ -204,9 +202,7 @@ fn get_save_file_name(
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
-    mode: &Mode,
-    polarity: &Polarity,
-    baseline : Intensity,
+    detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
 ) {
     info!(
@@ -231,9 +227,7 @@ pub(crate) fn process<'a>(
                             &trace.metadata(),
                             &channel_trace,
                             sample_time_in_ns,
-                            polarity,
-                            baseline as Real,
-                            mode,
+                            detector_settings,
                             save_options,
                         )
                     }),
@@ -337,9 +331,11 @@ mod tests {
         process(
             &mut fbb,
             &message,
-            &Mode::ConstantPhaseDiscriminator(test_parameters),
-            &Polarity::Neg,
-            Intensity::default(),
+            &DetectorSettings {
+                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                polarity: &Polarity::Neg,
+                baseline: Intensity::default()
+            },
             None,
         );
 
