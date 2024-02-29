@@ -5,9 +5,21 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::{BorrowedMessage, Headers, Message},
 };
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+    fs::File,
+    io::Write,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
-use std::{collections::{BTreeMap, HashMap}, fmt::Debug, fs::File, io::Write, path::{Path, PathBuf}, net::SocketAddr};
-use supermusr_streaming_types::{dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message}, frame_metadata_v1_generated::GpsTime};
+use supermusr_streaming_types::{
+    dev1_digitizer_event_v1_generated::{
+        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+    },
+    frame_metadata_v1_generated::GpsTime,
+};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -29,7 +41,7 @@ struct Cli {
 
     #[clap(long)]
     simulated_events_topic: String,
-    
+
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
@@ -41,15 +53,15 @@ struct Cli {
 struct MessageKey {
     ts: DateTime<Utc>,
     digitiser_id: DigitizerId,
-    frame_number : FrameNumber,
+    frame_number: FrameNumber,
 }
 
-type ChannelList = BTreeMap<Channel,EventList>;
+type ChannelList = BTreeMap<Channel, EventList>;
 
 #[derive(Default)]
 struct EventList {
     voltage: Vec<Intensity>,
-    time : Vec<Time>,
+    time: Vec<Time>,
 }
 
 #[tokio::main]
@@ -77,7 +89,12 @@ async fn main() {
         .expect("Kafka Consumer should subscribe to given topics");
 
     let mut event_pairs = BTreeMap::new();
-    File::options().truncate(true).write(true).create(true).open(&args.path).unwrap();
+    File::options()
+        .truncate(true)
+        .write(true)
+        .create(true)
+        .open(&args.path)
+        .unwrap();
 
     loop {
         match consumer.recv().await {
@@ -100,12 +117,14 @@ async fn main() {
                                     digitiser_id: thing.digitizer_id(),
                                     frame_number: thing.metadata().frame_number(),
                                 };
-                                let event_pair = event_pairs.entry(key.clone()).or_insert((None,None));
+                                let event_pair =
+                                    event_pairs.entry(key.clone()).or_insert((None, None));
 
                                 let list = {
                                     let mut list = ChannelList::default();
-                                    for (i,c) in thing.channel().unwrap().iter().enumerate() {
-                                        let event_list = list.entry(c).or_insert(EventList::default());
+                                    for (i, c) in thing.channel().unwrap().iter().enumerate() {
+                                        let event_list =
+                                            list.entry(c).or_insert(EventList::default());
                                         event_list.time.push(thing.time().unwrap().get(i));
                                         event_list.voltage.push(thing.voltage().unwrap().get(i));
                                     }
@@ -113,14 +132,21 @@ async fn main() {
                                 };
                                 if m.topic() == args.trace_to_events_topic {
                                     let headers = extract_header(&m);
-                                    event_pair.0 = Some((headers,list));
+                                    event_pair.0 = Some((headers, list));
                                 } else if m.topic() == args.simulated_events_topic {
                                     event_pair.1 = Some(list);
                                 }
-                                if let Some(pair) = Option::zip(event_pair.0.as_ref(),event_pair.1.as_ref()) {
-                                    analyse_pair(args.path.as_path(), thing.metadata().timestamp().unwrap(), &key, pair);
+                                if let Some(pair) =
+                                    Option::zip(event_pair.0.as_ref(), event_pair.1.as_ref())
+                                {
+                                    analyse_pair(
+                                        args.path.as_path(),
+                                        thing.metadata().timestamp().unwrap(),
+                                        &key,
+                                        pair,
+                                    );
                                     event_pairs.remove(&key);
-                                } 
+                                }
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
@@ -138,32 +164,37 @@ async fn main() {
     }
 }
 
-
-fn perform_analysis(list1 : &ChannelList, list2 : &ChannelList) -> Result<String> {
+fn perform_analysis(list1: &ChannelList, list2: &ChannelList) -> Result<String> {
     if list1.keys().collect::<Vec<_>>() != list2.keys().collect::<Vec<_>>() {
-        return Err(anyhow!("Channel mismatch: {0:?}, {1:?}.",list1.keys().collect::<Vec<_>>(), list2.keys().collect::<Vec<_>>()));
+        return Err(anyhow!(
+            "Channel mismatch: {0:?}, {1:?}.",
+            list1.keys().collect::<Vec<_>>(),
+            list2.keys().collect::<Vec<_>>()
+        ));
     }
 
     let mut ouput = String::new();
     for c in list1.keys() {
         let event_list1 = list1.get(c).unwrap();
         let event_list2 = list2.get(c).unwrap();
-        ouput.push_str(&format!(" {0}, {1},",
+        ouput.push_str(&format!(
+            " {0}, {1},",
             event_list1.time.len(),
             event_list2.time.len()
         ));
-        
-        ouput.push_str(&format!(" {0}, {1},",
-            event_list1.time.iter().sum::<Time>() as f64/(event_list1.time.len() as f64 - 2.0),
-            event_list2.time.iter().sum::<Time>() as f64/(event_list2.time.len() as f64 - 2.0)
+
+        ouput.push_str(&format!(
+            " {0}, {1},",
+            event_list1.time.iter().sum::<Time>() as f64 / (event_list1.time.len() as f64 - 2.0),
+            event_list2.time.iter().sum::<Time>() as f64 / (event_list2.time.len() as f64 - 2.0)
         ));
     }
     Ok(ouput)
 }
 
-fn extract_header(m : &BorrowedMessage) -> HashMap::<String, String>{
-    let mut map = HashMap::<String, String>::new(); 
-    if let Some(headers) = m.headers().map(|h|h.detach()) {
+fn extract_header(m: &BorrowedMessage) -> HashMap<String, String> {
+    let mut map = HashMap::<String, String>::new();
+    if let Some(headers) = m.headers().map(|h| h.detach()) {
         for h in headers.iter() {
             let val = String::from_utf8(h.value.unwrap().to_owned()).unwrap();
             map.insert(h.key.to_owned(), val);
@@ -172,14 +203,27 @@ fn extract_header(m : &BorrowedMessage) -> HashMap::<String, String>{
     map
 }
 
-fn analyse_pair(path: &Path, timestamp: &GpsTime, key: &MessageKey, pair: (&(HashMap::<String, String>, ChannelList), &ChannelList)) {
+fn analyse_pair(
+    path: &Path,
+    timestamp: &GpsTime,
+    key: &MessageKey,
+    pair: (&(HashMap<String, String>, ChannelList), &ChannelList),
+) {
     let ((headers, event_list1), event_list2) = pair;
-    let analysis = perform_analysis(event_list1,event_list2)
-        .unwrap();
+    let analysis = perform_analysis(event_list1, event_list2).unwrap();
 
-    let time_ns = headers.get("trace-to-events: time_ns").map(|s|s.as_str()).unwrap_or_default();
-    let bytes_in = headers.get("trace-to-events: size of trace").map(|s|s.as_str()).unwrap_or_default();
-    let bytes_out = headers.get("trace-to-events: size of events list").map(|s|s.as_str()).unwrap_or_default();
+    let time_ns = headers
+        .get("trace-to-events: time_ns")
+        .map(|s| s.as_str())
+        .unwrap_or_default();
+    let bytes_in = headers
+        .get("trace-to-events: size of trace")
+        .map(|s| s.as_str())
+        .unwrap_or_default();
+    let bytes_out = headers
+        .get("trace-to-events: size of events list")
+        .map(|s| s.as_str())
+        .unwrap_or_default();
 
     let file = File::options()
         .append(true)
@@ -187,12 +231,15 @@ fn analyse_pair(path: &Path, timestamp: &GpsTime, key: &MessageKey, pair: (&(Has
         .open(path)
         .unwrap();
 
-    writeln!(&file, "{0}, {1}, {2}, {3}, {4}, {5}",
+    writeln!(
+        &file,
+        "{0}, {1}, {2}, {3}, {4}, {5}",
         DateTime::<Utc>::from(*timestamp),
         key.frame_number,
         time_ns,
         bytes_in,
         bytes_out,
         analysis
-    ).unwrap();
+    )
+    .unwrap();
 }

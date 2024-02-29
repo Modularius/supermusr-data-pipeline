@@ -1,5 +1,8 @@
 use crate::{
-    parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, DetectorSettings, Mode, Polarity},
+    parameters::{
+        AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, DetectorSettings,
+        Mode, Polarity,
+    },
     pulse_detection::{
         advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
         threshold_detector::ThresholdDetector,
@@ -28,12 +31,24 @@ fn find_channel_events(
     save_options: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     match &detector_settings.mode {
-        Mode::ConstantPhaseDiscriminator(parameters) => {
-            find_constant_events(metadata, trace, sample_time, &detector_settings.polarity, detector_settings.baseline as Real, parameters, save_options)
-        }
-        Mode::AdvancedMuonDetector(parameters) => {
-            find_advanced_events(metadata, trace, sample_time, &detector_settings.polarity, detector_settings.baseline as Real, parameters, save_options)
-        }
+        Mode::ConstantPhaseDiscriminator(parameters) => find_constant_events(
+            metadata,
+            trace,
+            sample_time,
+            &detector_settings.polarity,
+            detector_settings.baseline as Real,
+            parameters,
+            save_options,
+        ),
+        Mode::AdvancedMuonDetector(parameters) => find_advanced_events(
+            metadata,
+            trace,
+            sample_time,
+            &detector_settings.polarity,
+            detector_settings.baseline as Real,
+            parameters,
+            save_options,
+        ),
     }
 }
 
@@ -42,24 +57,24 @@ fn find_constant_events(
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
-    baseline : Real,
+    baseline: Real,
     parameters: &ConstantPhaseDiscriminatorParameters,
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
-    let sign = match polarity { Polarity::Pos => 1.0, Polarity::Neg => -1.0 };
+    let sign = match polarity {
+        Polarity::Pos => 1.0,
+        Polarity::Neg => -1.0,
+    };
     let raw = trace
         .voltage()
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real * sample_time, sign*(v as Real) - baseline));
+        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real) - baseline));
 
-    let pulses = raw.clone().events(
-        
-        ThresholdDetector::new(
-            &parameters.threshold_trigger.0,
-        )
-    );
+    let pulses = raw
+        .clone()
+        .events(ThresholdDetector::new(&parameters.threshold_trigger.0));
 
     if let Some(save_path) = save_path {
         raw.clone()
@@ -96,17 +111,20 @@ fn find_advanced_events(
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
-    baseline : Real,
+    baseline: Real,
     parameters: &AdvancedMuonDetectorParameters,
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
-    let sign = match polarity { Polarity::Pos => 1.0, Polarity::Neg => -1.0 };
+    let sign = match polarity {
+        Polarity::Pos => 1.0,
+        Polarity::Neg => -1.0,
+    };
     let raw = trace
         .voltage()
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real * sample_time, sign*(v as Real) - baseline));
+        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real) - baseline));
 
     let smoothed = raw
         .clone()
@@ -334,7 +352,7 @@ mod tests {
             &DetectorSettings {
                 mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
                 polarity: &Polarity::Neg,
-                baseline: Intensity::default()
+                baseline: Intensity::default(),
             },
             None,
         );

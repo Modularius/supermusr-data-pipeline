@@ -17,7 +17,9 @@ impl Expression {
     fn value(&self, frame_index: usize) -> f64 {
         match self {
             Expression::Fixed(v) => *v,
-            Expression::FrameTransform(frame_function) => frame_function.transform(frame_index as f64),
+            Expression::FrameTransform(frame_function) => {
+                frame_function.transform(frame_index as f64)
+            }
         }
     }
 }
@@ -137,7 +139,6 @@ pub(crate) struct Interval<T> {
     pub(crate) max: T,
 }
 
-
 impl<T: PartialOrd + Copy> Interval<T> {
     fn range(&self) -> Range<T> {
         self.min..self.max
@@ -191,7 +192,7 @@ pub(crate) enum Frames {
 }
 
 impl<'a> Frames {
-    pub(crate) fn iter(&'a self) -> Box<dyn Iterator<Item=FrameNumber>> {
+    pub(crate) fn iter(&'a self) -> Box<dyn Iterator<Item = FrameNumber>> {
         match self {
             Frames::Vector(vec) => Box::new(vec.to_owned().into_iter()),
             Frames::Interval(interval) => Box::new(interval.range_inclusive()),

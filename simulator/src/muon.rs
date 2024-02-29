@@ -185,18 +185,18 @@ impl Muon {
                 } else {
                     f64::default()
                 }
-            },
+            }
             Self::Gaussian {
                 mean,
                 sd,
                 peak_amplitude,
             } => {
-                if mean - 6.0*sd > time || time > mean + 6.0*sd {
+                if mean - 6.0 * sd > time || time > mean + 6.0 * sd {
                     f64::default()
                 } else {
                     peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2))
                 }
-            },
+            }
             Self::Biexp {
                 start,
                 decay,

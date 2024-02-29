@@ -10,9 +10,12 @@ use rdkafka::{
     message::{BorrowedMessage, Header, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
-use supermusr_common::Intensity;
-use std::{net::SocketAddr, time::{Duration, Instant}};
 use std::path::PathBuf;
+use std::{
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
+use supermusr_common::Intensity;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -20,7 +23,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, warn, error};
+use tracing::{debug, error, warn};
 use tracing_subscriber as _;
 
 use crate::parameters::DetectorSettings;
@@ -85,7 +88,7 @@ struct Cli {
 
     #[clap(long, default_value = "0")]
     baseline: Intensity,
-    
+
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
@@ -98,7 +101,6 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-
     let args = Cli::parse();
 
     //tracing_subscriber::fmt().init();
@@ -147,11 +149,20 @@ async fn main() {
                                 processing::process(
                                     &mut fbb,
                                     &thing,
-                                    &DetectorSettings { polarity: &args.polarity, baseline: args.baseline, mode: &args.mode },
+                                    &DetectorSettings {
+                                        polarity: &args.polarity,
+                                        baseline: args.baseline,
+                                        mode: &args.mode,
+                                    },
                                     args.save_file.as_deref(),
                                 );
-                                
-                                let headers = append_headers(&m, time.elapsed(), payload.len(), fbb.finished_data().len());
+
+                                let headers = append_headers(
+                                    &m,
+                                    time.elapsed(),
+                                    payload.len(),
+                                    fbb.finished_data().len(),
+                                );
 
                                 let future = producer
                                     .send_result(
@@ -191,20 +202,25 @@ async fn main() {
     }
 }
 
-fn append_headers(m : &BorrowedMessage, time : Duration, bytes_in : usize, bytes_out: usize) -> OwnedHeaders {
+fn append_headers(
+    m: &BorrowedMessage,
+    time: Duration,
+    bytes_in: usize,
+    bytes_out: usize,
+) -> OwnedHeaders {
     m.headers()
-    .map(|h| h.detach())
-    .unwrap_or_default()
-    .insert(Header {
-        key: "trace-to-events: time_ns",
-        value: Some(&time.as_nanos().to_string()),
-    })
-    .insert(Header {
-        key: "trace-to-events: size of trace",
-        value: Some(&bytes_in.to_string()),
-    })
-    .insert(Header {
-        key: "trace-to-events: size of events list",
-        value: Some(&bytes_out.to_string()),
-    })
+        .map(|h| h.detach())
+        .unwrap_or_default()
+        .insert(Header {
+            key: "trace-to-events: time_ns",
+            value: Some(&time.as_nanos().to_string()),
+        })
+        .insert(Header {
+            key: "trace-to-events: size of trace",
+            value: Some(&bytes_in.to_string()),
+        })
+        .insert(Header {
+            key: "trace-to-events: size of events list",
+            value: Some(&bytes_out.to_string()),
+        })
 }

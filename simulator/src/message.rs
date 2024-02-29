@@ -116,7 +116,10 @@ impl TraceTemplate<'_> {
         let mut noise = noise.iter().map(Noise::new).collect::<Vec<_>>();
         (0..self.time_bins)
             .map(|time| {
-                let signal = muons.iter().map(|p| p.get_value_at(time as f64*sample_time)).sum::<f64>();
+                let signal = muons
+                    .iter()
+                    .map(|p| p.get_value_at(time as f64 * sample_time))
+                    .sum::<f64>();
                 noise.iter_mut().fold(signal, |signal, n| {
                     n.noisify(signal, time, self.frame_index)
                 })
@@ -132,26 +135,30 @@ impl TraceTemplate<'_> {
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
-        let sample_time = 1_000_000_000.0/self.sample_rate as f64;
+        let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
         let channels = std::thread::scope(|scope| {
-            self
-                .channels
+            self.channels
                 .iter()
                 .map(|(channel, pulses)| {
-                scope.spawn(|| {
-                    //  This line creates the actual trace for the channel
-                    let trace = self.generate_trace(pulses, self.noises, sample_time, voltage_transformation);
-                    (*channel, trace)
+                    scope.spawn(|| {
+                        //  This line creates the actual trace for the channel
+                        let trace = self.generate_trace(
+                            pulses,
+                            self.noises,
+                            sample_time,
+                            voltage_transformation,
+                        );
+                        (*channel, trace)
+                    })
                 })
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .map(|handle| {
-                let (channel, trace) = handle.join().unwrap();
-                let voltage = Some(fbb.create_vector::<Intensity>(&trace));
-                ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
-            })
-            .collect::<Vec<_>>()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|handle| {
+                    let (channel, trace) = handle.join().unwrap();
+                    let voltage = Some(fbb.create_vector::<Intensity>(&trace));
+                    ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+                })
+                .collect::<Vec<_>>()
         });
 
         let message = DigitizerAnalogTraceMessageArgs {
