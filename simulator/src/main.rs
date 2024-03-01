@@ -30,6 +30,7 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
+use tracing::{debug, error, info};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -241,11 +242,11 @@ async fn send(
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e),
         };
 
-        log::info!(
+        info!(
             "Event send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );
@@ -365,11 +366,11 @@ async fn send(
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e),
         };
 
-        log::info!(
+        info!(
             "Trace send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );

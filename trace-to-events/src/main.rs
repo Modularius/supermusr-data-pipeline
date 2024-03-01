@@ -187,10 +187,20 @@ async fn main() {
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
+                                metrics::FAILURES
+                                    .get_or_create(&metrics::FailureLabels::new(
+                                        metrics::FailureKind::UnableToDecodeMessage,
+                                    ))
+                                    .inc();
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", m.topic());
+                        metrics::MESSAGES_RECEIVED
+                            .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                metrics::MessageKind::Unknown,
+                            ))
+                            .inc();
                     }
                 }
                 consumer.commit_message(&m, CommitMode::Async).unwrap();

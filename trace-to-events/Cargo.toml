@@ -8,13 +8,15 @@ edition.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+kagiyama.workspace = true
+lazy_static.workspace = true
 num.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
-tracing = "0.1.40"
-tracing-subscriber = {version = "0.3.18", features = ["time", "fmt", "tracing-log"]}
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
 assert_approx_eq.workspace = true
