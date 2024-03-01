@@ -1,18 +1,19 @@
+mod metrics;
 mod parameters;
 mod processing;
 mod pulse_detection;
 
-use chrono as _;
 use clap::Parser;
-use parameters::{Mode, Polarity};
+use kagiyama::{AlwaysReady, Watcher};
+use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::{BorrowedMessage, Header, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
-use std::path::PathBuf;
 use std::{
     net::SocketAddr,
+    path::PathBuf,
     time::{Duration, Instant},
 };
 use supermusr_common::Intensity;
@@ -23,44 +24,8 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace, warn};
 use tracing_subscriber as _;
-
-use crate::parameters::DetectorSettings;
-// cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
-// cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
-// RUST_LOG=off cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
-
-// cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 500 --channel-multiplier 4 --message-multiplier 1
-
-/*
-RUST_LOG=off cargo run --release --bin simulator -- --broker localhost:19092 --trace-topic Traces --num-channels 16 --time-bins 30000 continuous --frame-time 1
-*/
-
-/* Optimizations:
-    Moving the fbb object out of the processing function and taking the slice rather than copying
-    Streamline the process for writing channel event data to the message channel list
-    Scoped multithreading to process channels simultaneously
-    Change kafka property linger.ms to 0 (why does this help?)
-    ^^^ Implementing async message producing with linger.ms at 100 or other
-    Dispensed with pulse assembler in the case of constant phase discriminator (no apparent affect)
-
-    Fixes:
-    sampletime doesn't do anything in find_channel_events
-    trace-reader: line 83 num_trace_events to total_trace_events
-
-    Possible Optimizations:
-    Employ multithreading for message passing.
-*/
-/*
-            |  Constant  | Advanced
-16 Channels | 1.5ms(0.5) | 12ms(3.0)
- 8 Channels | 2.3ms(0.4) | 6ms (2.1)
- 4 Channels | 1.2ms(0.2) | 3ms (1.6)
- stddev, min, max
- compression
- GPU
-*/
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -83,15 +48,18 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
+    /// Determines whether events should register as positive or negative intensity
     #[clap(long)]
     polarity: Polarity,
 
+    /// Value of the intensity baseline
     #[clap(long, default_value = "0")]
     baseline: Intensity,
 
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
+    /// If set, the trace and event lists are saved here
     #[clap(long)]
     save_file: Option<PathBuf>,
 
@@ -101,9 +69,13 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
+    //tracing_subscriber::fmt::init();
+
     let args = Cli::parse();
 
-    //tracing_subscriber::fmt().init();
+    let mut watcher = Watcher::<AlwaysReady>::default();
+    metrics::register(&watcher);
+    watcher.start_server(args.observability_address).await;
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -112,7 +84,6 @@ async fn main() {
     );
 
     let producer: FutureProducer = client_config
-        .set("linger.ms", "0")
         .create()
         .expect("Kafka Producer should be created");
 
@@ -142,6 +113,11 @@ async fn main() {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                        metrics::MESSAGES_RECEIVED
+                            .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                metrics::MessageKind::Trace,
+                            ))
+                            .inc();
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
@@ -163,7 +139,6 @@ async fn main() {
                                     payload.len(),
                                     fbb.finished_data().len(),
                                 );
-
                                 let future = producer
                                     .send_result(
                                         FutureRecord::to(&args.event_topic)
@@ -176,10 +151,16 @@ async fn main() {
                                 tokio::spawn(async {
                                     match future.await {
                                         Ok(_) => {
-                                            debug!("Published event message");
+                                            trace!("Published event message");
+                                            metrics::MESSAGES_PROCESSED.inc();
                                         }
                                         Err(e) => {
                                             error!("{:?}", e);
+                                            metrics::FAILURES
+                                                .get_or_create(&metrics::FailureLabels::new(
+                                                    metrics::FailureKind::KafkaPublishFailed,
+                                                ))
+                                                .inc();
                                         }
                                     }
                                 });
@@ -205,12 +186,11 @@ async fn main() {
                 }
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
-            Err(e) => {
-                warn!("Kafka error: {}", e);
-            }
+            Err(e) => warn!("Kafka error: {}", e),
         }
     }
 }
+
 
 fn append_headers(
     m: &BorrowedMessage,
