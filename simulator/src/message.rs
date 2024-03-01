@@ -23,6 +23,7 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
+use tracing::{debug, error};
 use crate::json::{PulseAttributes, TraceMessage, Transformation};
 use crate::{json::NoiseSource, muon::Muon, noise::Noise};
 
@@ -179,8 +180,8 @@ impl TraceTemplate<'_> {
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e.0),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e.0),
         };
 
         /*log::info!(
@@ -229,8 +230,8 @@ impl TraceTemplate<'_> {
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e),
         };
 
         /*log::info!(

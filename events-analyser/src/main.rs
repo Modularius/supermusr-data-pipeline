@@ -20,6 +20,7 @@ use supermusr_streaming_types::{
     },
     frame_metadata_v1_generated::GpsTime,
 };
+use tracing::{debug, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -66,8 +67,6 @@ struct EventList {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
-
     let args = Cli::parse();
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
@@ -99,7 +98,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                log::debug!(
+                debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
                     m.topic(),
@@ -149,17 +148,17 @@ async fn main() {
                                 }
                             }
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                warn!("Failed to parse message: {}", e);
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", m.topic());
+                        warn!("Unexpected message type on topic \"{}\"", m.topic());
                     }
                 }
 
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
-            Err(e) => log::warn!("Kafka error: {}", e),
+            Err(e) => warn!("Kafka error: {}", e),
         };
     }
 }

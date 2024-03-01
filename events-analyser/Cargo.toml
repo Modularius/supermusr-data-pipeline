@@ -12,6 +12,7 @@ rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 assert_approx_eq.workspace = true

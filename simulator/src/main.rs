@@ -117,7 +117,6 @@ struct Json {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(

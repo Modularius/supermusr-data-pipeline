@@ -737,6 +737,7 @@ dependencies = [
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2315,6 +2316,7 @@ dependencies = [
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
