@@ -34,6 +34,27 @@ trace-to-events --help
 ```
 A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
 
+```mermaid
+---
+title: If the trace has previously been above the threshold at Last Time
+---
+flowchart LR;
+    T{Is Over Threshold}-->TY[Yes] & TN[No];
+    D{Is Over Duration}-->DY[Yes] & DN[No];
+
+    E{{"New Event as Last Time Crossed"}};
+    TY & DY--->E
+
+    C1(Set Last Time Crossed to Null);
+    TN-->C1
+
+    e{{No New Event}};
+    TY & DN--->e
+
+    C2(Set Time of Last Return to Time);
+    TN & DY-->C2
+```
+
 ### Advanced Muon Detector:
 `trace-to-events --broker <BROKER> advanced-muon-detector [OPTIONS] --baseline-length <BASELINE_LENGTH> --smoothing-window-size <SMOOTHING_WINDOW_SIZE> --muon-onset <MUON_ONSET> --muon-fall <MUON_FALL> --muon-termination <MUON_TERMINATION>`
 ```
