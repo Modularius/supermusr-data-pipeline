@@ -157,7 +157,7 @@ async fn main() {
             let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
             for trace in obj.traces {
                 let now = Utc::now();
-                for (frame_index, frame) in trace.frames.iter().enumerate() {
+                for (frame_index, frame) in trace.frames.iter().flat_map(|f|std::iter::repeat(f).take(trace.repeat)).enumerate() {
                     let ts = trace.create_time_stamp(&now, frame_index);
                     let templates = trace
                         .create_frame_templates(frame_index, frame, &ts)
