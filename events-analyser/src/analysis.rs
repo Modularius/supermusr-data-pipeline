@@ -31,12 +31,8 @@ pub(crate) struct ChannelAnalysis {
     pub(crate) num: ValueSd,
 }
 
-fn calc_lifetime(times : &[Time]) -> f64 {
-    times
-        .iter()
-        .map(|t| *t as f64)
-        .sum::<f64>()
-        / (times.len() - 2) as f64
+fn calc_lifetime(times: &[Time]) -> f64 {
+    times.iter().map(|t| *t as f64).sum::<f64>() / (times.len() - 2) as f64
 }
 
 /*
@@ -52,12 +48,12 @@ fn calc_histogram(times : Vec<Time>, intensities : Vec<Intensity>, num_bins : us
 */
 
 impl<'a> ChannelAnalysis {
-    pub(crate) fn new(iter : impl Iterator<Item = &'a EventList> + Clone, num : f64) -> Self {
-        let nums = iter.clone().map(|el|el.time.len() as f64);
-        let lifetimes = iter.clone().map(|el|calc_lifetime(&el.time));
+    pub(crate) fn new(iter: impl Iterator<Item = &'a EventList> + Clone, num: f64) -> Self {
+        let nums = iter.clone().map(|el| el.time.len() as f64);
+        let lifetimes = iter.clone().map(|el| calc_lifetime(&el.time));
         Self {
             num: ValueSd::new(nums, num),
-            lifetime: ValueSd::new(lifetimes, num)
+            lifetime: ValueSd::new(lifetimes, num),
         }
     }
 }
@@ -93,7 +89,7 @@ impl Display for FramePairAnalysis {
             .iter()
             .map(|c| format!("{c}"))
             .collect::<Vec<_>>()
-            .join(&",   ");
+            .join(",   ");
         write!(
             f,
             "{0}, {1}, {2},    {3}",
@@ -124,8 +120,16 @@ pub(crate) fn analyse(vec: &MessagePairVector) -> FramePairAnalysis {
 pub(crate) fn analyse_channel(channel_id: Channel, vec: &MessagePairVector) -> ChannelPairAnalysis {
     let num = vec.len() as f64;
     ChannelPairAnalysis {
-        detected: ChannelAnalysis::new(vec.iter().map(|v| &v.channels.get(&channel_id).unwrap().detected), num),
-        simulated: ChannelAnalysis::new(vec.iter().map(|v| &v.channels.get(&channel_id).unwrap().simulated), num)
+        detected: ChannelAnalysis::new(
+            vec.iter()
+                .map(|v| &v.channels.get(&channel_id).unwrap().detected),
+            num,
+        ),
+        simulated: ChannelAnalysis::new(
+            vec.iter()
+                .map(|v| &v.channels.get(&channel_id).unwrap().simulated),
+            num,
+        ),
     }
 }
 
@@ -138,22 +142,19 @@ pub(crate) fn analyse_times(vec: &MessagePairVector) -> (ValueSd, ValueSd, Value
             let time = v
                 .headers
                 .get("trace-to-events: time_ns")
-                .map(|s| s.parse().ok())
-                .flatten()
+                .and_then(|s| s.parse().ok())
                 .unwrap_or_default();
 
             let bytes_in: f64 = v
                 .headers
                 .get("trace-to-events: size of trace")
-                .map(|s| s.parse().ok())
-                .flatten()
+                .and_then(|s| s.parse().ok())
                 .unwrap_or_default();
 
             let bytes_out: f64 = v
                 .headers
                 .get("trace-to-events: size of events list")
-                .map(|s| s.parse().ok())
-                .flatten()
+                .and_then(|s| s.parse().ok())
                 .unwrap_or_default();
             (time, time / bytes_in, time / bytes_out)
         })

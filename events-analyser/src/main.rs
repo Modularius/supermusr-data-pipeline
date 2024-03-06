@@ -119,8 +119,7 @@ async fn main() {
                                         Some(ChannelEventList::from_message(&thing));
                                 }
 
-                                if let Some(pair) = MessagePair::from_message_group(&message_group)
-                                {
+                                if let Some(pair) = MessagePair::from_message_group(message_group) {
                                     message_groups.remove(&key);
                                     let vec = message_pair_vectors
                                         .entry(key.analysis_key.clone())

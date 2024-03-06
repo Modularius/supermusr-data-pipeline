@@ -28,7 +28,7 @@ impl ChannelPairEventList {
 
             if let Some(&(next_detected_index,next_detected)) = detected_iter.peek() {
                 let dist_sq_to_next = dist_sq(next_detected,current_simulated);
-                
+
                 if dist_sq_to_current < dist_sq_to_next {
                     count[current_detected_index] += dist_sq_to_current;
                 } else {

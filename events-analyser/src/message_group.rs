@@ -30,7 +30,7 @@ impl<'a> MessageExtractable<'a> for ChannelEventList {
     fn from_message(message: &DigitizerEventListMessage<'a>) -> Self {
         let mut list = ChannelEventList::new();
         for (i, c) in message.channel().unwrap().iter().enumerate() {
-            let event_list = list.entry(c).or_insert(EventList::default());
+            let event_list = list.entry(c).or_default();
             event_list.time.push(message.time().unwrap().get(i));
             event_list.voltage.push(message.voltage().unwrap().get(i));
         }
