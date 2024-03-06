@@ -1,11 +1,11 @@
+mod analysis;
 mod base;
 mod message_group;
 mod message_pair;
-mod analysis;
 
 use analysis::FramePairAnalysis;
 use clap::Parser;
-use message_group::{MessageGroupContainer, ChannelEventList, MessageExtractable};
+use message_group::{ChannelEventList, MessageExtractable, MessageGroupContainer};
 use message_pair::{MessagePair, MessagePairVectorContainer};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -19,8 +19,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
-    digitizer_event_list_message_buffer_has_identifier,
-    root_as_digitizer_event_list_message
+    digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
 use tracing::{debug, warn};
 
@@ -58,7 +57,6 @@ struct Cli {
     #[clap(long)]
     path: PathBuf,
 }
-
 
 #[tokio::main]
 async fn main() {
@@ -109,20 +107,20 @@ async fn main() {
                         match root_as_digitizer_event_list_message(payload) {
                             Ok(thing) => {
                                 let key = MessageKey::new(&thing);
-                                let message_group = message_groups
-                                    .entry(key.clone())
-                                    .or_default();
+                                let message_group = message_groups.entry(key.clone()).or_default();
 
                                 if m.topic() == args.trace_to_events_topic {
                                     message_group.detected = Some(DetectedMessage {
                                         header: Header::from_message(&m),
-                                        message: ChannelEventList::from_message(&thing)
+                                        message: ChannelEventList::from_message(&thing),
                                     });
                                 } else if m.topic() == args.simulated_events_topic {
-                                    message_group.simulated = Some(ChannelEventList::from_message(&thing));
+                                    message_group.simulated =
+                                        Some(ChannelEventList::from_message(&thing));
                                 }
-                                
-                                if let Some(pair) = MessagePair::from_message_group(&message_group) {
+
+                                if let Some(pair) = MessagePair::from_message_group(&message_group)
+                                {
                                     message_groups.remove(&key);
                                     let vec = message_pair_vectors
                                         .entry(key.analysis_key.clone())
@@ -151,11 +149,7 @@ async fn main() {
     }
 }
 
-fn write_analysis(
-    path: &Path,
-    analysis_key : &AnalysisKey,
-    analysis : FramePairAnalysis,
-) {
+fn write_analysis(path: &Path, analysis_key: &AnalysisKey, analysis: FramePairAnalysis) {
     let file = File::options()
         .append(true)
         .create(true)
@@ -165,8 +159,7 @@ fn write_analysis(
     writeln!(
         &file,
         "{0},{1}, {analysis}",
-        analysis_key.digitiser_id,
-        analysis_key.frame_number
+        analysis_key.digitiser_id, analysis_key.frame_number
     )
     .unwrap();
 }

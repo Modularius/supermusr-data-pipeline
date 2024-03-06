@@ -23,9 +23,9 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-use tracing::{debug, error};
 use crate::json::{PulseAttributes, TraceMessage, Transformation};
 use crate::{json::NoiseSource, muon::Muon, noise::Noise};
+use tracing::{debug, error};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {

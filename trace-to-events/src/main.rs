@@ -191,7 +191,6 @@ async fn main() {
     }
 }
 
-
 fn append_headers(
     m: &BorrowedMessage,
     time: Duration,
