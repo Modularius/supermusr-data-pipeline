@@ -157,7 +157,7 @@ fn write_analysis(path: &Path, analysis_key: &AnalysisKey, analysis: FramePairAn
 
     writeln!(
         &file,
-        "{0},{1}, {analysis}",
+        "{0},{1}|{analysis}",
         analysis_key.digitiser_id, analysis_key.frame_number
     )
     .unwrap();

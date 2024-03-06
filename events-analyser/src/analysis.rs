@@ -22,7 +22,7 @@ impl ValueSd {
 
 impl Display for ValueSd {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "{0},{1}", self.value, self.sd)
+        write!(f, "{0}~{1}", self.value, self.sd)
     }
 }
 
@@ -60,7 +60,7 @@ impl<'a> ChannelAnalysis {
 
 impl Display for ChannelAnalysis {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "{0}, {1}", self.lifetime, self.num)
+        write!(f, "{0},{1}", self.lifetime, self.num)
     }
 }
 
@@ -89,10 +89,10 @@ impl Display for FramePairAnalysis {
             .iter()
             .map(|c| format!("{c}"))
             .collect::<Vec<_>>()
-            .join(",   ");
+            .join(";");
         write!(
             f,
-            "{0}, {1}, {2},    {3}",
+            "{0},{1},{2};{3}",
             self.time, self.time_per_byte_in, self.time_per_byte_out, channels
         )
     }
