@@ -110,9 +110,13 @@ struct Continuous {
 
 #[derive(Clone, Parser)]
 struct Json {
-    /// Number of first frame to be sent
+    /// Path to the json settings file
     #[clap(long)]
     path: PathBuf,
+
+    /// Specifies how many times each event list message is repeated
+    #[clap(long, default_value = "1")]
+    repeat: usize,
 }
 
 #[tokio::main]
@@ -153,14 +157,14 @@ async fn main() {
                 frame.tick().await;
             }
         }
-        Mode::Json(Json { path }) => {
+        Mode::Json(Json { path, repeat }) => {
             let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
             for trace in obj.traces {
                 let now = Utc::now();
                 for (frame_index, frame) in trace
                     .frames
                     .iter()
-                    .flat_map(|f| std::iter::repeat(f).take(trace.repeat))
+                    .flat_map(|f| std::iter::repeat(f).take(repeat))
                     .enumerate()
                 {
                     let ts = trace.create_time_stamp(&now, frame_index);

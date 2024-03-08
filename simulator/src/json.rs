@@ -206,7 +206,6 @@ pub(crate) struct TraceMessage {
     pub(crate) time_bins: Time,
     pub(crate) digitizers: Vec<Digitizer>,
     pub(crate) frames: Frames,
-    pub(crate) repeat: usize,
     pub(crate) pulses: Vec<Pulse>,
     pub(crate) noises: Vec<NoiseSource>,
     pub(crate) num_pulses: RandomDistribution,

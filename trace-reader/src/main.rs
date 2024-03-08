@@ -25,17 +25,13 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    /// Name of the Kafka consumer group
-    #[clap(long)]
-    consumer_group: String,
-
     /// The Kafka topic that trace messages are produced to
     #[clap(long)]
     trace_topic: String,
 
     /// Relative path to the .trace file to be read
     #[clap(long)]
-    file_name: PathBuf,
+    path: PathBuf,
 
     /// Timestamp of the command, defaults to now, if not given.
     #[clap(long)]
@@ -69,13 +65,9 @@ struct Cli {
     #[clap(long, default_value = "0")]
     channel_index_shift: Channel,
 
-    /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
+    /// The number of times to repeat each frame
     #[clap(long, default_value = "1")]
-    channel_multiplier: usize,
-
-    /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
-    #[clap(long, default_value = "1")]
-    message_multiplier: usize,
+    repeat: usize,
 }
 
 #[tokio::main]
@@ -95,15 +87,15 @@ async fn main() {
         .create()
         .expect("Kafka Producer should be created");
 
-    let trace_file = load_trace_file(args.file_name).expect("Trace File should load");
+    let trace_file = load_trace_file(args.path).expect("Trace File should load");
     let total_trace_events = trace_file.get_number_of_trace_events();
     let num_trace_events = if args.number_of_trace_events == 0 {
         total_trace_events
     } else {
         args.number_of_trace_events
-    };
+    }*args.repeat;
 
-    let trace_event_indices: Vec<_> = if args.random_sample {
+    let trace_event_indices : Vec<_> = if args.random_sample {
         (0..num_trace_events)
             .map(|_| {
                 (0..total_trace_events)
@@ -118,6 +110,8 @@ async fn main() {
             .collect()
     };
 
+    let trace_event_indices: Vec<_> = trace_event_indices.chunks(args.repeat).collect();
+
     let time = args.time.unwrap_or(Utc::now());
     dispatch_trace_file(
         trace_file,
@@ -129,7 +123,7 @@ async fn main() {
         &args.trace_topic,
         6000,
         args.channel_id_offset,
-        args.frame_interval_ms,
+        args.frame_interval_ms
     )
     .await
     .expect("Trace File should be dispatched to Kafka");

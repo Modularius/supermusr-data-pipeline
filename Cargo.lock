@@ -2795,6 +2795,7 @@ dependencies = [
  "lazy_static",
  "num 0.4.1",
  "rand",
+ "rayon",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
