@@ -46,7 +46,7 @@ struct Cli {
     trace_to_events_topic: String,
 
     #[clap(long)]
-    simulated_events_topic: String,
+    simulated_events_topic: Option<String>,
 
     #[clap(long)]
     expected_repetitions: usize,
@@ -76,8 +76,13 @@ async fn main() {
         .create()
         .expect("Kafka Consumer should be created");
 
+    let topics : Vec<&str> = if let Some(sim_events) = args.simulated_events_topic.as_ref() {
+        vec![&args.trace_to_events_topic, sim_events.as_str()]
+    } else {
+        vec![&args.trace_to_events_topic]
+    };
     consumer
-        .subscribe(&[&args.trace_to_events_topic, &args.simulated_events_topic])
+        .subscribe(&topics)
         .expect("Kafka Consumer should subscribe to given topics");
 
     File::options()
@@ -109,14 +114,23 @@ async fn main() {
                                 let key = MessageKey::new(&thing);
                                 let message_group = message_groups.entry(key.clone()).or_default();
 
-                                if m.topic() == args.trace_to_events_topic {
+                                if let Some(sim_event) = args.simulated_events_topic.as_ref() {
+                                    if m.topic() == args.trace_to_events_topic {
+                                        message_group.detected = Some(DetectedMessage {
+                                            header: Header::from_message(&m),
+                                            message: ChannelEventList::from_message(&thing),
+                                        });
+                                    } else if m.topic() == sim_event {
+                                        message_group.simulated =
+                                            Some(ChannelEventList::from_message(&thing));
+                                    }
+                                } else {
+                                    let channel_event_list = ChannelEventList::from_message(&thing);
                                     message_group.detected = Some(DetectedMessage {
                                         header: Header::from_message(&m),
-                                        message: ChannelEventList::from_message(&thing),
+                                        message: channel_event_list.clone(),
                                     });
-                                } else if m.topic() == args.simulated_events_topic {
-                                    message_group.simulated =
-                                        Some(ChannelEventList::from_message(&thing));
+                                    message_group.simulated = Some(channel_event_list);
                                 }
 
                                 if let Some(pair) = MessagePair::from_message_group(message_group) {

@@ -71,7 +71,7 @@ pub(crate) struct ChannelPairAnalysis {
 
 impl Display for ChannelPairAnalysis {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "{0},  {1}", self.detected, self.simulated)
+        write!(f, "{0}:{1}", self.detected, self.simulated)
     }
 }
 
