@@ -8,10 +8,14 @@ use kagiyama::{AlwaysReady, Watcher};
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
+    message::{BorrowedMessage, Header, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
-use std::{net::SocketAddr, path::PathBuf};
+use std::{
+    net::SocketAddr,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 use supermusr_common::Intensity;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -116,6 +120,7 @@ async fn main() {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
+                                let time = Instant::now();
                                 processing::process(
                                     &mut fbb,
                                     &thing,
@@ -126,11 +131,18 @@ async fn main() {
                                     },
                                     args.save_file.as_deref(),
                                 );
+                                let headers = append_headers(
+                                    &m,
+                                    time.elapsed(),
+                                    payload.len(),
+                                    fbb.finished_data().len(),
+                                );
 
                                 let future = producer
                                     .send_result(
                                         FutureRecord::to(&args.event_topic)
                                             .payload(fbb.finished_data())
+                                            .headers(headers)
                                             .key("test"),
                                     )
                                     .expect("Producer sends");
@@ -174,4 +186,27 @@ async fn main() {
             Err(e) => warn!("Kafka error: {}", e),
         }
     }
+}
+
+fn append_headers(
+    m: &BorrowedMessage,
+    time: Duration,
+    bytes_in: usize,
+    bytes_out: usize,
+) -> OwnedHeaders {
+    m.headers()
+        .map(|h| h.detach())
+        .unwrap_or_default()
+        .insert(Header {
+            key: "trace-to-events: time_ns",
+            value: Some(&time.as_nanos().to_string()),
+        })
+        .insert(Header {
+            key: "trace-to-events: size of trace",
+            value: Some(&bytes_in.to_string()),
+        })
+        .insert(Header {
+            key: "trace-to-events: size of events list",
+            value: Some(&bytes_out.to_string()),
+        })
 }
