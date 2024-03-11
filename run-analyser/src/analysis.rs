@@ -1,7 +1,8 @@
-use crate::{base::EventList, message_pair::MessagePairVector};
 use anyhow::Result;
 use std::fmt::{Display, Formatter};
 use supermusr_common::{Channel, Time};
+
+use crate::message::EventList;
 
 pub(crate) struct ValueSd {
     value: f64,
@@ -27,8 +28,10 @@ impl Display for ValueSd {
 }
 
 pub(crate) struct ChannelAnalysis {
-    pub(crate) lifetime: ValueSd,
-    pub(crate) num: ValueSd,
+    pub(crate) lifetime: f64,
+    pub(crate) num: f64,
+    pub(crate) bins: Vec<usize>,
+    pub(crate) bin_error: Vec<f64>,
 }
 
 fn calc_lifetime(times: &[Time]) -> f64 {
@@ -48,13 +51,27 @@ fn calc_histogram(times : Vec<Time>, intensities : Vec<Intensity>, num_bins : us
 */
 
 impl<'a> ChannelAnalysis {
-    pub(crate) fn new(iter: impl Iterator<Item = &'a EventList> + Clone, num: f64) -> Self {
-        let nums = iter.clone().map(|el| el.time.len() as f64);
-        let lifetimes = iter.clone().map(|el| calc_lifetime(&el.time));
-        Self {
-            num: ValueSd::new(nums, num),
-            lifetime: ValueSd::new(lifetimes, num),
-        }
+    pub(crate) fn new(source : &EventList) -> Self {
+        let num = source.time.len() as f64;
+        let lifetime = calc_lifetime(source.time.as_slice());
+        let max_time = *source.time.iter().max().unwrap() as f64;
+
+        let num_bins = f64::floor(num/50.0);
+        let bin_size = max_time/num_bins;
+        let bins = {
+            let mut bins = vec![0; num_bins as usize + 1];
+            for t in source.time {
+                bins[f64::round(t as f64/bin_size) as usize] += 1;
+            }
+            bins
+        };
+        let bin_error = bins.iter().enumerate().map(|(i,v)| {
+            let time = (i as f64 + 0.5)*bin_size;
+            let mut bins = vec![0.0; num_bins as usize + 1];
+        })
+        .collect::<Vec<_>>();
+
+        Self { num, lifetime, bins, bin_error }
     }
 }
 
@@ -76,9 +93,6 @@ impl Display for ChannelPairAnalysis {
 }
 
 pub(crate) struct FramePairAnalysis {
-    pub(crate) time: ValueSd,
-    pub(crate) time_per_byte_in: ValueSd,
-    pub(crate) time_per_byte_out: ValueSd,
     pub(crate) channels: Vec<ChannelPairAnalysis>,
 }
 
@@ -90,11 +104,7 @@ impl Display for FramePairAnalysis {
             .map(|c| format!("{c}"))
             .collect::<Vec<_>>()
             .join(";");
-        write!(
-            f,
-            "{0},{1},{2};{3}",
-            self.time, self.time_per_byte_in, self.time_per_byte_out, channels
-        )
+        write!(f,"{0}",channels)
     }
 }
 
@@ -110,9 +120,6 @@ pub(crate) fn analyse(vec: &MessagePairVector) -> FramePairAnalysis {
         .collect();
 
     FramePairAnalysis {
-        time,
-        time_per_byte_in,
-        time_per_byte_out,
         channels,
     }
 }

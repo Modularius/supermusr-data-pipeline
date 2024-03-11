@@ -2031,6 +2031,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "run-analyser"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "rdkafka",
+ "supermusr-common",
+ "supermusr-streaming-types",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "run-simulator"
 version = "0.1.0"
 dependencies = [
