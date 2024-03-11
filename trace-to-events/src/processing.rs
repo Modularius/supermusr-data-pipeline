@@ -71,9 +71,12 @@ fn find_constant_events(
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
+        .map(|(i, v)| (i as Real * sample_time,v as Real));
+    
+    let baselined = raw.clone()
+        .map(|(i, v)| (i, sign * (v - baseline)));
 
-    let pulses = raw
+    let pulses = baselined
         .clone()
         .events(ThresholdDetector::new(&ThresholdDuration {
             threshold: parameters.threshold,
@@ -82,7 +85,7 @@ fn find_constant_events(
         }));
 
     if let Some(save_path) = save_path {
-        raw.clone()
+        baselined.clone()
             .save_to_file(&get_save_file_name(
                 save_path,
                 metadata.frame_number(),

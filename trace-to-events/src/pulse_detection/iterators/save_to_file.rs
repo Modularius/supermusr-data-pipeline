@@ -1,7 +1,7 @@
 use super::{Pulse, Temporal};
 use std::{
     fmt::Display,
-    fs::File,
+    fs::{create_dir_all, File},
     io::{Error, Write},
     path::Path,
 };
@@ -40,6 +40,9 @@ where
     I::Item: SavablePoint,
 {
     fn save_to_file(self, path: &Path) -> Result<(), Error> {
+        if let Some(parent_path) = path.parent() {
+            create_dir_all(parent_path)?;
+        }
         let mut file = File::create(path)?;
         for item in self {
             item.write_to_file(&mut file)?;

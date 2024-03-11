@@ -64,8 +64,8 @@ impl MessagePair {
                 if detected_keys != simulated_keys {
                     return Err(anyhow!(
                         "Channel mismatch: {0:?}, {1:?}.",
-                        detected_keys,
-                        simulated_keys
+                        detected,
+                        simulated
                     ));
                 }
             }

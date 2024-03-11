@@ -5,6 +5,7 @@ use supermusr_common::Channel;
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
 
 pub(crate) type SimulatedMessage = ChannelEventList;
+#[derive(Debug)]
 pub(crate) struct DetectedMessage {
     pub(crate) header: Header,
     pub(crate) message: ChannelEventList,

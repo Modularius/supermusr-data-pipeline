@@ -28,7 +28,7 @@ impl MessageKey {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct EventList {
     pub(crate) voltage: Vec<Intensity>,
     pub(crate) time: Vec<Time>,
