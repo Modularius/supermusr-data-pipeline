@@ -1,10 +1,21 @@
+mod json;
+mod message;
+mod muon;
+mod noise;
+
 use chrono::Utc;
 use clap::{Parser, Subcommand};
+use json::Simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::time::{Duration, SystemTime};
+use std::{
+    fs::File,
+    net::SocketAddr,
+    path::PathBuf,
+    time::{Duration, SystemTime},
+};
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -44,6 +55,13 @@ struct Cli {
     #[clap(long)]
     trace_topic: Option<String>,
 
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
+    observability_address: SocketAddr,
+
+    /// Topic to publish analog trace packets to
+    #[clap(long)]
+    json_settings: Option<PathBuf>,
+
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
     digitizer_id: u8,
@@ -67,6 +85,9 @@ enum Mode {
 
     /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
     Continuous(Continuous),
+
+    /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
+    Json(Json),
 }
 
 #[derive(Clone, Parser)]
@@ -87,10 +108,19 @@ struct Continuous {
     frame_time: u64,
 }
 
+#[derive(Clone, Parser)]
+struct Json {
+    /// Path to the json settings file
+    #[clap(long)]
+    path: PathBuf,
+
+    /// Specifies how many times each event list message is repeated
+    #[clap(long, default_value = "1")]
+    repeat: usize,
+}
+
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
@@ -125,6 +155,51 @@ async fn main() {
 
                 frame_number += 1;
                 frame.tick().await;
+            }
+        }
+        Mode::Json(Json { path, repeat }) => {
+            let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
+            for trace in obj.traces {
+                let now = Utc::now();
+                for (frame_index, frame) in trace
+                    .frames
+                    .iter()
+                    .flat_map(|f| std::iter::repeat(f).take(repeat))
+                    .enumerate()
+                {
+                    let ts = trace.create_time_stamp(&now, frame_index);
+                    let templates = trace
+                        .create_frame_templates(frame_index, frame, &ts)
+                        .expect("Templates created");
+
+                    for template in templates {
+                        if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                            template
+                                .send_trace_messages(
+                                    &producer,
+                                    &mut fbb,
+                                    trace_topic,
+                                    &obj.voltage_transformation,
+                                )
+                                .await
+                                .expect("Trace messages should send.");
+                            fbb.reset();
+                        }
+
+                        if let Some(event_topic) = cli.event_topic.as_deref() {
+                            template
+                                .send_event_messages(
+                                    &producer,
+                                    &mut fbb,
+                                    event_topic,
+                                    &obj.voltage_transformation,
+                                )
+                                .await
+                                .expect("Trace messages should send.");
+                            fbb.reset();
+                        }
+                    }
+                }
             }
         }
     }
