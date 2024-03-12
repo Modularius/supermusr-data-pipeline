@@ -1,7 +1,5 @@
-use rdkafka::message::{BorrowedMessage, Headers, Message};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::HashMap;
 use supermusr_common::{Channel, Intensity, Time};
-use supermusr_streaming_types::{aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage, dev1_digitizer_event_v1_generated::DigitizerEventListMessage};
 
 #[derive(Default)]
 pub(crate) struct Pair<T : Default> {
@@ -17,4 +15,4 @@ pub(crate) struct EventList {
     pub(crate) time: Vec<Time>,
 }
 
-pub(crate) type PairOfEventListByChannel = HashMap<Channel,Pair<EventList>>;
+pub(crate) type PairOfEventListByChannel = ByChannel<Pair<EventList>>;

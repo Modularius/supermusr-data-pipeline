@@ -1,7 +1,6 @@
 mod analysis;
 mod message;
 
-use analysis::FramePairAnalysis;
 use clap::Parser;
 use message::PairOfEventListByChannel;
 use rdkafka::{
@@ -9,7 +8,7 @@ use rdkafka::{
     message::Message,
 };
 use std::{
-    fmt::Debug, fs::File, io::Write, net::SocketAddr, path::{Path, PathBuf}
+    fmt::Debug, fs::File, net::SocketAddr, path::PathBuf
 };
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
@@ -25,9 +24,9 @@ use supermusr_streaming_types::{
         run_start_buffer_has_identifier
     }
 };
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
-use analysis::analyse;
+use crate::analysis::ChannelPairAnalysis;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -51,6 +50,9 @@ struct Cli {
     detected_events_topic: String,
 
     #[clap(long)]
+    expected_frames: Option<usize>,
+
+    #[clap(long)]
     simulated_events_topic: String,
 
     #[clap(long, env, default_value = "127.0.0.1:9090")]
@@ -63,6 +65,8 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
+
+    tracing_subscriber::fmt::init();
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -91,6 +95,9 @@ async fn main() {
 
     let mut pair_of_eventlists_by_channel = PairOfEventListByChannel::new();
 
+    let mut num_detected_frames = 0;
+    let mut num_simulated_frames = 0;
+
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -104,17 +111,25 @@ async fn main() {
                 );
 
                 if let Some(payload) = m.payload() {
-                    if m.topic() == &args.detected_events_topic || m.topic() == &args.detected_events_topic {
+                    if m.topic() == &args.detected_events_topic || m.topic() == &args.simulated_events_topic {
                         if frame_assembled_event_list_message_buffer_has_identifier(payload) {
                             match root_as_frame_assembled_event_list_message(payload) {
                                 Ok(thing) => {
-                                    for (i,c) in thing.channel().unwrap().iter().enumerate() {
+                                    if m.topic() == &args.detected_events_topic {
+                                        info!("New detected frame message");
+                                        num_detected_frames += 1;
+                                    } else {
+                                        info!("New simulated frame message");
+                                        num_simulated_frames += 1;
+                                    }
+                                    for c in thing.channel().unwrap().iter() {
                                         let event_list = {
                                             let pair = pair_of_eventlists_by_channel.entry(c).or_default();
+
                                             if m.topic() == &args.detected_events_topic {
-                                                pair.detected
+                                                &mut pair.detected
                                             } else {
-                                                pair.simulated
+                                                &mut pair.simulated
                                             }
                                         };
                                         event_list.time.extend(thing.time().unwrap());
@@ -131,7 +146,8 @@ async fn main() {
                     } else if m.topic() == &args.control_topic {
                         if run_start_buffer_has_identifier(payload) {
                             match root_as_run_start(payload) {
-                                Ok(thing) => {
+                                Ok(_) => {
+                                    info!("Run Start");
                                     pair_of_eventlists_by_channel.clear();
                                 }
                                 Err(e) => {
@@ -140,8 +156,14 @@ async fn main() {
                             }
                         } else if run_stop_buffer_has_identifier(payload) {
                             match root_as_run_stop(payload) {
-                                Ok(thing) => {
-                                    //let full = partial_pairs.collate();
+                                Ok(_) => {
+                                    info!("Run Stop");
+                                    for (c,el) in pair_of_eventlists_by_channel.iter() {
+                                        let analysis = ChannelPairAnalysis::analyse_channel(el);
+                                        println!("Channel {c}:\n{analysis}");
+                                    }
+                                    consumer.commit_message(&m, CommitMode::Sync).unwrap();
+                                    return;
                                 }
                                 Err(e) => {
                                     warn!("Failed to parse message: {}", e);
@@ -161,6 +183,16 @@ async fn main() {
             }
             Err(e) => warn!("Kafka error: {}", e),
         };
+        if let Some(expected_frames) = &args.expected_frames {
+            if num_detected_frames == *expected_frames && num_simulated_frames == *expected_frames {
+                info!("Expected Frames Found");
+                for (c,el) in pair_of_eventlists_by_channel.iter() {
+                    let analysis = ChannelPairAnalysis::analyse_channel(el);
+                    println!("Channel {c}:\n{analysis}");
+                }
+                return;
+            }
+        }
     }
 }
 /*
