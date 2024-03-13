@@ -11,6 +11,7 @@ pub(crate) type ByChannel<T> = HashMap<Channel,T>;
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct EventList {
+    pub(crate) frames: usize,
     pub(crate) voltage: Vec<Intensity>,
     pub(crate) time: Vec<Time>,
 }

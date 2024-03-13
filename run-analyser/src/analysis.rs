@@ -27,10 +27,13 @@ impl Display for ValueSd {
     }
 } */
 
+use linreg;
+
 pub(crate) struct ChannelAnalysis {
     pub(crate) lifetime: f64,
     pub(crate) num: f64,
-    pub(crate) _bins: Vec<usize>,
+    pub(crate) a: f64,
+    pub(crate) b: f64,
     pub(crate) bin_error: Vec<f64>,
 }
 
@@ -44,28 +47,31 @@ impl<'a> ChannelAnalysis {
         let lifetime = calc_lifetime(source.time.as_slice());
         let max_time = *source.time.iter().max().unwrap_or(&0) as f64;
 
-        let num_bins = f64::floor(num/50.0);
+        let num_bins = 7.0;//f64::floor(num/200.0);
         let bin_size = max_time/num_bins;
-        let bins = {
-            let mut bins = vec![0; num_bins as usize + 1];
+        let log_bins = {
+            let mut bins = vec![0.0; num_bins as usize + 1];
             for t in &source.time {
-                bins[f64::round(*t as f64/bin_size) as usize] += 1;
+                bins[f64::round(*t as f64/bin_size) as usize] += 1.0;
             }
+            bins.iter_mut().for_each(|v| if *v != 0.0 { *v = f64::ln(*v); } );
             bins
         };
-        let bin_error = bins.iter().enumerate().map(|(i,v)| {
+        let (a,b) = linreg::linear_regression::<_,_,f64>(&(0..log_bins.len()).map(|v|v as f64*bin_size).collect::<Vec<_>>(), &log_bins).unwrap();
+
+        let bin_error = log_bins.iter().enumerate().map(|(i,v)| {
             let time = (i as f64 + 0.5)*bin_size;
-            num/lifetime*f64::exp(-time/lifetime) - *v as f64
+            f64::floor(f64::abs(f64::exp(a*time + b) - *v as f64))
         })
         .collect::<Vec<_>>();
 
-        Self { num, lifetime, _bins: bins, bin_error }
+        Self { num, lifetime, a, b, bin_error }
     }
 }
 
 impl Display for ChannelAnalysis {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "tau = {0}, n = {1}, error = {2}", self.lifetime, self.num, self.bin_error.iter().map(|e|e.abs()).sum::<f64>())
+        write!(f, "tau = {0}, n = {1}, tau = {2}, N_0 = {3}, \nerror = {4:?}", self.lifetime, self.num, f64::exp(-self.a) - 1.0, f64::exp(self.b), self.bin_error)
     }
 }
 
