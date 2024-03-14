@@ -1,4 +1,4 @@
-use std::ops::{Range, RangeInclusive};
+use std::ops::RangeInclusive;
 
 use chrono::{DateTime, Utc};
 use rand::{Rng, SeedableRng};
@@ -140,14 +140,14 @@ pub(crate) struct Interval<T> {
 }
 
 impl<T: PartialOrd + Copy> Interval<T> {
-    fn range(&self) -> Range<T> {
+    /*fn range(&self) -> Range<T> {
         self.min..self.max
-    }
+    }*/
     fn range_inclusive(&self) -> RangeInclusive<T> {
         self.min..=self.max
     }
     fn is_in(&self, value: T) -> bool {
-        self.range().contains(&value)
+        self.range_inclusive().contains(&value)
     }
 }
 
@@ -172,8 +172,8 @@ pub(crate) struct Digitizer {
 }
 
 impl Digitizer {
-    pub(crate) fn get_channels(&self) -> Range<Channel> {
-        self.channels.range()
+    pub(crate) fn get_channels(&self) -> RangeInclusive<Channel> {
+        self.channels.range_inclusive()
     }
 }
 

@@ -179,9 +179,9 @@ impl Muon {
                 amplitude,
             } => {
                 if start <= time && time < peak_time {
-                    amplitude * (peak_time - time) / (peak_time - start)
+                    amplitude * (time - start) / (peak_time - start)
                 } else if peak_time <= time && time < stop {
-                    amplitude * (time - peak_time) / (stop - peak_time)
+                    amplitude * (stop - time) / (stop - peak_time)
                 } else {
                     f64::default()
                 }

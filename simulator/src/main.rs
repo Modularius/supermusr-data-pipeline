@@ -164,8 +164,8 @@ async fn main() {
                 for (frame_index, frame) in trace
                     .frames
                     .iter()
-                    .flat_map(|f| std::iter::repeat(f).take(repeat))
                     .enumerate()
+                    .flat_map(|v|std::iter::repeat(v).take(repeat))
                 {
                     let ts = trace.create_time_stamp(&now, frame_index);
                     let templates = trace
