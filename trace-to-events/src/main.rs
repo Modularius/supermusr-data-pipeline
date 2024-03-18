@@ -69,7 +69,7 @@ use tracing_subscriber as _;
 
 #[tokio::main]
 async fn main() {
-    //tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
 

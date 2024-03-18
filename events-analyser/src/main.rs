@@ -21,7 +21,7 @@ use std::{
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use analysis::analyse;
 use base::{AnalysisKey, MessageKey};
@@ -60,6 +60,8 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let args = Cli::parse();
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
@@ -116,16 +118,19 @@ async fn main() {
 
                                 if let Some(sim_event) = args.simulated_events_topic.as_ref() {
                                     if m.topic() == args.trace_to_events_topic {
+                                        info!("Detected Events List  : {key:?}");
                                         message_group.detected = Some(DetectedMessage {
                                             header: Header::from_message(&m),
                                             message: ChannelEventList::from_message(&thing),
                                         });
                                     } else if m.topic() == sim_event {
+                                        info!("Simulated Events List : {key:?}");
                                         message_group.simulated =
                                             Some(ChannelEventList::from_message(&thing));
                                     }
                                 } else {
                                     let channel_event_list = ChannelEventList::from_message(&thing);
+                                    info!("Events List           : {key:?}");
                                     message_group.detected = Some(DetectedMessage {
                                         header: Header::from_message(&m),
                                         message: channel_event_list.clone(),
@@ -139,8 +144,9 @@ async fn main() {
                                         .entry(key.analysis_key.clone())
                                         .or_default();
 
-                                    vec.push(pair.expect("Messages Group Should Exist"));
+                                    vec.push(pair.unwrap_or_else(|e|panic!("Messages Group Should Exist: {e}")));
                                     if vec.len() == args.expected_repetitions {
+                                        info!("Analysis written      : {key:?}");
                                         write_analysis(&args.path, &key.analysis_key, analyse(vec));
                                         message_pair_vectors.remove(&key.analysis_key);
                                     }

@@ -121,6 +121,8 @@ struct Json {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
@@ -161,13 +163,14 @@ async fn main() {
             let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
             for trace in obj.traces {
                 let now = Utc::now();
-                for (frame_index, frame) in trace
+                for (index,(frame_index, frame)) in trace
                     .frames
                     .iter()
                     .enumerate()
                     .flat_map(|v|std::iter::repeat(v).take(repeat))
+                    .enumerate()
                 {
-                    let ts = trace.create_time_stamp(&now, frame_index);
+                    let ts = trace.create_time_stamp(&now, index);
                     let templates = trace
                         .create_frame_templates(frame_index, frame, &ts)
                         .expect("Templates created");

@@ -4,13 +4,13 @@ use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEvent
 
 // HashKeys
 
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct AnalysisKey {
     pub(crate) digitiser_id: DigitizerId,
     pub(crate) frame_number: FrameNumber,
 }
 
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct MessageKey {
     pub(crate) ts: DateTime<Utc>,
     pub(crate) analysis_key: AnalysisKey,

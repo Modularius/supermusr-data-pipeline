@@ -25,7 +25,7 @@ use supermusr_streaming_types::{
 
 use crate::json::{PulseAttributes, TraceMessage, Transformation};
 use crate::{json::NoiseSource, muon::Muon, noise::Noise};
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -188,6 +188,7 @@ impl TraceTemplate<'_> {
             "Event send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );*/
+        info!("Simulated Trace      : {0}, {1}, {2}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number, channels.len());
         Ok(())
     }
 
@@ -199,7 +200,7 @@ impl TraceTemplate<'_> {
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time_ns = 1_000_000_000.0 / self.sample_rate as f64;
-        let mut channel = Vec::<Channel>::new();
+        let mut channels = Vec::<Channel>::new();
         let mut time = Vec::<Time>::new();
         let mut voltage = Vec::<Intensity>::new();
         for (c, events) in &self.channels {
@@ -207,7 +208,7 @@ impl TraceTemplate<'_> {
                 time.push((event.time() as f64 * sample_time_ns) as Time);
                 voltage
                     .push(voltage_transformation.transform(event.intensity() as f64) as Intensity);
-                channel.push(*c)
+                channels.push(*c)
             }
         }
 
@@ -216,7 +217,7 @@ impl TraceTemplate<'_> {
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
             time: Some(fbb.create_vector(&time)),
             voltage: Some(fbb.create_vector(&voltage)),
-            channel: Some(fbb.create_vector(&channel)),
+            channel: Some(fbb.create_vector(&channels)),
         };
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
@@ -233,6 +234,7 @@ impl TraceTemplate<'_> {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
+        info!("Simulated Events List: {0}, {1}, {2}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number, channels.len());
 
         /*log::info!(
             "Event send took: {:?}",
