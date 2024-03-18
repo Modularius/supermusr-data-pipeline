@@ -2,7 +2,6 @@ use crate::{
     base::{AnalysisKey, EventList},
     message_group::{Header, MessageGroup},
 };
-use anyhow::{anyhow, Result};
 use std::collections::{HashMap, HashSet};
 use supermusr_common::Channel;
 
@@ -10,6 +9,15 @@ use supermusr_common::Channel;
 pub(crate) struct ChannelPairEventList {
     pub(crate) detected: EventList,
     pub(crate) simulated: EventList,
+}
+
+impl ChannelPairEventList {
+    pub(crate) fn from_eventlist_pair(detected: Option<&EventList>, simulated: Option<&EventList>) -> Self {
+        Self {
+            detected: detected.unwrap_or(&EventList::default()).clone(),
+            simulated: simulated.unwrap_or(&EventList::default()).clone(),
+        }
+    }
 }
 
 /*fn dist_sq(a : (&Time,&Intensity), b : (&Time,&Intensity)) -> f64 {
@@ -52,37 +60,29 @@ pub(crate) struct MessagePair {
 }
 
 impl MessagePair {
-    pub(crate) fn from_message_group(message_group: &MessageGroup) -> Option<Result<Self>> {
+    pub(crate) fn from_message_group(message_group: &MessageGroup) -> Option<Self> {
         Option::zip(
             message_group.detected.as_ref(),
             message_group.simulated.as_ref(),
         )
         .map(|(detected, simulated)| {
-            {
-                let detected_keys = detected.message.keys().collect::<HashSet<_>>();
-                let simulated_keys = simulated.keys().collect::<HashSet<_>>();
-                if detected_keys != simulated_keys {
-                    return Err(anyhow!(
-                        "Channel mismatch: {0:?}, {1:?}.",
-                        detected,
-                        simulated
-                    ));
-                }
-            }
-            Ok(Self {
+            let keys : HashSet<_> = {
+                let detected_keys = detected.message.keys().copied().collect::<HashSet<_>>();
+                let simulated_keys = simulated.keys().copied().collect::<HashSet<_>>();
+                HashSet::<_>::union(&detected_keys, &simulated_keys).copied().collect()
+            };
+            Self {
                 headers: detected.header.clone(),
-                channels: {
-                    HashMap::from_iter(detected.message.iter().map(|(c, val)| {
-                        (
-                            *c,
-                            ChannelPairEventList {
-                                detected: (*val).clone(),
-                                simulated: (*simulated.get(c).unwrap()).clone(),
-                            },
+                channels: HashMap::from_iter(keys.iter().map(|c| {
+                    (
+                        *c,
+                        ChannelPairEventList::from_eventlist_pair(
+                            detected.message.get(c),
+                            simulated.get(c)
                         )
-                    }))
-                },
-            })
+                    )
+                }))
+            }
         })
     }
 }

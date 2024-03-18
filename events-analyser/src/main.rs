@@ -144,9 +144,9 @@ async fn main() {
                                         .entry(key.analysis_key.clone())
                                         .or_default();
 
-                                    vec.push(pair.unwrap_or_else(|e|panic!("Messages Group Should Exist: {e}")));
+                                    vec.push(pair);
                                     if vec.len() == args.expected_repetitions {
-                                        info!("Analysis written      : {key:?}");
+                                        info!("Analysis written      : {0:?}",key.analysis_key);
                                         write_analysis(&args.path, &key.analysis_key, analyse(vec));
                                         message_pair_vectors.remove(&key.analysis_key);
                                     }

@@ -188,7 +188,7 @@ impl TraceTemplate<'_> {
             "Event send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );*/
-        info!("Simulated Trace      : {0}, {1}, {2}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number, channels.len());
+        info!("Simulated Trace      : {0}, {1}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number);
         Ok(())
     }
 
@@ -234,7 +234,7 @@ impl TraceTemplate<'_> {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
-        info!("Simulated Events List: {0}, {1}, {2}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number, channels.len());
+        info!("Simulated Events List: {0}, {1}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number);
 
         /*log::info!(
             "Event send took: {:?}",
