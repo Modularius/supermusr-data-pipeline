@@ -55,7 +55,7 @@ where
     }
 }
 
-#[derive(Default)]
+#[derive(Default,Debug)]
 pub(crate) struct Pulse {
     pub(crate) start: TimeValueOptional<Real>,
     pub(crate) end: TimeValueOptional<Real>,

@@ -1,3 +1,5 @@
+use tracing::debug;
+
 use super::{Assembler, Detector, Pulse, TracePoint};
 
 #[derive(Clone)]
@@ -21,6 +23,7 @@ where
         loop {
             let trace = self.source.next()?;
             if let Some(event) = self.detector.signal(trace.get_time(), trace.clone_value()) {
+                debug!("Event: {event:?}");
                 return Some(event);
             }
         }
@@ -70,6 +73,7 @@ where
         for event in &mut self.source {
             let pulse = self.assembler.assemble_pulses(event);
             if pulse.is_some() {
+                debug!("Event: {pulse:?}");
                 return pulse;
             }
         }

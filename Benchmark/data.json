@@ -1,0 +1,28 @@
+{
+    "voltage": {"min": 0, "max": 80},
+    "voltage-transformation": {"scale": 1, "translate": 0 },
+    "sample-rate": 100000000,
+    "traces": [
+        {
+            "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 0 } }],
+            "frames": {"min": 0, "max": 4},
+            "pulses": [
+                {
+                    "weight": 1,
+                    "attributes": {
+                        "type": "triangle",
+                        "start": { "lifetime": 2200 },
+                        "width": { "min": 20, "max": 50 },
+                        "height": { "min": 30, "max": 70 }
+                    }
+                }
+            ],
+            "noises": [
+            ],
+            "num-pulses": {"scale": 3, "translate": 4},
+            "time-bins": 30000,
+            "timestamp": "now",
+            "frame-delay-us": 20000
+        }
+    ]
+}
