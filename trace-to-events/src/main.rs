@@ -15,7 +15,7 @@ use std::{
     net::SocketAddr,
     path::PathBuf,
 };
-use supermusr_common::{tracer::{extract_context, init_tracer}, Intensity};
+use supermusr_common::{tracer::{create_new_span, extract_context, init_tracer}, Intensity};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -67,7 +67,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    init_tracer(true);
+    init_tracer().unwrap();
 
     let args = Cli::parse();
 
@@ -100,7 +100,9 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let _span = m.headers().map(|headers|extract_context("event formation",headers)).unwrap();
+                let context = m.headers().map(|headers|extract_context(headers));
+                let context = create_new_span("event formation", Some(context.unwrap()));
+                let _guard = context.attach();
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -109,6 +111,7 @@ async fn main() {
                     m.offset(),
                     m.timestamp()
                 );
+
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {

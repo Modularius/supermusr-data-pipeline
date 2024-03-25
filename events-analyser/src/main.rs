@@ -11,7 +11,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use supermusr_common::tracer::{extract_context, init_tracer};
+use supermusr_common::tracer::{create_new_span, extract_context, init_tracer};
 use std::{
     fmt::Debug,
     fs::File,
@@ -61,7 +61,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    init_tracer(true);
+    init_tracer().unwrap();
 
     let args = Cli::parse();
 
@@ -101,7 +101,9 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let _span = m.headers().map(|headers|extract_context("analysis",headers)).unwrap();
+                let context = m.headers().map(|headers|extract_context(headers));
+                let context = create_new_span("analysis", Some(context.unwrap()));
+                let _guard = context.attach();
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -141,6 +143,7 @@ async fn main() {
                                 }
 
                                 if let Some(pair) = MessagePair::from_message_group(message_group) {
+                                    info!("Pair Matched");
                                     message_groups.remove(&key);
                                     let vec = message_pair_vectors
                                         .entry(key.analysis_key.clone())
@@ -170,6 +173,7 @@ async fn main() {
     }
 }
 
+#[tracing::instrument]
 fn write_analysis(path: &Path, analysis_key: &AnalysisKey, analysis: FramePairAnalysis) {
     let file = File::options()
         .append(true)

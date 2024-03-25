@@ -1,7 +1,7 @@
 
 use tracing_subscriber::layer::SubscriberExt;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry::{global::BoxedSpan, propagation::Extractor, trace::{TraceContextExt, Tracer}, Context};
+use opentelemetry::{propagation::Extractor, trace::{TraceContextExt, TraceError, Tracer}, Context};
 use tracing_opentelemetry;
 
 use opentelemetry::propagation::Injector;
@@ -47,7 +47,7 @@ impl<'a> Extractor for HeaderExtractor<'a> {
     }
 }
 
-pub fn init_tracer(batch : bool) {
+pub fn init_tracer() -> Result<(),TraceError> {
     let endpoint = "http://localhost:4317/v1/traces";
     let otlp_exporter =  opentelemetry_otlp::new_exporter()
         .tonic()
@@ -58,45 +58,43 @@ pub fn init_tracer(batch : bool) {
     let otlp_config = opentelemetry_sdk::trace::Config::default()
         .with_resource(otlp_resource);
 
-    let tracer = {
-        let pipeline = opentelemetry_otlp::new_pipeline()
+    let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_trace_config(otlp_config)
-        .with_exporter(otlp_exporter);
-        if batch {
-            pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
-        } else {
-            pipeline.install_simple()
-        }
-        .unwrap()
-    };
+        .with_exporter(otlp_exporter)
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
     opentelemetry::global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
-
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
     let subscriber = tracing_subscriber::Registry::default().with(telemetry);
     tracing::subscriber::set_global_default(subscriber).unwrap();
+    Ok(())
 }
 
 pub fn end_tracer() {
     opentelemetry::global::shutdown_tracer_provider()
 }
 
-pub fn inject_context(parent_name: &str) -> (OwnedHeaders,Context) {
+pub fn create_new_span(span_name : &str, context: Option<Context>) -> Context {
     let tracer = opentelemetry::global::tracer(SERVICE_NAME.to_owned());
-    let span = tracer.start(parent_name.to_owned());
-    let context = Context::current_with_span(span);
-    let mut headers = OwnedHeaders::new();
-    opentelemetry::global::get_text_map_propagator(|propagator|
-        propagator.inject_context(&context, &mut HeaderInjector(&mut headers))
-    );
-    (headers,context)
+    let span = if let Some(context) = context {
+        tracer.start_with_context(span_name.to_owned(), &context)
+    } else {
+        tracer.start(span_name.to_owned())
+    };
+    Context::current_with_span(span)
 }
 
-pub fn extract_context(span_name: &str, headers : &BorrowedHeaders) -> BoxedSpan {
-    let context =  opentelemetry::global::get_text_map_propagator(|propagator|
-        propagator.extract(&HeaderExtractor(headers))
+pub fn inject_context(parent_context: &Context) -> OwnedHeaders {
+    let mut headers = OwnedHeaders::new();
+    opentelemetry::global::get_text_map_propagator(|propagator|
+        propagator.inject_context(parent_context, &mut HeaderInjector(&mut headers))
     );
-    opentelemetry::global::tracer(SERVICE_NAME.to_owned())
-        .start_with_context(span_name.to_owned(), &context)
+    headers
+}
+
+pub fn extract_context(headers : &BorrowedHeaders) -> Context {
+    opentelemetry::global::get_text_map_propagator(|propagator|
+        propagator.extract(&HeaderExtractor(headers))
+    )
 }

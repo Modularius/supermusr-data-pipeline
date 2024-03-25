@@ -3,6 +3,7 @@ use anyhow::Result;
 use std::fmt::{Display, Formatter};
 use supermusr_common::{Channel, Time};
 
+#[derive(Debug)]
 pub(crate) struct ValueSd {
     value: f64,
     sd: f64,
@@ -26,6 +27,7 @@ impl Display for ValueSd {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ChannelAnalysis {
     pub(crate) lifetime: ValueSd,
     pub(crate) num: ValueSd,
@@ -64,6 +66,7 @@ impl Display for ChannelAnalysis {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ChannelPairAnalysis {
     pub(crate) detected: ChannelAnalysis,
     pub(crate) simulated: ChannelAnalysis,
@@ -75,6 +78,7 @@ impl Display for ChannelPairAnalysis {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct FramePairAnalysis {
     pub(crate) time: ValueSd,
     pub(crate) time_per_byte_in: ValueSd,

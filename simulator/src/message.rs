@@ -34,6 +34,7 @@ impl<'a> TraceMessage {
         .attributes
     }
 
+    #[tracing::instrument]
     pub(crate) fn create_frame_templates(
         &'a self,
         frame_index: usize,
