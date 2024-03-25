@@ -17,7 +17,7 @@ pub(crate) trait Window: Clone {
     fn apply_time_shift(&self, time: Self::TimeType) -> Self::TimeType;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct WindowIter<I, W>
 where
     I: Iterator,

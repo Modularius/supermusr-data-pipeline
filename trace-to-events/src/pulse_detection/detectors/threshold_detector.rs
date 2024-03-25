@@ -19,7 +19,7 @@ pub(crate) struct ThresholdDuration {
     pub(crate) cool_off: i32,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct ThresholdDetector {
     trigger: ThresholdDuration,
     time_of_last_return: Option<Real>,
@@ -83,7 +83,7 @@ impl Detector for ThresholdDetector {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct ThresholdAssembler {}
 
 impl Assembler for ThresholdAssembler {

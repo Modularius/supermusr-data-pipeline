@@ -124,7 +124,7 @@ impl State {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct AdvancedMuonDetector {
     onset_threshold: Real,
     fall_threshold: Real,
@@ -234,7 +234,7 @@ enum AssemblerMode {
     },
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct BasicMuonAssembler {
     mode: AssemblerMode,
 }

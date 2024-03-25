@@ -1,6 +1,6 @@
 use super::{Real, Window};
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct Baseline {
     baseline: Real,
     value: Real,

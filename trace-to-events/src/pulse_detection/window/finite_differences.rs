@@ -2,7 +2,7 @@ use super::{Real, RealArray, Window};
 use num::integer::binomial;
 use std::collections::VecDeque;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct FiniteDifferences<const N: usize> {
     coefficients: Vec<Vec<Real>>,
     values: VecDeque<Real>,

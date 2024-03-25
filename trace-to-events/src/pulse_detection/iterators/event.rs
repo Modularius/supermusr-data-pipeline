@@ -1,8 +1,8 @@
 use tracing::debug;
-
+use std::fmt::Debug;
 use super::{Assembler, Detector, Pulse, TracePoint};
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub(crate) struct EventIter<I, D>
 where
     I: Iterator<Item = D::TracePointType>,
@@ -14,7 +14,7 @@ where
 
 impl<I, D> Iterator for EventIter<I, D>
 where
-    I: Iterator<Item = D::TracePointType>,
+    I: Iterator<Item = D::TracePointType> + Debug,
     D: Detector,
 {
     type Item = D::EventPointType;
@@ -32,8 +32,7 @@ where
 
 pub(crate) trait EventFilter<I, D>
 where
-    I: Iterator,
-    I: Iterator<Item = D::TracePointType>,
+    I: Iterator<Item = D::TracePointType> + Debug,
     D: Detector,
 {
     fn events(self, detector: D) -> EventIter<I, D>;
@@ -41,8 +40,7 @@ where
 
 impl<I, D> EventFilter<I, D> for I
 where
-    I: Iterator,
-    I: Iterator<Item = D::TracePointType>,
+    I: Iterator<Item = D::TracePointType> + Debug,
     D: Detector,
 {
     fn events(self, detector: D) -> EventIter<I, D> {

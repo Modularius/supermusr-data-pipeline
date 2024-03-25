@@ -7,3 +7,9 @@ edition.workspace = true
 [dependencies]
 kagiyama.workspace = true
 rdkafka.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-opentelemetry = "*"
+opentelemetry.workspace = true
+opentelemetry_sdk = { version = "0.22.1", default-features = false, features = ["trace", "rt-tokio"] }
+opentelemetry-otlp = { version = "0.15.0", features = ["trace", "tonic", "tls-roots"] }

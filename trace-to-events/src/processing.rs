@@ -24,6 +24,7 @@ use supermusr_streaming_types::{
 };
 use tracing::info;
 
+#[tracing::instrument]
 fn find_channel_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -53,6 +54,7 @@ fn find_channel_events(
     }
 }
 
+#[tracing::instrument]
 fn find_constant_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -114,6 +116,7 @@ fn find_constant_events(
     (time, voltage)
 }
 
+#[tracing::instrument]
 fn find_advanced_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -224,6 +227,7 @@ fn get_save_file_name(
     }
 }
 
+#[tracing::instrument]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,

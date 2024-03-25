@@ -11,6 +11,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use supermusr_common::tracer::{extract_context, init_tracer};
 use std::{
     fmt::Debug,
     fs::File,
@@ -60,7 +61,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    init_tracer(true);
 
     let args = Cli::parse();
 
@@ -100,6 +101,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
+                let _span = m.headers().map(|headers|extract_context("analysis",headers)).unwrap();
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),

@@ -9,7 +9,7 @@ TRACE_READER="target/release/trace-reader"
 
             #--save-file output/Saves/Tests/Temp/Experiment$EXPR/Test$i/output_ \
 
-MY_RUST_LOG=debug
+MY_RUST_LOG=info
 #LOGGER=""
 
 create_log() {
@@ -44,8 +44,7 @@ run_test() {
             --broker localhost:19092 --group events-analyser$i \
             --trace-to-events-topic Events$i $EVENT_ANALYSER_SIMULATED_TOPIC \
             --expected-repetitions=$NUM_REPEATS \
-            --path output/Saves/Tests/Data/data.$EXPR.$i.csv \
-            &> output/Saves/Tests/Temp/Logs/ev_an$EXPR.$i.log &
+            --path output/Saves/Tests/Data/data.$EXPR.$i.csv &
 
         create_log output/Saves/Tests/Temp/Logs/tr_ev$EXPR.$i.log
 
@@ -54,8 +53,7 @@ run_test() {
             --trace-topic Traces --event-topic Events$i \
             --observability-address=127.0.0.1:909$i \
             $TRACE_TO_EVENTS_INPUT_MODE \
-            ${tteMode[$(($i - 1))]} \
-            &> output/Saves/Tests/Temp/Logs/tr_ev$EXPR.$i.log &
+            ${tteMode[$(($i - 1))]}  &
     done
 
     create_log output/Saves/Tests/Temp/Logs/trace$EXPR.log
@@ -67,9 +65,8 @@ run_test() {
             --trace-topic Traces \
             --event-topic SimulatedEvents \
             json \
-            --path "output/Saves/Tests/data.json" \
-            --repeat=$NUM_REPEATS \
-            &> output/Saves/Tests/Temp/Logs/trace$EXPR.log \
+            --path "Benchmark/data.json" \
+            --repeat=$NUM_REPEATS  \
     || RUST_LOG=$MY_RUST_LOG $TRACE_READER \
             --broker localhost:19092 \
             --trace-topic Traces \
@@ -78,12 +75,11 @@ run_test() {
             --number-of-trace-events=5 \
             --frame-interval-ms=20 \
             --repeat=$NUM_REPEATS \
-            --path "../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces" \
-            &> output/Saves/Tests/Temp/Logs/trace$EXPR.log
+            --path "../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces"
 
     echo "--" $INPUT "finished"
 
-    sleep 30
+    sleep 10
 
     echo "--" "Ending Experiment" $EXPR
 

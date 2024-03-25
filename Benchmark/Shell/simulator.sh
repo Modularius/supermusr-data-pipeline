@@ -1,4 +1,4 @@
-. ./output/Saves/Tests/Shell/lib.sh
+. ./Benchmark/Shell/lib.sh
 
 compare_simple_and_advanced() {
     tteMode+=("constant-phase-discriminator --threshold=50 --duration=1 --cool-off=0")
@@ -17,7 +17,7 @@ advanced_compare_duration_and_smoothing_test() {
     tteMode+=("advanced-muon-detector --muon-onset=0.1 --muon-fall=-0.1 --muon-termination=0.01 --duration=10 --smoothing-window-size=10")
 }
 
-NUM_REPEATS=5
+NUM_REPEATS=2
 #simulator
 #trace-reader
 
@@ -28,7 +28,7 @@ run_test 0 $NUM_REPEATS simulator
 
 tteMode=()
 advanced_compare_duration_and_smoothing_test
-run_test 1 $NUM_REPEATS simulator
+#run_test 1 $NUM_REPEATS simulator
 #run_test 1 $NUM_REPEATS trace-reader
 
 tteMode=()

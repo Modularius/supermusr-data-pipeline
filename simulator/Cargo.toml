@@ -14,8 +14,12 @@ supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
+#tracing-subscriber.workspace = true
 serde_json = "1.0.113"
 serde.workspace = true
 #noise = "0.8.2"
 rand_distr = "0.4.3"
+#tracing-opentelemetry = "*"
+#opentelemetry.workspace = true
+#opentelemetry_sdk = { version = "0.22.1", default-features = false, features = ["trace", "rt-tokio"] }
+#opentelemetry-otlp = { version = "0.15.0", features = ["trace", "tonic", "tls-roots"] }

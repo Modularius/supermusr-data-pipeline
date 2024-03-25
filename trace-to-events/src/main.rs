@@ -8,15 +8,14 @@ use kagiyama::{AlwaysReady, Watcher};
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Header, Message, OwnedHeaders},
+    message::Message,
     producer::{FutureProducer, FutureRecord},
 };
 use std::{
     net::SocketAddr,
     path::PathBuf,
-    time::{Duration, Instant},
 };
-use supermusr_common::Intensity;
+use supermusr_common::{tracer::{extract_context, init_tracer}, Intensity};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -65,11 +64,10 @@ struct Cli {
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
-use tracing_subscriber as _;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::FmtSubscriber::builder().event_format(tracing_subscriber::fmt::format::json()).init();
+    init_tracer(true);
 
     let args = Cli::parse();
 
@@ -102,6 +100,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
+                let _span = m.headers().map(|headers|extract_context("event formation",headers)).unwrap();
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -121,7 +120,6 @@ async fn main() {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
-                                let time = Instant::now();
                                 processing::process(
                                     &mut fbb,
                                     &thing,
@@ -132,13 +130,8 @@ async fn main() {
                                     },
                                     args.save_file.as_deref(),
                                 );
-                                let headers = append_headers(
-                                    &m,
-                                    time.elapsed(),
-                                    payload.len(),
-                                    fbb.finished_data().len(),
-                                );
 
+                                let headers = m.headers().map(|headers|headers.detach()).unwrap_or_default();
                                 let future = producer
                                     .send_result(
                                         FutureRecord::to(&args.event_topic)
@@ -188,7 +181,7 @@ async fn main() {
         }
     }
 }
-
+/*
 fn append_headers(
     m: &BorrowedMessage,
     time: Duration,
@@ -211,3 +204,4 @@ fn append_headers(
             value: Some(&bytes_out.to_string()),
         })
 }
+ */

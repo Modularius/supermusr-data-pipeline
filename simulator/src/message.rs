@@ -5,8 +5,7 @@ use rand::{
     SeedableRng,
 };
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
+    message::OwnedHeaders, producer::{FutureProducer, FutureRecord}, util::Timeout
 };
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
@@ -133,6 +132,7 @@ impl TraceTemplate<'_> {
         &self,
         producer: &FutureProducer,
         fbb: &mut FlatBufferBuilder<'_>,
+        headers: OwnedHeaders,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
@@ -175,6 +175,7 @@ impl TraceTemplate<'_> {
             .send(
                 FutureRecord::to(topic)
                     .payload(fbb.finished_data())
+                    .headers(headers)
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
@@ -196,6 +197,7 @@ impl TraceTemplate<'_> {
         &self,
         producer: &FutureProducer,
         fbb: &mut FlatBufferBuilder<'_>,
+        headers: OwnedHeaders,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
@@ -226,6 +228,7 @@ impl TraceTemplate<'_> {
             .send(
                 FutureRecord::to(topic)
                     .payload(fbb.finished_data())
+                    .headers(headers)
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )

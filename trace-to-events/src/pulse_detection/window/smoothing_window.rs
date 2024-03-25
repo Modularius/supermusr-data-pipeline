@@ -1,7 +1,7 @@
 use super::{Real, Stats, Window};
 use std::collections::VecDeque;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct SmoothingWindow {
     value: Real,
     sum: Real,

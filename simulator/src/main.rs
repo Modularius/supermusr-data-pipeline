@@ -6,17 +6,16 @@ mod noise;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use json::Simulation;
+//use opentelemetry::{trace::{TraceContextExt, Tracer}, Context};
+//use opentelemetry_otlp::WithExportConfig;
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
+    producer::{FutureProducer, FutureRecord}, util::Timeout
 };
+//use tracing_subscriber::layer::SubscriberExt;
 use std::{
-    fs::File,
-    net::SocketAddr,
-    path::PathBuf,
-    time::{Duration, SystemTime},
+    fs::File, net::SocketAddr, path::PathBuf, time::{Duration, SystemTime}
 };
-use supermusr_common::{Channel, Intensity, Time};
+use supermusr_common::{tracer::{extract_context, init_tracer, inject_context, end_tracer}, Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -121,8 +120,31 @@ struct Json {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    init_tracer(true);
+    /*
+    let endpoint = "http://localhost:4317/v1/traces";
+    let otlp_exporter =  opentelemetry_otlp::new_exporter()
+        .tonic()
+        .with_endpoint(endpoint);
 
+    let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new("service.name", "SuperMuSR".to_owned())]);
+
+    let otlp_config = opentelemetry_sdk::trace::Config::default()
+        .with_resource(otlp_resource);
+
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_trace_config(otlp_config)
+        .with_exporter(otlp_exporter)
+        .install_batch(opentelemetry_sdk::runtime::Tokio)
+        .unwrap();
+
+    opentelemetry::global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
+
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let subscriber = tracing_subscriber::Registry::default().with(telemetry);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+ */
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
@@ -176,11 +198,22 @@ async fn main() {
                         .expect("Templates created");
 
                     for template in templates {
+                        /*let tracer = opentelemetry::global::tracer("SuperMuSR".to_owned());
+                        let span = tracer.start("digitizer message".to_owned());
+                        let context = Context::current_with_span(span);
+                        let mut headers = OwnedHeaders::new();
+                        opentelemetry::global::get_text_map_propagator(|propagator|
+                            propagator.inject_context(&context, &mut HeaderInjector(&mut headers))
+                        );*/
+                        let (headers,_context) = inject_context("digitizer message");
+                        let _span = extract_context("simulation", headers.as_borrowed());
+
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
                             template
                                 .send_trace_messages(
                                     &producer,
                                     &mut fbb,
+                                    headers.clone(),
                                     trace_topic,
                                     &obj.voltage_transformation,
                                 )
@@ -194,6 +227,7 @@ async fn main() {
                                 .send_event_messages(
                                     &producer,
                                     &mut fbb,
+                                    headers,
                                     event_topic,
                                     &obj.voltage_transformation,
                                 )
@@ -206,6 +240,7 @@ async fn main() {
             }
         }
     }
+    end_tracer();
 }
 
 async fn send(
