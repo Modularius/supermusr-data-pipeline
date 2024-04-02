@@ -11,7 +11,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use supermusr_common::tracer::{create_new_span, extract_context, init_tracer};
+use supermusr_common::tracer::{create_new_span, extract_context, extract_context_to_span, init_tracer, Spanned};
 use std::{
     fmt::Debug,
     fs::File,
@@ -22,7 +22,7 @@ use std::{
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace_span, warn};
 
 use analysis::analyse;
 use base::{AnalysisKey, MessageKey};
@@ -101,9 +101,13 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let context = m.headers().map(|headers|extract_context(headers));
-                let context = create_new_span("analysis", Some(context.unwrap()));
-                let _guard = context.attach();
+                let span = trace_span!("analysis");
+                extract_context_to_span(m.headers().unwrap(), &span);
+                let _guard = span.enter();
+                //let context = m.headers().map(|headers|extract_context(headers));
+
+                //let context = create_new_span("analysis", Some(context.unwrap()));
+                //let _guard = context.attach();
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -123,33 +127,46 @@ async fn main() {
                                 if let Some(sim_event) = args.simulated_events_topic.as_ref() {
                                     if m.topic() == args.trace_to_events_topic {
                                         info!("Detected Events List  : {key:?}");
-                                        message_group.detected = Some(DetectedMessage {
-                                            header: Header::from_message(&m),
-                                            message: ChannelEventList::from_message(&thing),
+                                        message_group.detected = Some(Spanned {
+                                            span: tracing::Span::current(),
+                                            value: DetectedMessage {
+                                                header: Header::from_message(&m),
+                                                message: ChannelEventList::from_message(&thing),
+                                            }
                                         });
                                     } else if m.topic() == sim_event {
                                         info!("Simulated Events List : {key:?}");
                                         message_group.simulated =
-                                            Some(ChannelEventList::from_message(&thing));
+                                            Some(Spanned {
+                                                span: tracing::Span::current(),
+                                                value: ChannelEventList::from_message(&thing)
+                                            }
+                                        );
                                     }
                                 } else {
                                     let channel_event_list = ChannelEventList::from_message(&thing);
                                     info!("Events List           : {key:?}");
-                                    message_group.detected = Some(DetectedMessage {
-                                        header: Header::from_message(&m),
-                                        message: channel_event_list.clone(),
+                                    message_group.detected = Some(Spanned {
+                                        span: tracing::Span::current(),
+                                        value: DetectedMessage {
+                                            header: Header::from_message(&m),
+                                            message: channel_event_list.clone(),
+                                        }
                                     });
-                                    message_group.simulated = Some(channel_event_list);
+                                    message_group.simulated = Some(Spanned {
+                                        span: tracing::Span::current(),
+                                        value: channel_event_list
+                                    });
                                 }
 
-                                if let Some(pair) = MessagePair::from_message_group(message_group) {
+                                if let Some(spanned_pair) = MessagePair::from_message_group(message_group) {
                                     info!("Pair Matched");
                                     message_groups.remove(&key);
                                     let vec = message_pair_vectors
                                         .entry(key.analysis_key.clone())
                                         .or_default();
 
-                                    vec.push(pair);
+                                    vec.push(spanned_pair.value);
                                     if vec.len() == args.expected_repetitions {
                                         info!("Analysis written      : {0:?}",key.analysis_key);
                                         write_analysis(&args.path, &key.analysis_key, analyse(vec));

@@ -22,9 +22,9 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use tracing::info;
+use tracing::{debug, info};
 
-#[tracing::instrument]
+#[tracing::instrument(skip(trace))]
 fn find_channel_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -54,7 +54,7 @@ fn find_channel_events(
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(trace))]
 fn find_constant_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -116,7 +116,7 @@ fn find_constant_events(
     (time, voltage)
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(trace))]
 fn find_advanced_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -241,7 +241,7 @@ impl<'a> SpannedChannelTrace<'a> {
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(trace))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
@@ -278,8 +278,8 @@ pub(crate) fn process<'a>(
             })
         })
         .collect();
-
     let mut events = EventData::default();
+    debug!("Aggregating Channel Evens");
     for (channel, (time, voltage)) in vec {
         events.channel.extend_from_slice(&vec![channel; time.len()]);
         events.time.extend_from_slice(&time);
@@ -296,6 +296,7 @@ pub(crate) fn process<'a>(
     };
     let metadata = FrameMetadataV1::create(fbb, &metadata);
 
+    debug!("Creating Flatbuffer Vectors");
     let time = Some(fbb.create_vector(&events.time));
     let voltage = Some(fbb.create_vector(&events.voltage));
     let channel = Some(fbb.create_vector(&events.channel));
@@ -307,7 +308,9 @@ pub(crate) fn process<'a>(
         voltage,
         channel,
     };
+    debug!("Creating Flatbuffer Object");
     let message = DigitizerEventListMessage::create(fbb, &message);
+    debug!("Finishing Buffer");
     finish_digitizer_event_list_message_buffer(fbb, message);
 }
 

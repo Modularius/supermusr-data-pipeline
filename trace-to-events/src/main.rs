@@ -23,7 +23,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -102,6 +102,7 @@ async fn main() {
             Ok(m) => {
                 let context = m.headers().map(|headers|extract_context(headers));
                 let context = create_new_span("event formation", Some(context.unwrap()));
+                
                 let _guard = context.attach();
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
@@ -144,18 +145,22 @@ async fn main() {
                                     )
                                     .expect("Producer sends");
 
-                                match future.await {
-                                    Ok(_) => {
-                                        trace!("Published event message");
-                                        metrics::MESSAGES_PROCESSED.inc();
-                                    }
-                                    Err(e) => {
-                                        error!("{:?}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::KafkaPublishFailed,
-                                            ))
-                                            .inc();
+                                {
+                                    let span = trace_span!("Form Events");
+                                    let _span_guard = span.enter();
+                                    match future.await {
+                                        Ok(_) => {
+                                            debug!("Published event message");
+                                            metrics::MESSAGES_PROCESSED.inc();
+                                        }
+                                        Err(e) => {
+                                            error!("{:?}", e);
+                                            metrics::FAILURES
+                                                .get_or_create(&metrics::FailureLabels::new(
+                                                    metrics::FailureKind::KafkaPublishFailed,
+                                                ))
+                                                .inc();
+                                        }
                                     }
                                 }
                                 fbb.reset();

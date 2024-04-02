@@ -15,7 +15,7 @@ use rdkafka::{
 use std::{
     fs::File, net::SocketAddr, path::PathBuf, time::{Duration, SystemTime}
 };
-use supermusr_common::{tracer::{create_new_span, end_tracer, init_tracer, inject_context}, Channel, Intensity, Time};
+use supermusr_common::{tracer::{end_tracer, init_tracer, inject_context_from_span}, Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -29,7 +29,7 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -158,8 +158,14 @@ async fn main() {
             }
         }
         Mode::Json(Json { path, repeat }) => {
+            let span = trace_span!("Simulate Json-configured Traces");
+            let _guard = span.enter();
+
             let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
             for trace in obj.traces {
+                let span = trace_span!("Trace Message");
+                let _guard = span.enter();
+                
                 let now = Utc::now();
                 for (index,(frame_index, frame)) in trace
                     .frames
@@ -168,19 +174,23 @@ async fn main() {
                     .flat_map(|v|std::iter::repeat(v).take(repeat))
                     .enumerate()
                 {
+                    let span = trace_span!("Frame");
+                    let _guard = span.enter();
+                    
                     let ts = trace.create_time_stamp(&now, index);
                     let templates = trace
                         .create_frame_templates(frame_index, frame, &ts)
                         .expect("Templates created");
 
                     for template in templates {
-                        let context = create_new_span("simulated digitizer message", None);
-                        let _guard = context.attach();
+                        let span = trace_span!("Simulated Digitizer Message");
+                        let _guard = span.enter();
 
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                            let context = create_new_span("simulated trace", None);
-                            let headers = inject_context(&context);
-                            let _guard = context.attach();
+                            let span = trace_span!("Simulated Trace");
+                            let headers = inject_context_from_span(&span);
+                            let _guard = span.enter();
+
                             template
                                 .send_trace_messages(
                                     &producer,
@@ -195,9 +205,10 @@ async fn main() {
                         }
 
                         if let Some(event_topic) = cli.event_topic.as_deref() {
-                            let context = create_new_span("simulated event list", None);
-                            let headers = inject_context(&context);
-                            let _guard = context.attach();
+                            let span = trace_span!("Simulated Event List");
+                            let headers = inject_context_from_span(&span);
+                            let _guard = span.enter();
+
                             template
                                 .send_event_messages(
                                     &producer,

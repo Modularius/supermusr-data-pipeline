@@ -1,14 +1,15 @@
 
+use tracing::Span;
 use tracing_subscriber::layer::SubscriberExt;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry::{propagation::Extractor, trace::{TraceContextExt, TraceError, Tracer}, Context};
-use tracing_opentelemetry;
+use tracing_opentelemetry::{self, OpenTelemetrySpanExt};
 
 use opentelemetry::propagation::Injector;
 use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
 
 const SERVICE_NAME : &str = "SuperMuSR";
-//(1)
+
 pub struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
 
 impl <'a>Injector for HeaderInjector<'a> {
@@ -83,6 +84,32 @@ pub fn create_new_span(span_name : &str, context: Option<Context>) -> Context {
         tracer.start(span_name.to_owned())
     };
     Context::current_with_span(span)
+}
+
+pub struct Spanned<T> {
+    pub span: Span,
+    pub value: T,
+}
+
+impl<T : Default> Spanned<T> {
+    pub fn default_with_span(span: Span) -> Self {
+        Self { span, value: Default::default() }
+    }
+}
+
+pub fn inject_context_from_span(span: &Span) -> OwnedHeaders {
+    inject_context(&span.context())
+}
+pub fn extract_context_to_span(headers : &BorrowedHeaders, span: &Span) {
+    span.set_parent(extract_context(headers));
+}
+
+pub fn link_span_to_context(span: &Span, context: &Context) {
+    span.add_link(context.span().span_context().clone());
+}
+
+pub fn link_span_to_span(span: &Span, other_span: &Span) {
+    link_span_to_context(span, &other_span.context());
 }
 
 pub fn inject_context(parent_context: &Context) -> OwnedHeaders {

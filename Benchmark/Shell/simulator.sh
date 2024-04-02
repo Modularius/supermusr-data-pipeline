@@ -22,13 +22,13 @@ NUM_REPEATS=2
 #trace-reader
 
 tteMode=()
-simple_compare_threshold_test
+advanced_compare_duration_and_smoothing_test
 run_test 0 $NUM_REPEATS simulator
 #run_test 0 $NUM_REPEATS trace-reader
 
 tteMode=()
-advanced_compare_duration_and_smoothing_test
-#run_test 1 $NUM_REPEATS simulator
+simple_compare_threshold_test
+run_test 1 $NUM_REPEATS simulator
 #run_test 1 $NUM_REPEATS trace-reader
 
 tteMode=()

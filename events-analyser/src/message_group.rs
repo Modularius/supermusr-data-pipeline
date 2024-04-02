@@ -1,7 +1,7 @@
 use crate::base::{EventList, MessageKey};
 use rdkafka::message::{BorrowedMessage, Headers, Message};
 use std::collections::{BTreeMap, HashMap};
-use supermusr_common::Channel;
+use supermusr_common::{tracer::Spanned, Channel};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
 
 pub(crate) type SimulatedMessage = ChannelEventList;
@@ -13,8 +13,8 @@ pub(crate) struct DetectedMessage {
 
 #[derive(Default)]
 pub(crate) struct MessageGroup {
-    pub(crate) detected: Option<DetectedMessage>,
-    pub(crate) simulated: Option<SimulatedMessage>,
+    pub(crate) detected: Option<Spanned<DetectedMessage>>,
+    pub(crate) simulated: Option<Spanned<SimulatedMessage>>,
 }
 
 pub(crate) type MessageGroupContainer = BTreeMap<MessageKey, MessageGroup>;
