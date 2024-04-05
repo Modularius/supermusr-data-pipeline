@@ -3,7 +3,7 @@ use crate::{
     message_group::{Header, MessageGroup},
 };
 use std::collections::{HashMap, HashSet};
-use supermusr_common::{tracer::{link_span_to_span, Spanned}, Channel};
+use supermusr_common::{tracer::{OtelTracer, Spanned}, Channel};
 
 #[derive(Default)]
 pub(crate) struct ChannelPairEventList {
@@ -71,7 +71,7 @@ impl MessagePair {
                 let simulated_keys = simulated.value.keys().copied().collect::<HashSet<_>>();
                 HashSet::<_>::union(&detected_keys, &simulated_keys).copied().collect()
             };
-            link_span_to_span(&detected.span, &simulated.span);
+            OtelTracer::link_span_to_span(&detected.span, &simulated.span);
             Spanned {
                 span: detected.span.clone(),
                 value: Self {

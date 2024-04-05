@@ -11,7 +11,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use supermusr_common::tracer::{create_new_span, extract_context, extract_context_to_span, init_tracer, Spanned};
+use supermusr_common::tracer::{OtelTracer, Spanned};
 use std::{
     fmt::Debug,
     fs::File,
@@ -61,7 +61,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    init_tracer().unwrap();
+    let _tracer = OtelTracer::new().expect("Tracer should be created");
 
     let args = Cli::parse();
 
@@ -102,7 +102,7 @@ async fn main() {
         match consumer.recv().await {
             Ok(m) => {
                 let span = trace_span!("analysis");
-                extract_context_to_span(m.headers().unwrap(), &span);
+                OtelTracer::extract_context_from_kafka_to_span(m.headers().unwrap(), &span);
                 let _guard = span.enter();
                 //let context = m.headers().map(|headers|extract_context(headers));
 

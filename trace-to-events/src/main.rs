@@ -15,7 +15,7 @@ use std::{
     net::SocketAddr,
     path::PathBuf,
 };
-use supermusr_common::{tracer::{create_new_span, extract_context, init_tracer}, Intensity};
+use supermusr_common::{tracer::OtelTracer, Intensity};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -23,7 +23,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, trace_span, warn};
+use tracing::{debug, debug_span, error, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -67,7 +67,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    init_tracer().unwrap();
+    let _tracer = OtelTracer::new().expect("Tracer should be created");
 
     let args = Cli::parse();
 
@@ -100,10 +100,12 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let context = m.headers().map(|headers|extract_context(headers));
-                let context = create_new_span("event formation", Some(context.unwrap()));
-                
-                let _guard = context.attach();
+                let span = debug_span!("event formation");
+                if let Some(headers) = m.headers() {
+                    OtelTracer::extract_context_from_kafka_to_span(headers,&span);
+                };
+                let _guard = span.enter();
+
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),

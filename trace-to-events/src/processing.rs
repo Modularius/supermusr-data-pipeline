@@ -12,7 +12,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
-use supermusr_common::{Channel, EventData, FrameNumber, Intensity, Time};
+use supermusr_common::{tracer::Spanned, Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev1_digitizer_event_v1_generated::{
@@ -227,20 +227,6 @@ fn get_save_file_name(
     }
 }
 
-struct SpannedChannelTrace<'a> {
-    span: tracing::span::Span,
-    channel_trace: ChannelTrace<'a>,
-}
-
-impl<'a> SpannedChannelTrace<'a> {
-    fn new(channel_trace: ChannelTrace<'a>) -> Self {
-        Self {
-            span: tracing::Span::current(),
-            channel_trace,
-        }
-    }
-}
-
 #[tracing::instrument(skip(trace))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
@@ -260,16 +246,16 @@ pub(crate) fn process<'a>(
         .channels()
         .unwrap()
         .iter()
-        .map(SpannedChannelTrace::new)
-        .collect::<Vec<SpannedChannelTrace>>()
+        .map(Spanned::<ChannelTrace>::new_with_current)
+        .collect::<Vec<Spanned<ChannelTrace>>>()
         .par_iter()
         .map(|spanned_channel_trace| {
             spanned_channel_trace.span.in_scope(|| {
                 (
-                    spanned_channel_trace.channel_trace.channel(),
+                    spanned_channel_trace.value.channel(),
                     find_channel_events(
                         &trace.metadata(),
-                        &spanned_channel_trace.channel_trace,
+                        &spanned_channel_trace.value,
                         sample_time_in_ns,
                         detector_settings,
                         save_options,

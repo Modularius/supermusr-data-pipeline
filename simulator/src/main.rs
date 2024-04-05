@@ -9,13 +9,13 @@ use json::Simulation;
 //use opentelemetry::{trace::{TraceContextExt, Tracer}, Context};
 //use opentelemetry_otlp::WithExportConfig;
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord}, util::Timeout
+    message::OwnedHeaders, producer::{FutureProducer, FutureRecord}, util::Timeout
 };
 //use tracing_subscriber::layer::SubscriberExt;
 use std::{
     fs::File, net::SocketAddr, path::PathBuf, time::{Duration, SystemTime}
 };
-use supermusr_common::{tracer::{end_tracer, init_tracer, inject_context_from_span}, Channel, Intensity, Time};
+use supermusr_common::{tracer::OtelTracer, Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -120,7 +120,8 @@ struct Json {
 
 #[tokio::main]
 async fn main() {
-    init_tracer().unwrap();
+    let _tracer = OtelTracer::new().expect("Tracer should be created");
+
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
@@ -188,7 +189,8 @@ async fn main() {
 
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
                             let span = trace_span!("Simulated Trace");
-                            let headers = inject_context_from_span(&span);
+                            let mut headers = OwnedHeaders::new();
+                            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
                             let _guard = span.enter();
 
                             template
@@ -206,7 +208,8 @@ async fn main() {
 
                         if let Some(event_topic) = cli.event_topic.as_deref() {
                             let span = trace_span!("Simulated Event List");
-                            let headers = inject_context_from_span(&span);
+                            let mut headers = OwnedHeaders::new();
+                            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
                             let _guard = span.enter();
 
                             template
@@ -226,7 +229,6 @@ async fn main() {
             }
         }
     }
-    end_tracer();
 }
 
 async fn send(
