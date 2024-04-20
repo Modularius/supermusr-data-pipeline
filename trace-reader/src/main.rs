@@ -2,23 +2,25 @@ use anyhow::Result;
 use chrono::Utc;
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
-use rdkafka::{producer::{FutureProducer, FutureRecord}, util::Timeout};
 #[cfg(feature = "opentelemetry")]
 use rdkafka::message::OwnedHeaders;
-use supermusr_streaming_types::flatbuffers::FlatBufferBuilder;
+use rdkafka::{
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout,
+};
 use std::{path::PathBuf, time::Duration};
-use supermusr_common::{DigitizerId, FrameNumber};
 #[cfg(feature = "opentelemetry")]
 use supermusr_common::tracer::OtelTracer;
-use tracing::{debug, error, trace_span};
+use supermusr_common::{DigitizerId, FrameNumber};
+use supermusr_streaming_types::flatbuffers::FlatBufferBuilder;
 #[cfg(feature = "opentelemetry")]
 use tracing::level_filters::LevelFilter;
+use tracing::{debug, error, trace_span};
 #[cfg(feature = "opentelemetry")]
 use tracing_subscriber as _;
 
 mod loader;
 mod processing;
-use loader::load_trace_file;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -66,23 +68,27 @@ struct Cli {
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
     random_sample: bool,
-    
+
     #[cfg(feature = "opentelemetry")]
-    otel_endpoint : Option<String>,
+    #[clap(long)]
+    otel_endpoint: Option<String>,
 }
 
 #[tokio::main]
 async fn main() {
     #[cfg(not(feature = "opentelemetry"))]
     tracing_subscriber::fmt::init();
-    
+
     #[cfg(feature = "opentelemetry")]
     let _tracer = OtelTracer::new(
         "http://localhost:4317/v1/traces",
         "Trace Reader",
-        Some(("trace_reader",LevelFilter::TRACE))
+        Some(("trace_reader", LevelFilter::TRACE)),
     )
     .expect("Open Telemetry Tracer is created");
+
+    let span = trace_span!("TraceReader");
+    let _guard = span.enter();
 
     let args = Cli::parse();
 
@@ -100,28 +106,33 @@ async fn main() {
 }
 
 async fn run_reader(args: &Cli, producer: &FutureProducer) -> Result<()> {
-    let mut trace_file = load_trace_file(args.file_name.clone()).expect("Trace File should load");
+    let mut trace_file =
+        loader::load_trace_file(args.file_name.clone()).expect("Trace File should load");
     let total_trace_events = trace_file.get_number_of_trace_events();
-    let num_trace_events = if args.number_of_trace_events == 0 {
-        total_trace_events
-    } else {
-        args.number_of_trace_events
+    let num_trace_events = {
+        if args.number_of_trace_events == 0 {
+            total_trace_events
+        } else {
+            args.number_of_trace_events
+        }
     };
 
-    let trace_event_indices: Vec<_> = if args.random_sample {
-        (0..num_trace_events)
-            .map(|_| {
-                (0..num_trace_events)
-                    .choose(&mut thread_rng())
-                    .unwrap_or_default()
-            })
-            .collect()
-    } else {
-        (0..num_trace_events)
-            .cycle()
-            .skip(args.trace_offset)
-            .take(num_trace_events)
-            .collect()
+    let trace_event_indices: Vec<_> = {
+        if args.random_sample {
+            (0..num_trace_events)
+                .map(|_| {
+                    (0..num_trace_events)
+                        .choose(&mut thread_rng())
+                        .unwrap_or_default()
+                })
+                .collect()
+        } else {
+            (0..num_trace_events)
+                .cycle()
+                .skip(args.trace_offset)
+                .take(num_trace_events)
+                .collect()
+        }
     };
 
     let mut fbb = FlatBufferBuilder::new();
@@ -140,14 +151,24 @@ async fn run_reader(args: &Cli, producer: &FutureProducer) -> Result<()> {
             &event,
         )?;
 
-        let mut headers = OwnedHeaders::new();
-        OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+        #[cfg(feature = "opentelemetry")]
+        let future_record = {
+            let mut headers = OwnedHeaders::new();
+            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
 
+            FutureRecord::to(&args.trace_topic)
+                .payload(fbb.finished_data())
+                .headers(headers)
+                .key("Trace")
+        };
+
+        #[cfg(not(feature = "opentelemetry"))]
         let future_record = FutureRecord::to(&args.trace_topic)
             .payload(fbb.finished_data())
-            .headers(headers)
-            .key("");
+            .key("Trace");
+
         let timeout = Timeout::After(Duration::from_millis(6000));
+
         match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e.0),
