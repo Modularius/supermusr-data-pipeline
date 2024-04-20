@@ -5,13 +5,15 @@ use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
 use chrono::Utc;
 use rdkafka::{
+    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
-use tracing::{debug, error};
+use tracing::{debug, error, trace_span};
+use tracing_subscriber as _;
 
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
+use supermusr_common::{tracer::OtelTracer, Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -24,7 +26,7 @@ use supermusr_streaming_types::{
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
-    trace_event_indices: Vec<usize>,
+    trace_event_indices: &[usize],
     frame_number: FrameNumber,
     digitizer_id: DigitizerId,
     producer: &FutureProducer,
@@ -32,7 +34,10 @@ pub(crate) async fn dispatch_trace_file(
     timeout_ms: u64,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    for index in trace_event_indices {
+    for &index in trace_event_indices {
+        let span = trace_span!("TraceReader::ReadTraceEvent");
+        let _guard = span.enter();
+
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
@@ -44,7 +49,13 @@ pub(crate) async fn dispatch_trace_file(
             &event,
         )?;
 
-        let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
+        let mut headers = OwnedHeaders::new();
+        OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+
+        let future_record = FutureRecord::to(topic)
+            .payload(fbb.finished_data())
+            .headers(headers)
+            .key("");
         let timeout = Timeout::After(Duration::from_millis(timeout_ms));
         match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
