@@ -110,9 +110,11 @@ struct Defined {
     repeat: usize,
 }
 
+use tracing_subscriber as _;
+
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    //tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
