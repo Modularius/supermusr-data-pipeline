@@ -70,7 +70,7 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
-    let _tracer = init_tracer(args.otel_endpoint.as_ref());
+    let _tracer = init_tracer(args.otel_endpoint.as_deref());
 
     let span = trace_span!("TraceReader");
     let _guard = span.enter();
@@ -159,7 +159,7 @@ async fn run_reader(args: &Cli, producer: &FutureProducer) -> Result<()> {
     Ok(())
 }
 
-fn init_tracer(otel_endpoint: Option<&String>) -> Option<OtelTracer> {
+fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
     otel_endpoint
         .map(|otel_endpoint| {
             OtelTracer::new(
