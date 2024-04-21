@@ -2,22 +2,15 @@ use anyhow::Result;
 use chrono::Utc;
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
-#[cfg(feature = "opentelemetry")]
-use rdkafka::message::OwnedHeaders;
 use rdkafka::{
+    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::{path::PathBuf, time::Duration};
-#[cfg(feature = "opentelemetry")]
-use supermusr_common::tracer::OtelTracer;
-use supermusr_common::{DigitizerId, FrameNumber};
+use supermusr_common::{tracer::OtelTracer, DigitizerId, FrameNumber};
 use supermusr_streaming_types::flatbuffers::FlatBufferBuilder;
-#[cfg(feature = "opentelemetry")]
-use tracing::level_filters::LevelFilter;
-use tracing::{debug, error, trace_span};
-#[cfg(feature = "opentelemetry")]
-use tracing_subscriber as _;
+use tracing::{debug, error, level_filters::LevelFilter, trace_span};
 
 mod loader;
 mod processing;
@@ -69,28 +62,18 @@ struct Cli {
     #[clap(long, default_value = "false")]
     random_sample: bool,
 
-    #[cfg(feature = "opentelemetry")]
+    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 }
 
 #[tokio::main]
 async fn main() {
-    #[cfg(not(feature = "opentelemetry"))]
-    tracing_subscriber::fmt::init();
-
-    #[cfg(feature = "opentelemetry")]
-    let _tracer = OtelTracer::new(
-        "http://localhost:4317/v1/traces",
-        "Trace Reader",
-        Some(("trace_reader", LevelFilter::TRACE)),
-    )
-    .expect("Open Telemetry Tracer is created");
+    let args = Cli::parse();
+    let _tracer = init_tracer(args.otel_endpoint.as_ref());
 
     let span = trace_span!("TraceReader");
     let _guard = span.enter();
-
-    let args = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -151,28 +134,43 @@ async fn run_reader(args: &Cli, producer: &FutureProducer) -> Result<()> {
             &event,
         )?;
 
-        #[cfg(feature = "opentelemetry")]
         let future_record = {
-            let mut headers = OwnedHeaders::new();
-            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+            if args.otel_endpoint.is_some() {
+                let mut headers = OwnedHeaders::new();
+                OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
 
-            FutureRecord::to(&args.trace_topic)
-                .payload(fbb.finished_data())
-                .headers(headers)
-                .key("Trace")
+                FutureRecord::to(&args.trace_topic)
+                    .payload(fbb.finished_data())
+                    .headers(headers)
+                    .key("Trace")
+            } else {
+                FutureRecord::to(&args.trace_topic)
+                    .payload(fbb.finished_data())
+                    .key("Trace")
+            }
         };
 
-        #[cfg(not(feature = "opentelemetry"))]
-        let future_record = FutureRecord::to(&args.trace_topic)
-            .payload(fbb.finished_data())
-            .key("Trace");
-
         let timeout = Timeout::After(Duration::from_millis(6000));
-
         match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e.0),
         };
     }
     Ok(())
+}
+
+fn init_tracer(otel_endpoint: Option<&String>) -> Option<OtelTracer> {
+    otel_endpoint
+        .map(|otel_endpoint| {
+            OtelTracer::new(
+                otel_endpoint,
+                "Trace Reader",
+                Some(("trace_reader", LevelFilter::TRACE)),
+            )
+            .expect("Open Telemetry Tracer is created")
+        })
+        .or_else(|| {
+            tracing_subscriber::fmt::init();
+            None
+        })
 }
