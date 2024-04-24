@@ -1,0 +1,56 @@
+title SuperMuSR Data Pipeline Schematic
+
+participant "++**Run Controler**++" as C
+participant "++**Nexus File**++" as X
+participantgroup #lightyellow ++**Data Pipeline**++
+    participant "++**Nexus Writer**++" as W
+    participant "++**Frame Aggregator**++" as A
+    participant "++**Digitiser Event Formation**++" as E
+end
+participant "++**Trace Source**++" as T
+
+group #lightblue Run Control Message
+C -:3> W: ++**Run Start Command**++
+W --:2> X: <align:center>++//Create//++</align>
+end
+
+create T
+group #lightgreen Continous Data Messages
+    group #lightgray All Data for Frame 1
+        linear
+        T -:3> E: <align:center>++**Trace**++\nUID: (Dig. ID, Frame Metadata)</align>
+        E -:3> A: <align:center>++**DAT Event List**++\nUID: (Dig. ID, Frame Metadata)</align>
+        T -:3> E: <align:center>++**Trace**++\nUID: (Dig. ID, Frame Metadata)</align>
+        E -:3> A: <align:center>++**DAT Event List**++\nUID: (Dig. ID, Frame Metadata)</align>
+        linear off
+    end
+
+    linear
+    A -:3> W: <align:center>++**Frame Event List**++\nUID: (Frame Metadata)</align>
+    W --:2> X: ++//Write//++
+    linear off
+
+    group #lightgray All Data for Frame 2
+        linear
+        T -:3> E: <align:center>++**Trace**++\nUID: (Dig. ID, Frame Metadata)</align>
+        E -:3> A: <align:center>++**DAT Event List**++\nUID: (Dig. ID, Frame Metadata)</align>
+        T -:3> E: <align:center>++**Trace**++\nUID: (Dig. ID, Frame Metadata)</align>
+        E -:3> A: <align:center>++**DAT Event List**++\nUID: (Dig. ID, Frame Metadata)</align>
+        linear off
+    end
+    linear
+    A -:3> W: <align:center>++**Frame Event List**++\nUID: (Frame Metadata)</align>
+    W --:2> X: ++//Write//++
+    linear off
+end
+destroysilent T
+
+group #pink Ad Hoc Messages
+    C -:3> W: ++**Run Log/Sample Env. Log/Alert**++
+    W --:2> X: ++//Write//++
+end
+
+group #lightblue Run Control Message
+    C -:3> W: ++**Run Stop Command**++
+    W --:2> X: ++//Write//++
+end
