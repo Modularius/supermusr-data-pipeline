@@ -1,4 +1,13 @@
 ```mermaid
+zenuml
+    title Declare participant (optional)
+    Bob
+    Alice
+    Alice->Bob: Hi Bob
+    Bob->Alice: Hi Alice
+```
+
+```mermaid
 sequenceDiagram
 participant C as Run Controler
 participant X as Nexus File
