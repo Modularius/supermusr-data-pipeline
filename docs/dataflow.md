@@ -1,17 +1,11 @@
 ```mermaid
-zenuml
-    title Declare participant (optional)
-    Bob
-    Alice
-    Alice->Bob: Hi Bob
-    Bob->Alice: Hi Alice
-```
-
-```mermaid
+---
+title: Super MuSR Data Pipeline
+---
 sequenceDiagram
 participant C as Run Controler
 participant X as Nexus File
-box rgba(256,256,192,.5) Data Pipeline
+box rgba(255,255,192,.5) Data Pipeline
     participant W as Nexus Writer
     participant A as Frame Aggregator
     participant E as Digitiser Event Formation
@@ -69,5 +63,4 @@ rect rgba(224,240,255,0.75)
     W -->> X: 
     end
 end
-
 ```
