@@ -12,10 +12,11 @@ participant "++**Trace Source**++" as T
 group #lightblue Run Control Message
 C -:3> W: ++**Run Start Command**++
 W --:2> X: <align:center>++//Create//++</align>
+W -> W: Create Run
 end
 
-create T
 group #lightgreen Continous Data Messages
+    // First Frame
     group #lightgray All Data for Frame 1
         linear
         T -:3> E: <align:center>++**Trace**++\nUID: (Dig. ID, Frame Metadata)</align>
@@ -25,11 +26,13 @@ group #lightgreen Continous Data Messages
         linear off
     end
 
-    linear
+    // Write First Frame
+    rbox right of A: <align:center>User defined delay\nto allow slow digitiser\ndata to arrive.</align>
     A -:3> W: <align:center>++**Frame Event List**++\nUID: (Frame Metadata)</align>
+    A -x A: Delete Frame
     W --:2> X: ++//Write//++
-    linear off
 
+    // Second Frame
     group #lightgray All Data for Frame 2
         linear
         T -:3> E: <align:center>++**Trace**++\nUID: (Dig. ID, Frame Metadata)</align>
@@ -38,12 +41,13 @@ group #lightgreen Continous Data Messages
         E -:3> A: <align:center>++**DAT Event List**++\nUID: (Dig. ID, Frame Metadata)</align>
         linear off
     end
-    linear
+
+    // Write Second Frame
+    rbox right of A: <align:center>User defined delay\nto allow slow digitiser\ndata to arrive.</align>
     A -:3> W: <align:center>++**Frame Event List**++\nUID: (Frame Metadata)</align>
+    A -x A: Delete Frame
     W --:2> X: ++//Write//++
-    linear off
 end
-destroysilent T
 
 group #pink Ad Hoc Messages
     C -:3> W: ++**Run Log/Sample Env. Log/Alert**++
@@ -52,5 +56,7 @@ end
 
 group #lightblue Run Control Message
     C -:3> W: ++**Run Stop Command**++
+    rbox left of W: <align:center>User defined delay\nto allow slow frame\ndata to arrive.</align>
     W --:2> X: ++//Write//++
+    W -x W: Delete Run
 end
