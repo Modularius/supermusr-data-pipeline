@@ -1,39 +1,64 @@
 ```mermaid
 sequenceDiagram
-participant X as Nexus File
 participant C as Run Controler
-box rgba(128,128,128,.5) Data Pipeline
+participant X as Nexus File
+box rgba(256,256,192,.5) Data Pipeline
     participant W as Nexus Writer
     participant A as Frame Aggregator
     participant E as Digitiser Event Formation
 end
 participant T as Trace Source
 
-rect rgba(0,0,128,.5)
-C ->> W: Run Start Command
-activate X
-W -->> X: 
+rect rgba(224,240,255,0.75)
+    critical Run Command Messages
+        C ->> W: Run Start Command
+        W -->> W: New Run
+        W -->> X: Create
+    end
 end
-rect rgba(128,0,0,.5)
-C ->> W: Run Log
-W -->> X: 
+
+rect rgba(224,255,224,.75)
+    loop Continous Messages
+        rect rgba(255,255,255,1)
+            loop All Data for Frame 1
+                T ->> E: Trace
+                E -->> A: DAT Event List
+                T ->> E: Trace
+                E -->> A: DAT Event List
+            end
+        end
+        note over A: User Defined Delay<br/>to allow slow digitiser<br/>data to arrive.
+        A ->> W: Frame Event List
+        A -->> A: Delete Frame
+        W -->> X: Write
+        rect rgba(255,255,255,1)
+            loop All Data for Frame 2
+                T ->> E: Trace
+                E -->> A: DAT Event List
+                T ->> E: Trace
+                E -->> A: DAT Event List
+            end
+        end
+        note over A: User Defined Delay<br/>to allow slow digitiser<br/>data to arrive.
+        A ->> W: Frame Event List
+        A -->> A: Delete Frame
+        W -->> X: Write
+    end
 end
-rect rgba(128,0,0,.5)
-C ->> W: Sample Env Log
-W -->> X: 
+
+rect rgba(256,224,224,.75)
+    loop Irregular Messages
+        C ->> W: Run Log/SE Log/Alert
+        W -->> X: Write
+    end
 end
-rect rgba(128,0,0,.5)
-C ->> W: Alert
-W -->> X: 
+
+rect rgba(224,240,255,0.75)
+    critical Run Command Messages
+    C ->> W: Run Stop Command
+        note over W: User Defined Delay<br/>to allow slow frame<br/>data to arrive.
+    W -->> X: 
+    end
 end
-rect rgba(0,128,0,.5)
-T ->> E: Trace
-E -->> A: DAT Event List
-A ->> W: Frame Event List
-W -->> X: 
-end
-rect rgba(0,0,128,.5)
-C ->> W: Run Stop Command
-W -->> X: 
-end
+
 ```
