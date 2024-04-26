@@ -10,7 +10,8 @@ box rgba(255,255,192,.5) Data Pipeline
     participant A as Frame Aggregator
     participant E as Digitiser Event Formation
 end
-participant T as Trace Source
+participant T1 as Digitiser 1
+participant T2 as Digitiser 2
 
 rect rgba(224,240,255,0.75)
     critical Run Command Messages
@@ -24,9 +25,9 @@ rect rgba(224,255,224,.75)
     loop Continous Messages
         rect rgba(255,255,255,1)
             loop All Data for Frame 1
-                T ->> E: Trace
+                T1 ->> E: Trace
                 E -->> A: DAT Event List
-                T ->> E: Trace
+                T2 ->> E: Trace
                 E -->> A: DAT Event List
             end
         end
@@ -36,9 +37,9 @@ rect rgba(224,255,224,.75)
         W -->> X: Write
         rect rgba(255,255,255,1)
             loop All Data for Frame 2
-                T ->> E: Trace
+                T1 ->> E: Trace
                 E -->> A: DAT Event List
-                T ->> E: Trace
+                T2 ->> E: Trace
                 E -->> A: DAT Event List
             end
         end
