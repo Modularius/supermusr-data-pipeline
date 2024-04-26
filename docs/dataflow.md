@@ -1,10 +1,16 @@
 # Super MuRS Data Pipeline
+
+Each message is uniquely identified by the following:
+- Digitiser Trace: (Dig. ID, Frame Metadata)
+- Digitiser Event List: (Dig. ID, Frame Metadata)
+- Frame Event List: (Frame Metadata)
+
 ```mermaid
 sequenceDiagram
 participant C as EPICS/IBEX
 participant T1 as Digitiser 1
 participant T2 as Digitiser 2
-box rgba(255,255,192,.5) Data Pipeline
+box rgba(255,255,192,.5) <br/>Data Pipeline<br/>
     participant E as Event Formation
     participant A as Frame Aggregator
     participant W as Nexus Writer
@@ -21,7 +27,7 @@ end
 
 loop Detector Data
     rect rgba(224,255,224,.75)
-        rect rgba(255,255,255,0.5)
+        rect rgba(255,255,255,0.65)
             T1 ->> E: Trace
             E -->> A: DAT Event List
             T2 ->> E: Trace
@@ -33,7 +39,7 @@ loop Detector Data
         W -->> X: Write
     end
     rect rgba(224,255,224,.75)
-        rect rgba(255,255,255,0.5)
+        rect rgba(255,255,255,0.65)
             T1 ->> E: Trace
             E -->> A: DAT Event List
             T2 ->> E: Trace
