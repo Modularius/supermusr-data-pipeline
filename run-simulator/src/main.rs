@@ -24,7 +24,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, info_span, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -224,6 +224,8 @@ async fn main() {
         }
     }
 
+    let pub_span = info_span!(target: "otel", "Publish Message");
+    let _guard = pub_span.enter();
     // Prepare the kafka message
     let future_record = FutureRecord::to(&cli.topic)
         .payload(fbb.finished_data())
@@ -236,7 +238,7 @@ async fn main() {
         Err(e) => error!("Delivery failed: {:?}", e),
     };
 
-    info!("Run command send");
+    debug!("Run command send");
 }
 
 #[tracing::instrument]

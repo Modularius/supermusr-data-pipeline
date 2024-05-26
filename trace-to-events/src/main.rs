@@ -130,7 +130,6 @@ async fn main() {
                 m.headers()
                     .conditional_extract_to_span(tracer.is_some(), &span);
                 let _guard = span.enter();
-
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -169,6 +168,8 @@ async fn main() {
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 
+                                let pub_span = info_span!(target: "otel", "Publish Message");
+                                let _guard = pub_span.enter();
                                 match future.await {
                                     Ok(_) => {
                                         trace!("Published event message");

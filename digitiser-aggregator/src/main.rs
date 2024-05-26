@@ -186,6 +186,7 @@ async fn on_message(
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 async fn cache_poll(
     use_otel: bool,
     cache: &mut FrameCache<EventData>,
@@ -201,6 +202,8 @@ async fn cache_poll(
             .conditional_inject_span_into_headers(use_otel, &span)
             .key("Frame Events List");
 
+        let pub_span = info_span!(target: "otel", "Publish Message");
+        let _guard = pub_span.enter();
         match producer
             .send(future_record, Timeout::After(Duration::from_millis(100)))
             .await
