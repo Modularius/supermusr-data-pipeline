@@ -5,7 +5,6 @@ use supermusr_common::{
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
-use tracing::{trace_span, Span};
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -14,7 +13,6 @@ pub(crate) struct FrameCache<D: Debug> {
     expected_digitisers: Vec<DigitizerId>,
 
     frames: VecDeque<PartialFrame<D>>,
-    root_span: Span,
 }
 
 impl<D: Debug> FrameCache<D>
@@ -25,13 +23,8 @@ where
         Self {
             ttl,
             expected_digitisers,
-            frames: Default::default(),
-            root_span: trace_span!("Root"),
+            frames: Default::default()
         }
-    }
-
-    pub(crate) fn get_root_span(&self) -> &Span {
-        &self.root_span
     }
 
     pub(crate) fn find_span(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
