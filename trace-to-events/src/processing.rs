@@ -25,9 +25,9 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args},
 };
-use tracing::info;
+use tracing::debug;
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip(trace), level = "trace")]
 fn find_channel_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -57,7 +57,7 @@ fn find_channel_events(
     }
 }
 
-#[tracing::instrument(skip(trace), fields(num_pulses))]
+#[tracing::instrument(skip_all, fields(num_pulses))]
 fn find_constant_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -117,7 +117,7 @@ fn find_constant_events(
     (time, voltage)
 }
 
-#[tracing::instrument(skip(trace), fields(num_pulses))]
+#[tracing::instrument(skip_all, fields(num_pulses))]
 fn find_advanced_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -229,14 +229,14 @@ fn get_save_file_name(
     }
 }
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip(trace), fields(did = trace.digitizer_id(), num_pulses))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
     detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
 ) {
-    info!(
+    debug!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
@@ -277,6 +277,8 @@ pub(crate) fn process<'a>(
         events.time.extend_from_slice(&time);
         events.voltage.extend_from_slice(&voltage);
     }
+    
+    tracing::Span::current().record("num_pulses", events.time.len());
 
     let metadata = FrameMetadataV2Args {
         frame_number: trace.metadata().frame_number(),
