@@ -48,7 +48,7 @@ struct Cli {
     #[clap(long)]
     output_topic: String,
 
-    #[clap(short, long)]
+    #[clap(short, long, value_delimiter=',')]
     digitiser_ids: Vec<DigitizerId>,
 
     #[clap(long, default_value = "500")]
