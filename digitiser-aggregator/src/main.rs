@@ -10,11 +10,13 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{fmt::Debug, net::SocketAddr, time::Duration};
+use std::{fmt::Debug, net::SocketAddr, path::PathBuf, time::Duration};
 use supermusr_common::{
     conditional_init_tracer,
     spanned::Spanned,
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    tracer::{
+        FutureRecordTracerExt, OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions,
+    },
     DigitizerId,
 };
 use supermusr_streaming_types::{
@@ -23,7 +25,7 @@ use supermusr_streaming_types::{
     },
     FrameMetadata,
 };
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -61,13 +63,32 @@ struct Cli {
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
+
+    /// If open-telemetry is used then the following log level is used
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
+
+    /// If set, then the given level is used for filtering logs, otherwise RUST_LOG is used (may be removed in favour of RUST_LOG)
+    #[clap(long)]
+    log_level: Option<LevelFilter>,
+
+    /// If set, then logs are appended to the given log file, otherwise they are written to stdout
+    #[clap(long)]
+    log_path: Option<PathBuf>,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = conditional_init_tracer!(TracerOptions {
+        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
+            endpoint,
+            level_filter: args.otel_level
+        }),
+        log_path: args.log_path.as_ref(),
+        log_level: args.log_level
+    });
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -117,7 +138,7 @@ async fn main() {
     }
 }
 
-#[tracing::instrument(skip_all, level = "trace")]
+#[tracing::instrument(skip_all)]
 async fn on_message(
     use_otel: bool,
     cache: &mut FrameCache<EventData>,
@@ -137,16 +158,14 @@ async fn on_message(
                             debug!("Event packet: metadata: {:?}", msg.metadata());
                             cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
 
-                            let root_span = cache.get_root_span().clone();
+                            //let root_span = cache.get_root_span().clone();
                             if let Some(frame_span) = cache.find_span(metadata) {
                                 if frame_span.is_waiting() {
-                                    root_span.in_scope(|| {
-                                        frame_span.init(trace_span!("Frame")).unwrap();
-                                    });
+                                    frame_span.init(info_span!(target: "otel", parent: None, "Frame")).unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {
-                                    let span = trace_span!("Digitiser Event List");
+                                    let span = info_span!(target: "otel", "Digitiser Event List");
                                     span.follows_from(cur_span);
                                 });
                             }

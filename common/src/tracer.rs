@@ -1,3 +1,5 @@
+use std::{path::PathBuf, str::FromStr};
+
 use opentelemetry::{
     propagation::{Extractor, Injector},
     trace::TraceError,
@@ -9,8 +11,25 @@ use rdkafka::{
     producer::FutureRecord,
 };
 use tracing::{debug, level_filters::LevelFilter, Span};
-use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
+use tracing_subscriber::{
+    filter::{self, Filtered, Targets},
+    layer::SubscriberExt,
+    registry::LookupSpan,
+    EnvFilter, Layer,
+};
+
+pub struct OtelOptions<'a> {
+    pub endpoint: &'a str,
+    pub level_filter: LevelFilter,
+}
+
+pub struct TracerOptions<'a> {
+    pub otel_options: Option<OtelOptions<'a>>,
+    pub log_path: Option<&'a PathBuf>,
+    pub log_level: Option<LevelFilter>,
+}
 
 /// Should be called at the start of each component
 /// The `conditional_` prefix used in the methods of FutureRecordTracerExt and OptionalHeaderTracerExt
@@ -18,35 +37,31 @@ use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 /// with the URL of the OpenTelemetry collector to be used, or None, if OpenTelemetry is not used.
 #[macro_export]
 macro_rules! conditional_init_tracer {
-    ($otel_endpoint:expr) => {
-        init_tracer!($otel_endpoint, LevelFilter::TRACE)
-    };
-    ($otel_endpoint:expr, $level: expr) => {
-        $otel_endpoint
-            .map(|otel_endpoint| {
-                let tracer = OtelTracer::new(
-                    otel_endpoint,
-                    env!("CARGO_BIN_NAME"),
-                    Some((module_path!(), $level)),
-                );
-            })
-            .or_else(|| {
-                tracing_subscriber::fmt::init();
-                None
-            });
+    ($options:expr) => {
+        TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
     };
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
 /// as well as the stdout tracer and otel_status tracer (exclusively
 /// for OpenTelemetry errors)
-pub struct OtelTracer {}
+pub struct OtelTracer<S> {
+    layer: Filtered<OpenTelemetryLayer<S, Tracer>, Targets, S>,
+}
 
-impl OtelTracer {
-    fn create_otel_tracer(endpoint: &str, service_name: &str) -> Result<Tracer, TraceError> {
+impl<S> OtelTracer<S>
+where
+    S: tracing::Subscriber,
+    for<'span> S: LookupSpan<'span>,
+{
+    pub fn new(
+        options: OtelOptions,
+        service_name: &str,
+        module_name: &str,
+    ) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
-            .with_endpoint(endpoint);
+            .with_endpoint(options.endpoint);
 
         let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
             "service.name",
@@ -58,13 +73,37 @@ impl OtelTracer {
             opentelemetry_sdk::propagation::TraceContextPropagator::new(),
         );
 
-        opentelemetry_otlp::new_pipeline()
+        let tracer = opentelemetry_otlp::new_pipeline()
             .tracing()
             .with_trace_config(otlp_config)
             .with_exporter(otlp_exporter)
-            .install_batch(opentelemetry_sdk::runtime::Tokio)
-    }
+            .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
+        let filter = filter::Targets::new()
+            .with_default(LevelFilter::OFF)
+            .with_target(module_name, options.level_filter)
+            .with_target("otel", options.level_filter);
+
+        let layer = tracing_opentelemetry::layer()
+            .with_tracer(tracer)
+            .with_filter(filter);
+
+        Ok(Self { layer })
+    }
+}
+
+pub struct TracerEngine {
+    _appender_guard: WorkerGuard,
+    use_otel: bool,
+}
+
+impl TracerEngine {
+    pub fn is_some(&self) -> bool {
+        self.use_otel
+    }
+}
+
+impl TracerEngine {
     /// Initialises an OpenTelemetry service for the crate
     /// #Arguments
     /// * `endpoint` - The URI where the traces are sent
@@ -72,40 +111,47 @@ impl OtelTracer {
     /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
     /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
     /// If target is None then no filtering is done.
-    pub fn new(endpoint: &str, service_name: &str, target: Option<(&str, LevelFilter)>) -> Self {
-        let stdout_tracer = tracing_subscriber::fmt::layer()
-            .with_writer(std::io::stdout)
-            .pretty();
-
-        let otel_tracer = Self::create_otel_tracer(endpoint, service_name).ok();
-
-        let open_telemetry =
-            otel_tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer));
-
-        if let Some((target, tracing_level)) = target {
-            let filter = filter::Targets::new()
-                .with_default(LevelFilter::OFF)
-                .with_target(target, tracing_level);
-
-            let subscriber = tracing_subscriber::Registry::default().with(
-                stdout_tracer.with_filter(filter.clone()).and_then(
-                    open_telemetry.map(|open_telemetry| open_telemetry.with_filter(filter)),
-                ),
-            );
-
-            //  This is only called once, so will never panic
-            tracing::subscriber::set_global_default(subscriber)
-                .expect("tracing::subscriber::set_global_default should only be called once");
-        } else {
-            let subscriber = tracing_subscriber::Registry::default()
-                .with(stdout_tracer.and_then(open_telemetry));
-
-            //  This is only called once, so will never panic
-            tracing::subscriber::set_global_default(subscriber)
-                .expect("tracing::subscriber::set_global_default should only be called once");
+    pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
+        let (logger, _appender_guard) = match options.log_path {
+            Some(log_path) => tracing_appender::non_blocking::NonBlockingBuilder::default()
+                .lossy(false)
+                .finish(tracing_appender::rolling::never(
+                    log_path,
+                    PathBuf::from_str(module_name)
+                        .expect("module_name should be able to become a file name")
+                        .with_extension("log"),
+                )),
+            None => tracing_appender::non_blocking::NonBlockingBuilder::default()
+                .lossy(false)
+                .finish(std::io::stdout()),
         };
 
-        Self {}
+        let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(logger).json();
+
+        let use_otel = options.otel_options.is_some();
+
+        let otel_tracer = options.otel_options.and_then(|otel_options| {
+            OtelTracer::<_>::new(otel_options, service_name, module_name).ok()
+        });
+
+        let log_filter = match options.log_level {
+            Some(log_level) => EnvFilter::from_str(&format!("{module_name}={log_level}"))
+                .unwrap_or(EnvFilter::new("")),
+            None => EnvFilter::from_default_env(),
+        };
+
+        let subscriber = tracing_subscriber::Registry::default()
+            .with(stdout_tracer.with_filter(log_filter))
+            .with(otel_tracer.map(|otel_tracer| otel_tracer.layer));
+
+        //  This is only called once, so will never panic
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("tracing::subscriber::set_global_default should only be called once");
+
+        Self {
+            _appender_guard,
+            use_otel,
+        }
     }
 
     /// Sets a span's parent to other_span
@@ -114,7 +160,7 @@ impl OtelTracer {
     }
 }
 
-impl Drop for OtelTracer {
+impl Drop for TracerEngine {
     fn drop(&mut self) {
         opentelemetry::global::shutdown_tracer_provider()
     }

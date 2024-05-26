@@ -14,7 +14,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
     spanned::{Spanned, SpannedMut},
-    tracer::{OptionalHeaderTracerExt, OtelTracer},
+    tracer::{OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions},
 };
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, debug_span, error, info_span, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -84,6 +84,18 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
+    /// If open-telemetry is used then the following log level is used
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
+
+    /// If set, then the given level is used for filtering logs, otherwise RUST_LOG is used (may be removed in favour of RUST_LOG)
+    #[clap(long)]
+    log_level: Option<LevelFilter>,
+
+    /// If set, then logs are appended to the given log file, otherwise they are written to stdout
+    #[clap(long)]
+    log_path: Option<PathBuf>,
+
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
@@ -92,9 +104,16 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = conditional_init_tracer!(TracerOptions {
+        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
+            endpoint,
+            level_filter: args.otel_level
+        }),
+        log_path: args.log_path.as_ref(),
+        log_level: args.log_level
+    });
 
-    trace_span!("Args:").in_scope(|| debug!("{args:?}"));
+    debug_span!("Args:").in_scope(|| debug!("{args:?}"));
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -120,7 +139,7 @@ async fn main() -> Result<()> {
         .into_iter()
         .flatten()
         .collect::<Vec<&str>>();
-        trace_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
+        debug_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
         topics_to_subscribe.sort();
         topics_to_subscribe.dedup();
         topics_to_subscribe
@@ -143,7 +162,7 @@ async fn main() -> Result<()> {
             event = consumer.recv() => {
                 match event {
                     Err(e) => {
-                        trace_span!("Kafka Error").in_scope(||warn!("{e}"))
+                        warn_span!("Kafka Error").in_scope(||warn!("{e}"))
                     },
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.is_some(), &msg);
@@ -161,7 +180,7 @@ macro_rules! link_current_span_to_run_span {
         let cur_span = tracing::Span::current();
         match $run.span().get() {
             Ok(run_span) => run_span.in_scope(|| {
-                trace_span!($span_name).follows_from(cur_span);
+                info_span!(target: "otel", $span_name).follows_from(cur_span);
             }),
             Err(e) => debug!("No run found. Error: {e}"),
         }
@@ -186,6 +205,7 @@ fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &B
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload: &[u8]) {
     if digitizer_event_list_message_buffer_has_identifier(payload) {
         process_digitizer_event_list_message(nexus_engine, payload);
@@ -207,6 +227,7 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_digitizer_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
@@ -226,6 +247,7 @@ fn process_digitizer_event_list_message(nexus_engine: &mut NexusEngine, payload:
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
@@ -245,12 +267,13 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
-    let root_span = nexus_engine.get_root_span().clone();
+    //let root_span = nexus_engine.get_root_span().clone();
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                root_span.in_scope(|| run.span_mut().init(trace_span!("Run")).unwrap());
+                run.span_mut().init(info_span!(target: "otel", parent: None, "Run")).unwrap();
                 link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
@@ -261,6 +284,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
@@ -275,6 +299,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_se_00_sample_environment_data(payload) {
         Ok(data) => match nexus_engine.sample_envionment(data) {
@@ -291,6 +316,7 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_alarm(payload) {
         Ok(data) => match nexus_engine.alarm(data) {
@@ -307,6 +333,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_f_144_log_data(payload) {
         Ok(data) => match nexus_engine.logdata(&data) {
