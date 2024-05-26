@@ -15,7 +15,7 @@ pub(crate) struct Run {
 }
 
 impl Run {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn new_run(filename: Option<&Path>, parameters: RunParameters) -> Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name)?;
@@ -32,7 +32,7 @@ impl Run {
         &self.parameters
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_logdata_to_run(
         &mut self,
         filename: Option<&Path>,
@@ -48,7 +48,7 @@ impl Run {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_alarm_to_run(
         &mut self,
         filename: Option<&Path>,
@@ -64,6 +64,7 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_selogdata(
         &mut self,
         filename: Option<&Path>,
@@ -79,6 +80,7 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_message(
         &mut self,
         filename: Option<&Path>,
@@ -99,10 +101,12 @@ impl Run {
         &self.parameters.run_name
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn has_run_stop(&self) -> bool {
         self.parameters.run_stop_parameters.is_some()
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn set_stop_if_valid(
         &mut self,
         filename: Option<&Path>,
@@ -125,10 +129,12 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
         self.parameters.is_message_timestamp_valid(timestamp)
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
         self.parameters
             .run_stop_parameters

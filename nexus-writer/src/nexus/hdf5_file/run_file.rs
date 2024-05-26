@@ -18,6 +18,7 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::debug;
+
 #[derive(Debug)]
 pub(crate) struct RunFile {
     file: File,
@@ -49,7 +50,7 @@ pub(crate) struct RunFile {
 }
 
 impl RunFile {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn new_runfile(filename: &Path, run_name: &str) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
@@ -125,7 +126,7 @@ impl RunFile {
         })
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> Result<Self> {
         let filename = {
             let mut filename = filename.to_owned();
@@ -192,7 +193,7 @@ impl RunFile {
         })
     }
 
-    #[tracing::instrument(fields(class = "RunFile"))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn init(&mut self, parameters: &RunParameters) -> Result<()> {
         self.idf_version.write_scalar(&2)?;
         self.run_number.write_scalar(&parameters.run_number)?;
@@ -218,7 +219,7 @@ impl RunFile {
         Ok(())
     }
 
-    #[tracing::instrument(fields(class = "RunFile"))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
@@ -226,7 +227,7 @@ impl RunFile {
         Ok(())
     }
 
-    #[tracing::instrument(fields(class = "RunFile"))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn ensure_end_time_is_set(
         &mut self,
         parameters: &RunParameters,
@@ -259,22 +260,22 @@ impl RunFile {
         self.set_end_time(&end_time)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_logdata_to_runfile(&mut self, logdata: &f144_LogData) -> Result<()> {
         self.logs.push_logdata_to_runlog(logdata)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> Result<()> {
         self.selogs.push_alarm_to_selog(alarm)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData) -> Result<()> {
         self.selogs.push_selogdata_to_selog(&selogdata)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push_message_to_runfile(
         &mut self,
         parameters: &RunParameters,
@@ -285,6 +286,7 @@ impl RunFile {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn close(self) -> Result<()> {
         self.file.close()?;
         Ok(())
