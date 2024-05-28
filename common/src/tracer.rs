@@ -11,10 +11,7 @@ use rdkafka::{
 use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
 use tracing_subscriber::{
-    filter::{self, Filtered, Targets},
-    layer::SubscriberExt,
-    registry::LookupSpan,
-    Layer,
+    filter::{self, Filtered, Targets}, layer::SubscriberExt, registry::LookupSpan, EnvFilter, Layer
 };
 
 pub struct OtelOptions<'a> {
@@ -114,6 +111,7 @@ impl TracerEngine {
             OtelTracer::<_>::new(otel_options, service_name, module_name).ok()
         });
 
+        let log_filter = EnvFilter::from_default_env();
         /*let log_filter = match options.log_level {
             Some(log_level) => EnvFilter::from_str(&format!("{module_name}={log_level}"))
                 .unwrap_or(EnvFilter::new("")),
@@ -121,7 +119,7 @@ impl TracerEngine {
         };*/
 
         let subscriber = tracing_subscriber::Registry::default()
-            .with(stdout_tracer)
+            .with(stdout_tracer.with_filter(log_filter))
             .with(otel_tracer.map(|otel_tracer| otel_tracer.layer));
 
         //  This is only called once, so will never panic
