@@ -152,12 +152,12 @@ async fn on_message(
                             if let Some(frame_span) = cache.find_span(metadata) {
                                 if frame_span.is_waiting() {
                                     frame_span
-                                        .init(info_span!(target: "otel", parent: None, "Frame", is_completed = tracing::field::Empty, is_expired = tracing::field::Empty, digitisers = tracing::field::Empty))
+                                        .init(info_span!(target: "otel", parent: None, "Frame", is_expired = tracing::field::Empty, digitisers = tracing::field::Empty))
                                         .unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {
-                                    let span = info_span!(target: "otel", "Digitiser Event List", did = msg.digitizer_id());
+                                    let span = info_span!(target: "otel", "Digitiser Event List", did = msg.digitizer_id(), frame_number = msg.metadata().frame_number());
                                     span.follows_from(cur_span);
                                 });
                             }
