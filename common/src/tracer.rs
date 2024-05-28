@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
 use opentelemetry::{
     propagation::{Extractor, Injector},
@@ -11,13 +11,12 @@ use rdkafka::{
     producer::FutureRecord,
 };
 use tracing::{debug, level_filters::LevelFilter, Span};
-use tracing_appender::non_blocking::WorkerGuard;
 use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
 use tracing_subscriber::{
     filter::{self, Filtered, Targets},
     layer::SubscriberExt,
     registry::LookupSpan,
-    EnvFilter, Layer,
+    Layer,
 };
 
 pub struct OtelOptions<'a> {
@@ -26,9 +25,7 @@ pub struct OtelOptions<'a> {
 }
 
 pub struct TracerOptions<'a> {
-    pub otel_options: Option<OtelOptions<'a>>,
-    pub log_path: Option<&'a PathBuf>,
-    pub log_level: Option<LevelFilter>,
+    pub otel_options: Option<OtelOptions<'a>>
 }
 
 /// Should be called at the start of each component
@@ -93,7 +90,6 @@ where
 }
 
 pub struct TracerEngine {
-    _appender_guard: WorkerGuard,
     use_otel: bool,
 }
 
@@ -112,36 +108,22 @@ impl TracerEngine {
     /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
     /// If target is None then no filtering is done.
     pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
-        let (logger, _appender_guard) = match options.log_path {
-            Some(log_path) => tracing_appender::non_blocking::NonBlockingBuilder::default()
-                .lossy(false)
-                .finish(tracing_appender::rolling::never(
-                    log_path,
-                    PathBuf::from_str(module_name)
-                        .expect("module_name should be able to become a file name")
-                        .with_extension("log"),
-                )),
-            None => tracing_appender::non_blocking::NonBlockingBuilder::default()
-                .lossy(false)
-                .finish(std::io::stdout()),
-        };
-
-        let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(logger).json();
-
         let use_otel = options.otel_options.is_some();
+        
+        let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
 
         let otel_tracer = options.otel_options.and_then(|otel_options| {
             OtelTracer::<_>::new(otel_options, service_name, module_name).ok()
         });
 
-        let log_filter = match options.log_level {
+        /*let log_filter = match options.log_level {
             Some(log_level) => EnvFilter::from_str(&format!("{module_name}={log_level}"))
                 .unwrap_or(EnvFilter::new("")),
             None => EnvFilter::from_default_env(),
-        };
+        };*/
 
         let subscriber = tracing_subscriber::Registry::default()
-            .with(stdout_tracer.with_filter(log_filter))
+            .with(stdout_tracer)
             .with(otel_tracer.map(|otel_tracer| otel_tracer.layer));
 
         //  This is only called once, so will never panic
@@ -149,8 +131,7 @@ impl TracerEngine {
             .expect("tracing::subscriber::set_global_default should only be called once");
 
         Self {
-            _appender_guard,
-            use_otel,
+            use_otel
         }
     }
 

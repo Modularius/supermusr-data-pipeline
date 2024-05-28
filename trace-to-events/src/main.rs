@@ -72,14 +72,6 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
-    /// If set, then the given level is used for filtering logs, otherwise RUST_LOG is used (may be removed in favour of RUST_LOG)
-    #[clap(long)]
-    log_level: Option<LevelFilter>,
-
-    /// If set, then logs are appended to the given log file, otherwise they are written to stdout
-    #[clap(long)]
-    log_path: Option<PathBuf>,
-
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
@@ -92,9 +84,7 @@ async fn main() {
         otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
             endpoint,
             level_filter: args.otel_level
-        }),
-        log_path: args.log_path.as_ref(),
-        log_level: args.log_level
+        })
     });
 
     let mut watcher = Watcher::<AlwaysReady>::default();

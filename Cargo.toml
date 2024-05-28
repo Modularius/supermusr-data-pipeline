@@ -54,6 +54,5 @@ taos = { version = "0.10.27", default_features = false, features = ["ws"] }
 tokio = { version = "1.37", features = ["macros", "rt-multi-thread"] }
 thiserror = "1.0.61"
 tracing = "0.1.40"
-tracing-appender = "0.2.3"
 tracing-opentelemetry = "0.23.0"
-tracing-subscriber = { version = "0.3.18", features = ["std", "fmt", "json", "env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["std", "fmt"] }
