@@ -277,7 +277,7 @@ pub(crate) fn process<'a>(
         events.time.extend_from_slice(&time);
         events.voltage.extend_from_slice(&voltage);
     }
-    
+
     tracing::Span::current().record("num_pulses", events.time.len());
 
     let metadata = FrameMetadataV2Args {

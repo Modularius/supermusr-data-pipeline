@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, info_span, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -403,7 +403,17 @@ async fn run_configured_simulation(
 
             for template in templates {
                 if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                    let span = trace_span!("Digitiser");
+                    let span = info_span!(
+                        "Digitiser",
+                        frame_number = template.metadata().frame_number,
+                        timestamp = format!(
+                            "{}",
+                            DateTime::<Utc>::try_from(
+                                *template.metadata().timestamp.expect("Timestamp Exists")
+                            )
+                            .expect("Convert to DateTime")
+                        )
+                    );
                     let _guard = span.enter();
 
                     template
@@ -417,6 +427,8 @@ async fn run_configured_simulation(
                         .conditional_inject_current_span_into_headers(use_otel)
                         .key("Simulated Trace");
 
+                    let pub_span = info_span!("Publish Message");
+                    let _pub_guard = pub_span.enter();
                     let timeout = Timeout::After(Duration::from_millis(100));
                     match producer.send(future_record, timeout).await {
                         Ok(r) => debug!("Delivery: {:?}", r),
@@ -435,7 +447,17 @@ async fn run_configured_simulation(
                 }
 
                 if let Some(event_topic) = cli.event_topic.as_deref() {
-                    let span = trace_span!("Digitizer Event List");
+                    let span = info_span!(
+                        "Digitizer Event List",
+                        frame_number = template.metadata().frame_number,
+                        timestamp = format!(
+                            "{}",
+                            DateTime::<Utc>::try_from(
+                                *template.metadata().timestamp.expect("Timestamp Exists")
+                            )
+                            .expect("Convert to DateTime")
+                        )
+                    );
                     let _guard = span.enter();
 
                     template
@@ -448,19 +470,13 @@ async fn run_configured_simulation(
                         .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
                         .key("Simulated Event");
 
+                    let pub_span = info_span!("Publish Message");
+                    let _pub_guard = pub_span.enter();
                     let timeout = Timeout::After(Duration::from_millis(100));
                     match producer.send(future_record, timeout).await {
                         Ok(r) => debug!("Delivery: {:?}", r),
                         Err(e) => error!("Delivery failed: {:?}", e.0),
                     };
-                    info!(
-                        "Simulated Events List: {0}, {1}",
-                        DateTime::<Utc>::try_from(
-                            *template.metadata().timestamp.expect("Timestamp Exists")
-                        )
-                        .expect("Convert to DateTime"),
-                        template.metadata().frame_number
-                    );
                     fbb.reset();
                 }
             }

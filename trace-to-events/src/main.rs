@@ -170,6 +170,7 @@ async fn main() {
 
                                 let pub_span = info_span!(target: "otel", "Publish Message");
                                 let _guard = pub_span.enter();
+
                                 match future.await {
                                     Ok(_) => {
                                         trace!("Published event message");

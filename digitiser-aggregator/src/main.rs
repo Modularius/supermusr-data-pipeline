@@ -48,7 +48,7 @@ struct Cli {
     #[clap(long)]
     output_topic: String,
 
-    #[clap(short, long, value_delimiter=',')]
+    #[clap(short, long, value_delimiter = ',')]
     digitiser_ids: Vec<DigitizerId>,
 
     #[clap(long, default_value = "500")]
@@ -161,7 +161,9 @@ async fn on_message(
                             //let root_span = cache.get_root_span().clone();
                             if let Some(frame_span) = cache.find_span(metadata) {
                                 if frame_span.is_waiting() {
-                                    frame_span.init(info_span!(target: "otel", parent: None, "Frame")).unwrap();
+                                    frame_span
+                                        .init(info_span!(target: "otel", parent: None, "Frame"))
+                                        .unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {

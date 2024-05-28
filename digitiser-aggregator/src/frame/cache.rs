@@ -23,7 +23,7 @@ where
         Self {
             ttl,
             expected_digitisers,
-            frames: Default::default()
+            frames: Default::default(),
         }
     }
 
