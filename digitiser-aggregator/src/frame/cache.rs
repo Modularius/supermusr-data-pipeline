@@ -1,7 +1,7 @@
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{SpanOnce, SpannedMut},
+    spanned::{SpanOnce, Spanned, SpannedMut},
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
@@ -54,7 +54,22 @@ where
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
         match self.frames.front() {
             Some(frame) => {
-                if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
+                let is_complete = frame.is_complete(&self.expected_digitisers);
+                let is_expired = frame.is_expired();
+                if is_complete || is_expired {
+                    let span = frame.span().get().expect("Frame should have span");
+                    span.record("is_complete", is_complete);
+                    span.record("is_expired", is_expired);
+                    span.record(
+                        "digitisers",
+                        frame
+                            .digitiser_ids()
+                            .iter()
+                            .map(|d| d.to_string())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    );
+
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None
