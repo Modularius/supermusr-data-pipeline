@@ -10,7 +10,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{fmt::Debug, net::SocketAddr, path::PathBuf, time::Duration};
+use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     conditional_init_tracer,
     spanned::Spanned,
@@ -66,7 +66,7 @@ struct Cli {
 
     /// If open-telemetry is used then the following log level is used
     #[clap(long, default_value = "info")]
-    otel_level: LevelFilter
+    otel_level: LevelFilter,
 }
 
 #[tokio::main]

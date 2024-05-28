@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use opentelemetry::{
     propagation::{Extractor, Injector},
     trace::TraceError,
@@ -25,7 +23,7 @@ pub struct OtelOptions<'a> {
 }
 
 pub struct TracerOptions<'a> {
-    pub otel_options: Option<OtelOptions<'a>>
+    pub otel_options: Option<OtelOptions<'a>>,
 }
 
 /// Should be called at the start of each component
@@ -109,7 +107,7 @@ impl TracerEngine {
     /// If target is None then no filtering is done.
     pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
         let use_otel = options.otel_options.is_some();
-        
+
         let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
 
         let otel_tracer = options.otel_options.and_then(|otel_options| {
@@ -130,9 +128,7 @@ impl TracerEngine {
         tracing::subscriber::set_global_default(subscriber)
             .expect("tracing::subscriber::set_global_default should only be called once");
 
-        Self {
-            use_otel
-        }
+        Self { use_otel }
     }
 
     /// Sets a span's parent to other_span

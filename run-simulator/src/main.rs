@@ -8,7 +8,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 use supermusr_common::{
     conditional_init_tracer,
     tracer::{FutureRecordTracerExt, OtelOptions, TracerEngine, TracerOptions},
