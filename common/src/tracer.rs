@@ -1,6 +1,5 @@
 use opentelemetry::{
-    propagation::{Extractor, Injector},
-    trace::TraceError,
+    global::Error, propagation::{Extractor, Injector}, trace::TraceError
 };
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
@@ -30,7 +29,16 @@ pub struct TracerOptions<'a> {
 #[macro_export]
 macro_rules! conditional_init_tracer {
     ($options:expr) => {
-        TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
+        {
+            let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
+            if tracer.is_some() {
+                if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
+                    warn!("{e}");
+                }
+            }
+            tracer
+        }
+
     };
 }
 
@@ -92,6 +100,9 @@ impl TracerEngine {
     pub fn is_some(&self) -> bool {
         self.use_otel
     }
+    pub fn set_otel_error_handler<F>(&self, f : F) -> Result<(),Error> where F : Fn(Error) + Send + Sync + 'static {
+        opentelemetry::global::set_error_handler(f)
+    }
 }
 
 impl TracerEngine {
@@ -112,11 +123,6 @@ impl TracerEngine {
         });
 
         let log_filter = EnvFilter::from_default_env();
-        /*let log_filter = match options.log_level {
-            Some(log_level) => EnvFilter::from_str(&format!("{module_name}={log_level}"))
-                .unwrap_or(EnvFilter::new("")),
-            None => EnvFilter::from_default_env(),
-        };*/
 
         let subscriber = tracing_subscriber::Registry::default()
             .with(stdout_tracer.with_filter(log_filter))
