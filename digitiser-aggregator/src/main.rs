@@ -162,12 +162,12 @@ async fn on_message(
                             if let Some(frame_span) = cache.find_span(metadata) {
                                 if frame_span.is_waiting() {
                                     frame_span
-                                        .init(info_span!(target: "frame", parent: None, "Frame", is_completed = tracing::field::Empty, is_expired = tracing::field::Empty, digitisers = tracing::field::Empty))
+                                        .init(info_span!(target: "otel", parent: None, "Frame", is_completed = tracing::field::Empty, is_expired = tracing::field::Empty, digitisers = tracing::field::Empty))
                                         .unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {
-                                    let span = info_span!(target: "frame", "Digitiser Event List", did = msg.digitizer_id());
+                                    let span = info_span!(target: "otel", "Digitiser Event List", did = msg.digitizer_id());
                                     span.follows_from(cur_span);
                                 });
                             }
@@ -204,7 +204,7 @@ async fn cache_poll(
             .conditional_inject_span_into_headers(use_otel, &span)
             .key("Frame Events List");
 
-        let pub_span = info_span!(target: "otel", "Publish Message");
+        let pub_span = info_span!(target: "otel", parent: &span, "Publish Message");
         let _guard = pub_span.enter();
         match producer
             .send(future_record, Timeout::After(Duration::from_millis(100)))
