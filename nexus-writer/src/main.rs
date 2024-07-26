@@ -1,4 +1,5 @@
 mod nexus;
+mod schematic;
 
 use anyhow::Result;
 use chrono::Duration;
