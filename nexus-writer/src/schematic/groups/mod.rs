@@ -10,7 +10,7 @@ use crate::schematic::elements::{
     group::{NexusGroup, NxGroup},
 };
 
-use super::elements::group::NxPushMessage;
+use super::elements::group::{NxPushMessage, RcDatasetRegister};
 
 pub(super) mod log;
 pub(crate) mod raw_data;
@@ -30,7 +30,7 @@ pub(crate) struct NXRoot {
 impl NxGroup for NXRoot {
     const CLASS_NAME: &'static str = "NXroot";
 
-    fn new() -> Self {
+    fn new(database_register: RcDatasetRegister) -> Self {
         Self {
             file_name: NexusAttribute::new("file_name", TypeDescriptor::VarLenAscii),
             file_time: NexusAttribute::new("file_time", TypeDescriptor::VarLenAscii),
@@ -45,41 +45,6 @@ impl NxGroup for NXRoot {
             creator: NexusAttribute::new("creator", TypeDescriptor::VarLenAscii),
             raw_data_1: NexusGroup::new("raw_data_1"),
         }
-    }
-
-    fn create(&mut self, this: &Group) {
-        self.raw_data_1.create(this);
-        let this = self.raw_data_1.get_group().expect("Group Exists");
-        self.file_name.create(this);
-        self.file_time.create(this);
-        self.initial_file_format.create(this);
-        self.nexus_version.create(this);
-        self.hdf_version.create(this);
-        self.hdf5_version.create(this);
-        self.xml_version.create(this);
-    }
-
-    fn open(&mut self, this: &Group) {
-        self.raw_data_1.open(this);
-        let this = self.raw_data_1.get_group().expect("Group Exists");
-        self.file_name.open(this);
-        self.file_time.open(this);
-        self.initial_file_format.open(this);
-        self.nexus_version.open(this);
-        self.hdf_version.open(this);
-        self.hdf5_version.open(this);
-        self.xml_version.open(this);
-    }
-
-    fn close(&mut self) {
-        self.raw_data_1.close();
-        self.file_name.close();
-        self.file_time.close();
-        self.initial_file_format.close();
-        self.nexus_version.close();
-        self.hdf_version.close();
-        self.hdf5_version.close();
-        self.xml_version.close();
     }
 }
 

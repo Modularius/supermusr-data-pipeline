@@ -6,65 +6,35 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::elements::{
     attribute::NexusAttribute,
-    dataset::{MustEnterAttributes, NexusDataset},
-    group::{NexusGroup, NxGroup, NxPushMessage},
+    dataset::{MustEnterAttributes, NexusDataset, RcNexusDatasetVar},
+    group::{NexusGroup, NxGroup, NxPushMessage, RcDatasetRegister},
 };
 
 pub(super) struct User {
-    name: NexusDataset<VarLenAscii, MustEnterAttributes<1>>,
-    affiliation: NexusDataset<VarLenAscii>,
-    address: NexusDataset<VarLenAscii>,
-    telephone_number: NexusDataset<VarLenAscii>,
-    fax_number: NexusDataset<VarLenAscii>,
-    email: NexusDataset<VarLenAscii>,
-    facility_user_id: NexusDataset<VarLenAscii>,
+    name: RcNexusDatasetVar<VarLenAscii, MustEnterAttributes<1>>,
+    affiliation: RcNexusDatasetVar<VarLenAscii>,
+    address: RcNexusDatasetVar<VarLenAscii>,
+    telephone_number: RcNexusDatasetVar<VarLenAscii>,
+    fax_number: RcNexusDatasetVar<VarLenAscii>,
+    email: RcNexusDatasetVar<VarLenAscii>,
+    facility_user_id: RcNexusDatasetVar<VarLenAscii>,
 }
 
 impl NxGroup for User {
     const CLASS_NAME: &'static str = "NXuser";
 
-    fn new() -> Self {
+    fn new(dataset_register : RcDatasetRegister) -> Self {
         Self {
             name: NexusDataset::begin()
                 .attributes([NexusAttribute::new("role", TypeDescriptor::VarLenAscii)])
-                .finish("name"),
-            affiliation: NexusDataset::begin().finish("affiliation"),
-            address: NexusDataset::begin().finish("address"),
-            telephone_number: NexusDataset::begin().finish("telephone_number"),
-            fax_number: NexusDataset::begin().finish("fax_number"),
-            email: NexusDataset::begin().finish("email"),
-            facility_user_id: NexusDataset::begin().finish("facility_user_id"),
+                .finish("name", dataset_register.clone()),
+            affiliation: NexusDataset::begin().finish("affiliation", dataset_register.clone()),
+            address: NexusDataset::begin().finish("address", dataset_register.clone()),
+            telephone_number: NexusDataset::begin().finish("telephone_number", dataset_register.clone()),
+            fax_number: NexusDataset::begin().finish("fax_number", dataset_register.clone()),
+            email: NexusDataset::begin().finish("email", dataset_register.clone()),
+            facility_user_id: NexusDataset::begin().finish("facility_user_id", dataset_register.clone()),
         }
-    }
-
-    fn create(&mut self, this: &Group) {
-        self.name.create(this);
-        self.affiliation.create(this);
-        self.address.create(this);
-        self.telephone_number.create(this);
-        self.fax_number.create(this);
-        self.email.create(this);
-        self.facility_user_id.create(this);
-    }
-
-    fn open(&mut self, this: &Group) {
-        self.name.open(this);
-        self.affiliation.open(this);
-        self.address.open(this);
-        self.telephone_number.open(this);
-        self.fax_number.open(this);
-        self.email.open(this);
-        self.facility_user_id.open(this);
-    }
-
-    fn close(&mut self) {
-        self.name.close();
-        self.affiliation.close();
-        self.address.close();
-        self.telephone_number.close();
-        self.fax_number.close();
-        self.email.close();
-        self.facility_user_id.close();
     }
 }
 

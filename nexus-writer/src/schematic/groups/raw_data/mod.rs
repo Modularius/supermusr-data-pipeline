@@ -13,8 +13,8 @@ use user::User;
 
 use crate::schematic::elements::{
     attribute::{NexusAttribute, NexusUnits},
-    dataset::{MustEnterAttributes, MustEnterFixedValue, NexusDataset, NoAttributesNeeded},
-    group::{NexusGroup, NxGroup, NxPushMessage},
+    dataset::{MustEnterAttributes, MustEnterFixedValue, NexusDataset, NoAttributesNeeded, RcNexusDatasetFixed, RcNexusDatasetVar},
+    group::{NexusGroup, NxGroup, NxPushMessage, RcDatasetRegister},
 };
 
 mod data;
@@ -26,23 +26,23 @@ mod selog;
 mod user;
 
 pub(super) struct RawData {
-    idf_version: NexusDataset<u32, NoAttributesNeeded, MustEnterFixedValue>,
-    definition: NexusDataset<FixedAscii<6>, MustEnterAttributes<2>, MustEnterFixedValue>,
-    definition_local: NexusDataset<FixedAscii<6>, MustEnterAttributes<2>, MustEnterFixedValue>,
-    program_name: NexusDataset<VarLenAscii>,
-    run_number: NexusDataset<u32>,
-    title: NexusDataset<VarLenAscii>,
-    notes: NexusDataset<VarLenAscii>,
-    start_time: NexusDataset<VarLenAscii>,
-    end_time: NexusDataset<VarLenAscii>,
-    duration: NexusDataset<u32, MustEnterAttributes<1>>,
-    collection_time: NexusDataset<f64>,
-    total_counts: NexusDataset<u32>,
-    good_frames: NexusDataset<u32>,
-    raw_frames: NexusDataset<u32>,
-    proton_charge: NexusDataset<f64, MustEnterAttributes<1>>,
-    experiment_identifier: NexusDataset<VarLenAscii>,
-    run_cycle: NexusDataset<VarLenAscii>,
+    idf_version: RcNexusDatasetFixed<u32>,
+    definition: RcNexusDatasetFixed<FixedAscii<6>, MustEnterAttributes<2>>,
+    definition_local: RcNexusDatasetFixed<FixedAscii<6>, MustEnterAttributes<2>>,
+    program_name: RcNexusDatasetVar<VarLenAscii>,
+    run_number: RcNexusDatasetVar<u32>,
+    title: RcNexusDatasetVar<VarLenAscii>,
+    notes: RcNexusDatasetVar<VarLenAscii>,
+    start_time: RcNexusDatasetVar<VarLenAscii>,
+    end_time: RcNexusDatasetVar<VarLenAscii>,
+    duration: RcNexusDatasetVar<u32, MustEnterAttributes<1>>,
+    collection_time: RcNexusDatasetVar<f64>,
+    total_counts: RcNexusDatasetVar<u32>,
+    good_frames: RcNexusDatasetVar<u32>,
+    raw_frames: RcNexusDatasetVar<u32>,
+    proton_charge: RcNexusDatasetVar<f64, MustEnterAttributes<1>>,
+    experiment_identifier: RcNexusDatasetVar<VarLenAscii>,
+    run_cycle: RcNexusDatasetVar<VarLenAscii>,
     user_1: NexusGroup<User>,
     run_log: NexusGroup<RunLog>,
     selog: NexusGroup<Selog>,
@@ -55,7 +55,7 @@ pub(super) struct RawData {
 impl NxGroup for RawData {
     const CLASS_NAME: &'static str = "NXentry";
 
-    fn new() -> Self {
+    fn new(dataset_register : RcDatasetRegister) -> Self {
 
         //  definition and local_definition
         let definition = NexusDataset::begin()
@@ -73,25 +73,25 @@ impl NxGroup for RawData {
             ]);
 
         Self {
-            idf_version: NexusDataset::begin().fixed_value(2).finish("idf_version"),
-            definition: definition.clone().finish("definition"),
-            definition_local: definition.finish("definition_local"),
-            program_name: program_name.finish("program_name"),
-            run_number: NexusDataset::begin().finish("run_number"),
-            title: NexusDataset::begin().finish("title"),
-            notes: NexusDataset::begin().finish("notes"),
-            start_time: NexusDataset::begin().finish("start_time"),
-            end_time: NexusDataset::begin().finish("end_time"),
+            idf_version: NexusDataset::begin().fixed_value(2).finish("idf_version", dataset_register.clone()),
+            definition: definition.clone().finish("definition", dataset_register.clone()),
+            definition_local: definition.finish("definition_local", dataset_register.clone()),
+            program_name: program_name.finish("program_name", dataset_register.clone()),
+            run_number: NexusDataset::begin().finish("run_number", dataset_register.clone()),
+            title: NexusDataset::begin().finish("title", dataset_register.clone()),
+            notes: NexusDataset::begin().finish("notes", dataset_register.clone()),
+            start_time: NexusDataset::begin().finish("start_time", dataset_register.clone()),
+            end_time: NexusDataset::begin().finish("end_time", dataset_register.clone()),
             duration: NexusDataset::begin()
                 .attributes([NexusAttribute::units(NexusUnits::Second)])
-                .finish("duration"),
-            collection_time: NexusDataset::begin().finish("collection_time"),
-            total_counts: NexusDataset::begin().finish("total_counts"),
-            good_frames: NexusDataset::begin().finish("good_frames"),
-            raw_frames: NexusDataset::begin().finish("raw_frames"),
-            proton_charge: NexusDataset::begin().finish("proton_charge"),
-            experiment_identifier: NexusDataset::begin().finish("experiment_identifier"),
-            run_cycle: NexusDataset::begin().finish("run_cycle"),
+                .finish("duration", dataset_register.clone()),
+            collection_time: NexusDataset::begin().finish("collection_time", dataset_register.clone()),
+            total_counts: NexusDataset::begin().finish("total_counts", dataset_register.clone()),
+            good_frames: NexusDataset::begin().finish("good_frames", dataset_register.clone()),
+            raw_frames: NexusDataset::begin().finish("raw_frames", dataset_register.clone()),
+            proton_charge: NexusDataset::begin().finish("proton_charge", dataset_register.clone()),
+            experiment_identifier: NexusDataset::begin().finish("experiment_identifier", dataset_register.clone()),
+            run_cycle: NexusDataset::begin().finish("run_cycle", dataset_register.clone()),
             user_1: NexusGroup::new("user_1"),
             run_log: NexusGroup::new("run_log"),
             selog: NexusGroup::new("selog"),
@@ -100,87 +100,6 @@ impl NxGroup for RawData {
             instrument: NexusGroup::new("instrument"),
             detector_1: NexusGroup::new("detector_1"),
         }
-    }
-
-    fn create(&mut self, this: &Group) {
-        self.idf_version.create(this);
-        self.definition.create(this);
-        self.definition_local.create(this);
-        self.program_name.create(this);
-        self.run_number.create(this);
-        self.title.create(this);
-        self.notes.create(this);
-        self.start_time.create(this);
-        self.end_time.create(this);
-        self.duration.create(this);
-        self.collection_time.create(this);
-        self.total_counts.create(this);
-        self.good_frames.create(this);
-        self.raw_frames.create(this);
-        self.proton_charge.create(this);
-        self.experiment_identifier.create(this);
-        self.run_cycle.create(this);
-        self.user_1.create(this);
-        self.run_log.create(this);
-        self.selog.create(this);
-        self.periods.create(this);
-        self.sample.create(this);
-        self.instrument.create(this);
-        self.detector_1.create(this);
-    }
-
-    fn open(&mut self, this: &Group) {
-        self.idf_version.open(this);
-        self.definition.open(this);
-        self.definition_local.open(this);
-        self.program_name.open(this);
-        self.run_number.open(this);
-        self.title.open(this);
-        self.notes.open(this);
-        self.start_time.open(this);
-        self.end_time.open(this);
-        self.duration.open(this);
-        self.collection_time.open(this);
-        self.total_counts.open(this);
-        self.good_frames.open(this);
-        self.raw_frames.open(this);
-        self.proton_charge.open(this);
-        self.experiment_identifier.open(this);
-        self.run_cycle.open(this);
-        self.user_1.open(this);
-        self.run_log.open(this);
-        self.selog.open(this);
-        self.periods.open(this);
-        self.sample.open(this);
-        self.instrument.open(this);
-        self.detector_1.open(this);
-    }
-
-    fn close(&mut self) {
-        self.idf_version.close();
-        self.definition.close();
-        self.definition_local.close();
-        self.program_name.close();
-        self.run_number.close();
-        self.title.close();
-        self.notes.close();
-        self.start_time.close();
-        self.end_time.close();
-        self.duration.close();
-        self.collection_time.close();
-        self.total_counts.close();
-        self.good_frames.close();
-        self.raw_frames.close();
-        self.proton_charge.close();
-        self.experiment_identifier.close();
-        self.run_cycle.close();
-        self.user_1.close();
-        self.run_log.close();
-        self.selog.close();
-        self.periods.close();
-        self.sample.close();
-        self.instrument.close();
-        self.detector_1.close();
     }
 }
 

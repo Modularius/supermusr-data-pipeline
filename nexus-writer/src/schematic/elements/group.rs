@@ -1,8 +1,13 @@
+use std::{rc::Rc, sync::Mutex};
+
 use hdf5::{
     types::{TypeDescriptor, VarLenAscii},
     Group,
 };
 
+use super::dataset::{NexusDataset, NxDataset};
+
+/*
 pub(crate) enum ClassName {
     Entry,
     EventData,
@@ -31,15 +36,14 @@ impl ClassName {
             ClassName::Seblock => "IXseblock",
         }
     }
-}
+} */
 
-pub(crate) trait NxGroup {
+pub(crate) type RcDatasetRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxDataset>>>>>;
+
+pub(crate) trait NxGroup : Sized {
     const CLASS_NAME: &'static str;
 
-    fn new() -> Self;
-    fn create(&mut self, parent: &Group);
-    fn open(&mut self, parent: &Group);
-    fn close(&mut self);
+    fn new(nexus_group : RcDatasetRegister) -> Self;
 }
 
 
@@ -64,14 +68,17 @@ pub(crate) struct NexusGroup<G: NxGroup> {
     name: String,
     class: G,
     group: Option<Group>,
+    datasets: RcDatasetRegister,
 }
 
 impl<G: NxGroup> NexusGroup<G> {
     pub(crate) fn new(name: &str) -> Self {
+        let datasets = RcDatasetRegister::new(Vec::new().into());
         Self {
             name: name.to_owned(),
-            class: G::new(),
+            class: G::new(datasets.clone()),
             group: None,
+            datasets
         }
     }
 
@@ -83,7 +90,9 @@ impl<G: NxGroup> NexusGroup<G> {
                     .with_data_as(G::CLASS_NAME, &TypeDescriptor::VarLenAscii)
                     .create("NXclass")
                     .expect("Can write");
-                self.class.create(&group);
+                for dataset in self.datasets.lock().expect("Lock Exists").iter_mut() {
+                    dataset.lock().expect("Lock Exists").create(&group);
+                }
                 self.group = Some(group)
             }
             Err(e) => panic!("{e}"),
@@ -96,7 +105,9 @@ impl<G: NxGroup> NexusGroup<G> {
         } else {
             match parent.group(&self.name) {
                 Ok(group) => {
-                    self.class.open(&group);
+                    for dataset in self.datasets.lock().expect("Lock Exists").iter_mut() {
+                        dataset.lock().expect("Lock Exists").open(&group);
+                    }
                     self.group = Some(group);
                 }
                 Err(e) => panic!("{e}"),
@@ -112,6 +123,9 @@ impl<G: NxGroup> NexusGroup<G> {
         if self.group.is_none() {
             panic!("{} group already closed", self.name)
         } else {
+            for dataset in self.datasets.lock().expect("Lock Exists").iter_mut() {
+                dataset.lock().expect("Lock Exists").close();
+            }
             self.group = None
         }
     }
