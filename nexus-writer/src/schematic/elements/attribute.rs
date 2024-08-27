@@ -4,6 +4,7 @@ use hdf5::{
     types::{TypeDescriptor, VarLenAscii},
     Attribute, Dataset, H5Type, Location,
 };
+use tracing::{info, instrument};
 
 use super::{
     dataset::RcAttributeRegister, FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded,
@@ -12,15 +13,15 @@ use super::{
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {
     #[strum(to_string = "second")]
-    Second,
+    Seconds,
     #[strum(to_string = "us")]
-    Microsecond,
+    Microseconds,
     #[strum(to_string = "ns")]
     Nanoseconds,
     #[strum(to_string = "ISO8601")]
     ISO8601,
     #[strum(to_string = "mEv")]
-    Mev,
+    MegaElectronVolts,
     #[strum(to_string = "uAh")]
     MicroAmpHours,
     #[strum(to_string = "counts")]
@@ -28,9 +29,9 @@ pub(crate) enum NexusUnits {
 }
 
 pub(crate) trait NxAttribute {
-    fn create(&mut self, dataset: &Dataset);
-    fn open(&mut self, dataset: &Dataset);
-    fn close(&mut self);
+    fn create(&mut self, dataset: &Dataset) -> anyhow::Result<()>;
+    fn open(&mut self, dataset: &Dataset) -> anyhow::Result<()>;
+    fn close(&mut self) -> anyhow::Result<()>;
 }
 
 pub(crate) type RcNexusAttributeVar<T> = Rc<Mutex<NexusAttribute<T, NoFixedValueNeeded>>>;
@@ -54,24 +55,41 @@ impl<T: H5Type, F: FixedValueOption> NexusAttribute<T, F> {
 }
 
 impl<T: H5Type + Clone, F: FixedValueOption> NxAttribute for NexusAttribute<T, F> {
-    fn create(&mut self, dataset: &Dataset) {
-        if let Some(fixed_value) = &self.fixed_value {
-            self.attribute = Some(
-                dataset
-                    .new_attr_builder()
-                    .with_data(&[fixed_value.clone()])
-                    .create(self.name.as_str())
-                    .expect("Attribute Creates"),
-            );
+    #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
+    fn create(&mut self, dataset: &Dataset) -> anyhow::Result<()> {
+        if self.attribute.is_some() {
+            Err(anyhow::anyhow!("{} attribute already open", self.name))
+        } else {
+            let mut attribute = dataset
+                .new_attr::<T>()
+                .create(self.name.as_str())?;
+            if let Some(fixed_value) = &self.fixed_value {
+                attribute.write_scalar(fixed_value)?
+            }
+
+            self.attribute = Some(attribute);
+            Ok(())
         }
     }
 
-    fn open(&mut self, dataset: &Dataset) {
-        self.attribute = Some(dataset.attr(&self.name).expect("Attribute Exists"));
+    #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
+    fn open(&mut self, dataset: &Dataset) -> anyhow::Result<()> {
+        if self.attribute.is_some() {
+            Err(anyhow::anyhow!("{} attribute already open", self.name))
+        } else {
+            self.attribute = Some(dataset.attr(&self.name).expect("Attribute Exists"));
+            Ok(())
+        }
     }
 
-    fn close(&mut self) {
-        self.attribute = None;
+    #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
+    fn close(&mut self) -> anyhow::Result<()> {
+        if self.attribute.is_some() {
+            Err(anyhow::anyhow!("{} attribute already open", self.name))
+        } else {
+            self.attribute = None;
+            Ok(())
+        }
     }
 }
 
@@ -92,6 +110,7 @@ impl<T: H5Type> NexusAttributeBuilder<T, MustEnterFixedValue> {
 }
 
 impl<T: H5Type + Clone> NexusAttributeBuilder<T, NoFixedValueNeeded> {
+    #[instrument(skip_all)]
     pub(crate) fn finish<F: FixedValueOption + 'static>(
         self,
         name: &str,

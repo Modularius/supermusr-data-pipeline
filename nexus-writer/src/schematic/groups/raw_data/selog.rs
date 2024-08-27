@@ -13,11 +13,11 @@ pub(super) struct Selog {
 }
 
 impl NxGroup for Selog {
-    const CLASS_NAME: &'static str = "NXperiod";
+    const CLASS_NAME: &'static str = "NXselog";
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin().finish("", dataset_register),
+            name: NexusDataset::begin().finish("name", dataset_register),
         }
     }
 }

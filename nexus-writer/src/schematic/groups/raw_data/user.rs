@@ -55,6 +55,6 @@ impl<'a> NxPushMessage<RunStart<'a>> for User {
     type MessageType = RunStart<'a>;
 
     fn push_message(&mut self, message: &Self::MessageType) {
-        todo!()
+        
     }
 }

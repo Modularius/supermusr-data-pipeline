@@ -1,7 +1,7 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use std::path::Path;
+use std::{path::{Path, PathBuf}, str::FromStr};
 use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -12,6 +12,7 @@ use supermusr_streaming_types::{
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
+    pub run_file: crate::schematic::Nexus,
 }
 
 impl Run {
@@ -29,6 +30,7 @@ impl Run {
         Ok(Self {
             span: Default::default(),
             parameters,
+            run_file: crate::schematic::Nexus::new(&PathBuf::from_str("TestFile.nxs").expect("")).expect("")
         })
     }
     #[cfg(test)]

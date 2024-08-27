@@ -19,8 +19,7 @@ use user::User;
 use crate::schematic::elements::{
     attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed},
     dataset::{
-        NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetFixed,
-        RcNexusDatasetVar,
+        CanWriteScalar, NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetFixed, RcNexusDatasetVar
     },
     group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
 };
@@ -53,25 +52,23 @@ impl NxContainerAttributes for DefinitionAttributes {
 }
 
 #[derive(Clone)]
-struct DurationAttributes {
-}
-
+struct DurationAttributes;
 impl NxContainerAttributes for DurationAttributes {
-    const UNITS: Option<NexusUnits> = Some(NexusUnits::Second);
+    const UNITS: Option<NexusUnits> = Some(NexusUnits::Seconds);
 
     fn new(_attribute_register: RcAttributeRegister) -> Self {
-        Self {}
+        Self
     }
 }
 
 #[derive(Clone)]
-struct ProtonChargeAttributes {
-}
+struct ProtonChargeAttributes;
 
 impl NxContainerAttributes for ProtonChargeAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::MicroAmpHours);
-    fn new(attribute_register: RcAttributeRegister) -> Self {
-        Self {}
+
+    fn new(_attribute_register: RcAttributeRegister) -> Self {
+        Self
     }
 }
 
@@ -164,6 +161,21 @@ impl<'a> NxPushMessage<RunStart<'a>> for RawData {
         self.periods.push_message(message);
         self.sample.push_message(message);
         self.instrument.push_message(message);
+
+        self.program_name.write_scalar(VarLenAscii::from_ascii("The Program").unwrap()).expect("");
+        self.run_number.write_scalar(0).expect("");
+        self.title.write_scalar(VarLenAscii::from_ascii("The Title").unwrap()).expect("");
+        self.notes.write_scalar(VarLenAscii::from_ascii(message.metadata().unwrap_or_default()).unwrap()).expect("");
+        self.start_time.write_scalar(VarLenAscii::from_ascii("Now").unwrap()).expect("");
+        self.end_time.write_scalar(VarLenAscii::from_ascii("Then").unwrap()).expect("");
+        self.duration.write_scalar(1).expect("");
+        self.collection_time.write_scalar(1000.0).expect("");
+        self.total_counts.write_scalar(1).expect("");
+        self.good_frames.write_scalar(1).expect("");
+        self.raw_frames.write_scalar(1).expect("");
+        self.proton_charge.write_scalar(1.0).expect("");
+        self.experiment_identifier.write_scalar(VarLenAscii::from_ascii("POAS35").unwrap()).expect("");
+        self.run_cycle.write_scalar(VarLenAscii::from_ascii("This").unwrap()).expect("");
     }
 }
 impl<'a> NxPushMessage<RunStop<'a>> for RawData {

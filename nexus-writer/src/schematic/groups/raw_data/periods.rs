@@ -71,6 +71,6 @@ impl<'a> NxPushMessage<RunStart<'a>> for Periods {
     type MessageType = RunStart<'a>;
 
     fn push_message(&mut self, message: &Self::MessageType) {
-        todo!()
+        
     }
 }

@@ -1,3 +1,5 @@
+use crate::schematic::elements::group::NxPushMessage;
+
 use super::{Run, RunParameters};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -99,11 +101,12 @@ impl NexusEngine {
             .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = Run::new_run(
+            let mut run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
                 &self.nexus_settings,
             )?;
+            run.run_file.get_root().push_message(&data);
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().unwrap())

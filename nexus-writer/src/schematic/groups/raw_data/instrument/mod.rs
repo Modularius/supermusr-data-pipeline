@@ -22,7 +22,7 @@ impl NxGroup for Instrument {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin().finish("", dataset_register.clone()),
+            name: NexusDataset::begin().finish("name", dataset_register.clone()),
             source: NexusGroup::new("source", Some(dataset_register)),
         }
     }
@@ -32,6 +32,6 @@ impl<'a> NxPushMessage<RunStart<'a>> for Instrument {
     type MessageType = RunStart<'a>;
 
     fn push_message(&mut self, message: &Self::MessageType) {
-        todo!()
+        
     }
 }

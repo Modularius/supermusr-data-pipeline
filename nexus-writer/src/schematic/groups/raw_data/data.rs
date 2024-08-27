@@ -8,7 +8,7 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 
 use crate::schematic::elements::{
     attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
-    dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
+    dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize, RcNexusDatasetVar},
     group::{NxGroup, NxPushMessage, RcGroupContentRegister},
 };
 
@@ -39,12 +39,12 @@ impl NxContainerAttributes for EventTimeZeroAttributes {
 }
 
 pub(super) struct Data {
-    event_id: RcNexusDatasetVar<u32>,
-    event_index: RcNexusDatasetVar<u32>,
-    event_time_offset: RcNexusDatasetVar<u32, EventTimeOffsetAttributes>,
-    event_time_zero: RcNexusDatasetVar<u64, EventTimeZeroAttributes>,
-    event_period_number: RcNexusDatasetVar<u64>,
-    event_pulse_height: RcNexusDatasetVar<f64>,
+    event_id: RcNexusDatasetResize<u32>,
+    event_index: RcNexusDatasetResize<u32>,
+    event_time_offset: RcNexusDatasetResize<u32, EventTimeOffsetAttributes>,
+    event_time_zero: RcNexusDatasetResize<u64, EventTimeZeroAttributes>,
+    event_period_number: RcNexusDatasetResize<u64>,
+    event_pulse_height: RcNexusDatasetResize<f64>,
 }
 
 impl NxGroup for Data {
@@ -52,15 +52,15 @@ impl NxGroup for Data {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            event_id: NexusDataset::begin().finish("event_id", dataset_register.clone()),
-            event_index: NexusDataset::begin().finish("event_index", dataset_register.clone()),
-            event_time_offset: NexusDataset::begin()
+            event_id: NexusDataset::begin().resizable(0, 128).finish("event_id", dataset_register.clone()),
+            event_index: NexusDataset::begin().resizable(0, 128).finish("event_index", dataset_register.clone()),
+            event_time_offset: NexusDataset::begin().resizable(0, 128)
                 .finish("event_time_offset", dataset_register.clone()),
-            event_time_zero: NexusDataset::begin()
+            event_time_zero: NexusDataset::begin().resizable(0, 128)
                 .finish("event_time_zero", dataset_register.clone()),
-            event_period_number: NexusDataset::begin()
+            event_period_number: NexusDataset::begin().resizable(0, 128)
                 .finish("event_period_number", dataset_register.clone()),
-            event_pulse_height: NexusDataset::begin()
+            event_pulse_height: NexusDataset::begin().resizable(0, 128)
                 .finish("event_pulse_height", dataset_register.clone()),
         }
     }

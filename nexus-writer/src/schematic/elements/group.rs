@@ -4,8 +4,9 @@ use hdf5::{
     types::{TypeDescriptor, VarLenAscii},
     Group,
 };
+use tracing::{info, instrument};
 
-use super::{dataset::NexusDataset, NxLivesInGroup};
+use super::NxLivesInGroup;
 
 /*
 pub(crate) enum ClassName {
@@ -70,6 +71,7 @@ pub(crate) struct NexusGroup<G: NxGroup> {
 }
 
 impl<G: NxGroup + 'static> NexusGroup<G> {
+    #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
     pub(crate) fn new(name: &str, parent_content_register: Option<RcGroupContentRegister>) -> Rc<Mutex<Self>> {
         let content_register = RcGroupContentRegister::new(Vec::new().into());
         let rc = Rc::new(Mutex::new(Self {
@@ -83,46 +85,37 @@ impl<G: NxGroup + 'static> NexusGroup<G> {
         }
         rc
     }
-    
-    pub(crate) fn get_group(&self) -> Option<&Group> {
-        self.group.as_ref()
-    }
-
-    pub(crate) fn validate_self(&self) -> bool {
-        if let Some(group) = &self.group {
-            let class_name: VarLenAscii = group
-                .attr("NXclass")
-                .expect("Class Exists")
-                .read_scalar()
-                .expect("Read Okay");
-            group.name().cmp(&self.name).is_eq() && class_name.as_str().cmp(G::CLASS_NAME).is_eq()
-        } else {
-            true
-        }
-    }
 }
 
 impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
-    fn create(&mut self, parent: &Group) {
-        match parent.create_group(&self.name) {
-            Ok(group) => {
-                group
-                    .new_attr_builder()
-                    .with_data_as(G::CLASS_NAME, &TypeDescriptor::VarLenAscii)
-                    .create("NXclass")
-                    .expect("Can write");
-                for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
-                    content.lock().expect("Lock Exists").create(&group);
+    #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
+    fn create(&mut self, parent: &Group) -> anyhow::Result<()> {
+        if self.group.is_some() {
+            Err(anyhow::anyhow!("{} group already open", self.name))
+        } else {
+            match parent.create_group(&self.name) {
+                Ok(group) => {
+                    group
+                        .new_attr_builder()
+                        .with_data(&[VarLenAscii::from_ascii(G::CLASS_NAME).expect("")])
+                        .create("NXclass")
+                        .expect("Can write");
+                    
+                    for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
+                        content.lock().expect("Lock Exists").create(&group);
+                    }
+                    self.group = Some(group);
+                    Ok(())
                 }
-                self.group = Some(group)
+                Err(e) => Err(e.into()),
             }
-            Err(e) => panic!("{e}"),
         }
     }
 
-    fn open(&mut self, parent: &Group) {
+    #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
+    fn open(&mut self, parent: &Group) -> anyhow::Result<()> {
         if self.group.is_some() {
-            panic!("{} group already open", self.name)
+            Err(anyhow::anyhow!("{} group already open", self.name))
         } else {
             match parent.group(&self.name) {
                 Ok(group) => {
@@ -130,20 +123,23 @@ impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
                         content.lock().expect("Lock Exists").open(&group);
                     }
                     self.group = Some(group);
+                    Ok(())
                 }
                 Err(e) => panic!("{e}"),
             }
         }
     }
 
-    fn close(&mut self) {
+    #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
+    fn close(&mut self) -> anyhow::Result<()> {
         if self.group.is_none() {
-            panic!("{} group already closed", self.name)
+            Err(anyhow::anyhow!("{} group already closed", self.name))
         } else {
             for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
                 content.lock().expect("Lock Exists").close();
             }
-            self.group = None
+            self.group = None;
+            Ok(())
         }
     }
 }

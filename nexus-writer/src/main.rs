@@ -11,7 +11,7 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use std::{net::SocketAddr, path::PathBuf};
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 use supermusr_common::{
     init_tracer,
     metrics::{
@@ -34,7 +34,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
-    },
+    }, flatbuffers::FlatBufferBuilder,
 };
 use tokio::time;
 use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
@@ -101,7 +101,6 @@ struct Cli {
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
 }
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
@@ -110,6 +109,8 @@ async fn main() -> Result<()> {
         args.otel_endpoint.as_deref(),
         args.otel_level
     ));
+
+
 
     trace_span!("Args:").in_scope(|| debug!("{args:?}"));
 
@@ -142,9 +143,6 @@ async fn main() -> Result<()> {
 
     let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size);
     let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
-
-    let mut nexus_file = schematic::Nexus::new(&args.file_name);
-    nexus_file.create();
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
