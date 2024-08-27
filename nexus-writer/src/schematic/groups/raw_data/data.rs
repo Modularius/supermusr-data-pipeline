@@ -7,16 +7,42 @@ use hdf5::{
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::schematic::elements::{
-    attribute::{NexusAttribute, NexusUnits},
-    dataset::{MustEnterAttributes, NexusDataset, RcNexusDatasetVar},
-    group::{NxGroup, NxPushMessage, RcDatasetRegister},
+    attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
+    dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
+    group::{NxGroup, NxPushMessage, RcGroupContentRegister},
 };
+
+#[derive(Clone)]
+struct EventTimeOffsetAttributes {}
+
+impl NxContainerAttributes for EventTimeOffsetAttributes {
+    const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
+
+    fn new(_attribute_register: RcAttributeRegister) -> Self {
+        Self {}
+    }
+}
+
+#[derive(Clone)]
+struct EventTimeZeroAttributes {
+    offset: RcNexusAttributeVar<VarLenAscii>,
+}
+
+impl NxContainerAttributes for EventTimeZeroAttributes {
+    const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
+
+    fn new(attribute_register: RcAttributeRegister) -> Self {
+        Self {
+            offset: NexusAttribute::begin().finish("offset", attribute_register.clone()),
+        }
+    }
+}
 
 pub(super) struct Data {
     event_id: RcNexusDatasetVar<u32>,
     event_index: RcNexusDatasetVar<u32>,
-    event_time_offset: RcNexusDatasetVar<u32, MustEnterAttributes<1>>,
-    event_time_zero: RcNexusDatasetVar<u64, MustEnterAttributes<2>>,
+    event_time_offset: RcNexusDatasetVar<u32, EventTimeOffsetAttributes>,
+    event_time_zero: RcNexusDatasetVar<u64, EventTimeZeroAttributes>,
     event_period_number: RcNexusDatasetVar<u64>,
     event_pulse_height: RcNexusDatasetVar<f64>,
 }
@@ -24,25 +50,21 @@ pub(super) struct Data {
 impl NxGroup for Data {
     const CLASS_NAME: &'static str = "NXperiod";
 
-    fn new(dataset_register : RcDatasetRegister) -> Self {
+    fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
             event_id: NexusDataset::begin().finish("event_id", dataset_register.clone()),
             event_index: NexusDataset::begin().finish("event_index", dataset_register.clone()),
             event_time_offset: NexusDataset::begin()
-                .attributes([NexusAttribute::units(NexusUnits::Nanoseconds)])
                 .finish("event_time_offset", dataset_register.clone()),
             event_time_zero: NexusDataset::begin()
-                .attributes([
-                    NexusAttribute::units(NexusUnits::Nanoseconds),
-                    NexusAttribute::new("Start", TypeDescriptor::Integer(IntSize::U4)),
-                ])
                 .finish("event_time_zero", dataset_register.clone()),
-            event_period_number: NexusDataset::begin().finish("event_period_number", dataset_register.clone()),
-            event_pulse_height: NexusDataset::begin().finish("event_pulse_height", dataset_register.clone()),
+            event_period_number: NexusDataset::begin()
+                .finish("event_period_number", dataset_register.clone()),
+            event_pulse_height: NexusDataset::begin()
+                .finish("event_pulse_height", dataset_register.clone()),
         }
     }
 }
-
 
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
     type MessageType = FrameAssembledEventListMessage<'a>;

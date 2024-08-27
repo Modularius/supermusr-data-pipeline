@@ -1,9 +1,11 @@
 use hdf5::{types::VarLenAscii, Group};
-use supermusr_streaming_types::{ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData};
+use supermusr_streaming_types::{
+    ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
+};
 
 use crate::schematic::elements::{
     dataset::{NexusDataset, RcNexusDatasetVar},
-    group::{NexusGroup, NxGroup, NxPushMessage, RcDatasetRegister},
+    group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
 };
 
 pub(super) struct Selog {
@@ -13,7 +15,7 @@ pub(super) struct Selog {
 impl NxGroup for Selog {
     const CLASS_NAME: &'static str = "NXperiod";
 
-    fn new(dataset_register : RcDatasetRegister) -> Self {
+    fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin().finish("", dataset_register),
         }

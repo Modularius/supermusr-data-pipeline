@@ -5,7 +5,7 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::elements::{
     dataset::{NexusDataset, RcNexusDatasetVar},
-    group::{NxGroup, NxPushMessage, RcDatasetRegister},
+    group::{NxGroup, NxPushMessage, RcGroupContentRegister},
 };
 
 mod environment;
@@ -40,15 +40,17 @@ pub(super) struct Sample {
 impl NxGroup for Sample {
     const CLASS_NAME: &'static str = "NXperiod";
 
-    fn new(dataset_register : RcDatasetRegister) -> Self {
+    fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin().finish("name", dataset_register.clone()),
-            chemical_formula: NexusDataset::begin().finish("chemical_formula", dataset_register.clone()),
+            chemical_formula: NexusDataset::begin()
+                .finish("chemical_formula", dataset_register.clone()),
             description: NexusDataset::begin().finish("description", dataset_register.clone()),
             sample_type: NexusDataset::begin().finish("sample_type", dataset_register.clone()),
             situation: NexusDataset::begin().finish("situation", dataset_register.clone()),
             shape: NexusDataset::begin().finish("shape", dataset_register.clone()),
-            preparation_date: NexusDataset::begin().finish("preparation_date", dataset_register.clone()),
+            preparation_date: NexusDataset::begin()
+                .finish("preparation_date", dataset_register.clone()),
             sample_holder: NexusDataset::begin().finish("sample_holder", dataset_register),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
@@ -69,10 +71,9 @@ impl NxGroup for Sample {
     }
 }
 
-
 impl<'a> NxPushMessage<RunStart<'a>> for Sample {
     type MessageType = RunStart<'a>;
-    
+
     fn push_message(&mut self, message: &Self::MessageType) {
         todo!()
     }

@@ -1,10 +1,13 @@
 use hdf5::{types::VarLenAscii, Group};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
-use crate::schematic::{elements::{
-    dataset::NexusDataset,
-    group::{self, NexusGroup, NxGroup, NxPushMessage, RcDatasetRegister},
-}, groups::log::Log};
+use crate::schematic::{
+    elements::{
+        dataset::NexusDataset,
+        group::{self, NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
+    },
+    groups::log::Log,
+};
 
 pub(super) struct RunLog {
     logs: Vec<NexusGroup<Log>>,
@@ -13,7 +16,7 @@ pub(super) struct RunLog {
 impl NxGroup for RunLog {
     const CLASS_NAME: &'static str = "NXrunlog";
 
-    fn new(dataset_register : RcDatasetRegister) -> Self {
+    fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
             logs: Default::default(),
         }
