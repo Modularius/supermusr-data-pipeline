@@ -1,4 +1,13 @@
-use hdf5::{types::{TypeDescriptor, VarLenAscii}, Attribute, Dataset, H5Type, Location};
+use std::{marker::PhantomData, rc::Rc, sync::Mutex};
+
+use hdf5::{
+    types::{TypeDescriptor, VarLenAscii},
+    Attribute, Dataset, H5Type, Location,
+};
+
+use super::{
+    dataset::RcAttributeRegister, FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded,
+};
 
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {
@@ -19,98 +28,83 @@ pub(crate) enum NexusUnits {
 }
 
 pub(crate) trait NxAttribute {
-    fn create(dataset: &Dataset);
-    fn open(dataset: &Dataset);
-    fn close();
+    fn create(&mut self, dataset: &Dataset);
+    fn open(&mut self, dataset: &Dataset);
+    fn close(&mut self);
 }
 
+pub(crate) type RcNexusAttributeVar<T> = Rc<Mutex<NexusAttribute<T, NoFixedValueNeeded>>>;
+pub(crate) type RcNexusAttributeFixed<T> = Rc<Mutex<NexusAttribute<T, MustEnterFixedValue>>>;
 
-pub(crate) struct ExperimentalNexusAttribute<T : H5Type> {
+/// NexusAttribute
+pub(crate) struct NexusAttribute<T: H5Type, F: FixedValueOption> {
     name: String,
     fixed_value: Option<T>,
     attribute: Option<Attribute>,
+    phantom: PhantomData<F>,
 }
 
-impl<T : H5Type> ExperimentalNexusAttribute<T> {
-    pub(crate) fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
+impl<T: H5Type, F: FixedValueOption> NexusAttribute<T, F> {
+    pub(crate) fn begin() -> NexusAttributeBuilder<T, F> {
+        NexusAttributeBuilder::<T, F> {
             fixed_value: None,
-            attribute: None
-        }
-    }
-    
-    pub(crate) fn new_fixed(name: &str,) -> Self {
-        Self {
-            name: name.to_string(),
-            fixed_value: None,
-            attribute: None
+            phantom: PhantomData,
         }
     }
 }
 
-impl ExperimentalNexusAttribute<VarLenAscii> {
-    pub(crate) fn units(units: NexusUnits) -> Self {
-        Self {
-            name: "units".to_string(),
-            fixed_value: Some(VarLenAscii::from_ascii(&units.to_string()).expect("")),
-            attribute: None,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct NexusAttribute {
-    name: String,
-    type_descriptor: TypeDescriptor,
-    fixed_value: Option<String>,
-    attribute: Option<Attribute>,
-}
-
-impl NexusAttribute {
-    pub(crate) fn new(name: &str, type_descriptor: TypeDescriptor) -> Self {
-        Self {
-            name: name.to_owned(),
-            type_descriptor,
-            fixed_value: None,
-            attribute: None,
-        }
-    }
-
-    pub(crate) fn units(units: NexusUnits) -> Self {
-        Self {
-            name: "Units".to_owned(),
-            type_descriptor: TypeDescriptor::VarLenAscii,
-            fixed_value: Some(units.to_string()),
-            attribute: None,
-        }
-    }
-
-    pub(crate) fn get_name(&self) -> &str {
-        &self.name
-    }
-
-    pub(crate) fn get_type(&self) -> &TypeDescriptor {
-        &self.type_descriptor
-    }
-
-    pub(crate) fn create(&mut self, location: &Location) {
+impl<T: H5Type + Clone, F: FixedValueOption> NxAttribute for NexusAttribute<T, F> {
+    fn create(&mut self, dataset: &Dataset) {
         if let Some(fixed_value) = &self.fixed_value {
             self.attribute = Some(
-                location
+                dataset
                     .new_attr_builder()
-                    .with_data_as(fixed_value, &self.type_descriptor)
+                    .with_data(&[fixed_value.clone()])
                     .create(self.name.as_str())
                     .expect("Attribute Creates"),
             );
         }
     }
 
-    pub(crate) fn open(&mut self, location: &Location) {
-        self.attribute = Some(location.attr(&self.name).expect("Attribute Exists"));
+    fn open(&mut self, dataset: &Dataset) {
+        self.attribute = Some(dataset.attr(&self.name).expect("Attribute Exists"));
     }
 
-    pub(crate) fn close(&mut self) {
+    fn close(&mut self) {
         self.attribute = None;
+    }
+}
+
+/// NexusAttributeBuilder
+#[derive(Clone)]
+pub(crate) struct NexusAttributeBuilder<T: H5Type, F: FixedValueOption> {
+    fixed_value: Option<T>,
+    phantom: PhantomData<F>,
+}
+
+impl<T: H5Type> NexusAttributeBuilder<T, MustEnterFixedValue> {
+    pub(crate) fn fixed_value(self, value: T) -> NexusAttributeBuilder<T, NoFixedValueNeeded> {
+        NexusAttributeBuilder::<T, NoFixedValueNeeded> {
+            fixed_value: Some(value),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T: H5Type + Clone> NexusAttributeBuilder<T, NoFixedValueNeeded> {
+    pub(crate) fn finish<F: FixedValueOption + 'static>(
+        self,
+        name: &str,
+        register: RcAttributeRegister,
+    ) -> Rc<Mutex<NexusAttribute<T, F>>> {
+        let attributes = RcAttributeRegister::new(Vec::new().into());
+        let rc = Rc::new(Mutex::new(NexusAttribute {
+            name: name.to_owned(),
+            fixed_value: self.fixed_value,
+            attribute: None,
+            phantom: PhantomData::<F>,
+        }));
+        register.lock().expect("Lock Exists").push(rc.clone());
+        rc
     }
 }

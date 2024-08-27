@@ -1,55 +1,53 @@
 use std::{any::Any, marker::PhantomData, rc::Rc, sync::Mutex};
 
-use hdf5::{Dataset, Group, H5Type};
+use hdf5::{types::VarLenAscii, Dataset, Group, H5Type};
 
-use super::{attribute::NexusAttribute, group::RcDatasetRegister};
+use super::{
+    attribute::{self, NexusAttribute, NexusUnits, NxAttribute},
+    group::RcGroupContentRegister,
+    FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded, NxLivesInGroup,
+};
 
-pub(crate) trait FixedValueOption : Clone {}
+/// NxDataset Trait
 
-#[derive(Clone)]
-pub(crate) struct MustEnterFixedValue {}
-impl FixedValueOption for MustEnterFixedValue {}
+pub(crate) type RcNexusDatasetVar<T, D = ()> = Rc<Mutex<NexusDataset<T, D, false>>>;
+pub(crate) type RcNexusDatasetFixed<T, D = ()> = Rc<Mutex<NexusDataset<T, D, true>>>;
 
-#[derive(Clone)]
-pub(crate) struct NoFixedValueNeeded {}
-impl FixedValueOption for NoFixedValueNeeded {}
+pub(crate) type RcAttributeRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxAttribute>>>>>;
 
-pub(crate) trait AttributesOption : Clone {}
+pub(crate) trait NxContainerAttributes: Sized {
+    const UNITS: Option<NexusUnits> = None;
 
-#[derive(Clone)]
-pub(crate) struct MustEnterAttributes<const N: usize> {}
-impl<const N: usize> AttributesOption for MustEnterAttributes<N> {}
-
-#[derive(Clone)]
-pub(crate) struct NoAttributesNeeded {}
-impl AttributesOption for NoAttributesNeeded {}
-
-pub(crate) type RcNexusDatasetVar<T, A = NoAttributesNeeded> = Rc<Mutex<NexusDataset<T,A,NoFixedValueNeeded>>>;
-pub(crate) type RcNexusDatasetFixed<T, A = NoAttributesNeeded> = Rc<Mutex<NexusDataset<T,A,MustEnterFixedValue>>>;
-
-#[derive(Default)]
-pub(crate) struct NexusDataset<
-    T: H5Type,
-    A: AttributesOption = NoAttributesNeeded,
-    F: FixedValueOption = NoFixedValueNeeded,
-> {
-    name: String,
-    fixed_value: Option<T>,
-    attributes: Option<Vec<NexusAttribute>>,
-    dataset: Option<Dataset>,
-    phantom: PhantomData<(F, A)>,
-    //ref_attributes: Vec<&'a dyn NxAttribute>,
+    fn new(attribute_register: RcAttributeRegister) -> Self;
 }
 
-impl<'a, T: H5Type + Clone, A: AttributesOption, F: FixedValueOption> NexusDataset<T, A, F> {
-    pub(crate) fn begin() -> NexusDatasetBuilder<T, A, F> {
-        NexusDatasetBuilder::<T, A, F> {
+impl NxContainerAttributes for () {
+    fn new(_attribute_register: RcAttributeRegister) -> Self {
+        ()
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct NexusDataset<T: H5Type, D: NxContainerAttributes = (), const F: bool = false> {
+    name: String,
+    fixed_value: Option<T>,
+    attributes: RcAttributeRegister,
+    class: D,
+    dataset: Option<Dataset>
+}
+
+impl<T, D, const F: bool> NexusDataset<T, D, F>
+where
+    T: H5Type + Clone,
+    D: NxContainerAttributes,
+{
+    pub(crate) fn begin() -> NexusDatasetBuilder<T, D, F> {
+        NexusDatasetBuilder {
             fixed_value: None,
-            attributes: None,
             phantom: PhantomData,
         }
     }
-
+    /*
     pub(crate) fn validate_self(&self) -> bool {
         if let Some(dataset) = &self.dataset {
             dataset.name().cmp(&self.name).is_eq()
@@ -58,8 +56,8 @@ impl<'a, T: H5Type + Clone, A: AttributesOption, F: FixedValueOption> NexusDatas
                     .expect("Attribute names exist")
                     .iter()
                     .map(|name| {
-                        let attr = dataset.attr(name).expect("Attribute exists");
-                        if let Some(attributes) = &self.attributes {
+                        //let attr = dataset.attr(name).expect("Attribute exists");
+                        /*if let Some(attributes) = &self.attributes {
                             if let Some(na) = attributes
                                 .iter()
                                 .find(|&na| na.get_name().cmp(name).is_eq())
@@ -70,77 +68,22 @@ impl<'a, T: H5Type + Clone, A: AttributesOption, F: FixedValueOption> NexusDatas
                             }
                         } else {
                             false
-                        }
+                        }*/
+                        true
                     })
                     .find(|v| *v == false)
                     .is_none()
         } else {
             false
         }
-    }
+    } */
 }
 
-#[derive(Clone)]
-pub(crate) struct NexusDatasetBuilder<T: H5Type, A: AttributesOption, F: FixedValueOption> {
-    fixed_value: Option<T>,
-    attributes: Option<Vec<NexusAttribute>>,
-    phantom: PhantomData<(A, F)>,
-}
-
-impl<T: H5Type, F: FixedValueOption, const N: usize>
-    NexusDatasetBuilder<T, MustEnterAttributes<N>, F>
+impl<T, D, const F: bool> NxLivesInGroup for NexusDataset<T, D, F>
+where
+    T: H5Type + Clone,
+    D: NxContainerAttributes,
 {
-    pub(crate) fn attributes(
-        self,
-        attributes: [NexusAttribute; N],
-    ) -> NexusDatasetBuilder<T, NoAttributesNeeded, F> {
-        NexusDatasetBuilder::<T, NoAttributesNeeded, F> {
-            fixed_value: None,
-            attributes: Some(attributes.to_vec()),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<T: H5Type> NexusDatasetBuilder<T, NoAttributesNeeded, MustEnterFixedValue> {
-    pub(crate) fn fixed_value(
-        self,
-        value: T,
-    ) -> NexusDatasetBuilder<T, NoAttributesNeeded, NoFixedValueNeeded> {
-        NexusDatasetBuilder::<T, NoAttributesNeeded, NoFixedValueNeeded> {
-            fixed_value: Some(value),
-            attributes: self.attributes,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<T: H5Type + Clone> NexusDatasetBuilder<T, NoAttributesNeeded, NoFixedValueNeeded> {
-    pub(crate) fn finish<A: AttributesOption + 'static, F: FixedValueOption + 'static>(
-        self,
-        name: &str,
-        register: RcDatasetRegister
-    ) -> Rc<Mutex<NexusDataset<T, A, F>>> {
-        let rc = Rc::new(Mutex::new(NexusDataset {
-            name: name.to_owned(),
-            fixed_value: self.fixed_value,
-            attributes: self.attributes,
-            dataset: None,
-            phantom: PhantomData::<(F, A)>,
-        }));
-        register.lock().expect("Lock Exists").push(rc.clone());
-        rc
-    }
-}
-
-
-pub(crate) trait NxDataset {
-    fn create(&mut self, parent: &Group);
-    fn open(&mut self, parent: &Group);
-    fn close(&mut self);
-}
-
-impl<T: H5Type + Clone, A: AttributesOption, F: FixedValueOption> NxDataset for NexusDataset<T, A, F> {
     fn create(&mut self, parent: &Group) {
         if let Some(fixed_value) = &self.fixed_value {
             match parent
@@ -175,5 +118,61 @@ impl<T: H5Type + Clone, A: AttributesOption, F: FixedValueOption> NxDataset for 
         } else {
             self.dataset = None
         }
+    }
+}
+
+/// NexusDatasetBuilder
+#[derive(Clone)]
+pub(crate) struct NexusDatasetBuilder<T, D, const F: bool>
+where
+    T: H5Type,
+    D: NxContainerAttributes,
+{
+    fixed_value: Option<T>,
+    phantom: PhantomData<D>,
+}
+
+impl<T, D> NexusDatasetBuilder<T, D, true>
+where
+    T: H5Type,
+    D: NxContainerAttributes,
+{
+    pub(crate) fn fixed_value(self, value: T) -> NexusDatasetBuilder<T, D, false> {
+        NexusDatasetBuilder::<T, D, false> {
+            fixed_value: Some(value),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, D> NexusDatasetBuilder<T, D, false>
+where
+    T: H5Type + Clone,
+    D: NxContainerAttributes + Clone + 'static,
+{
+    pub(crate) fn finish<const F: bool>(
+        self,
+        name: &str,
+        parent_content_register: RcGroupContentRegister,
+    ) -> Rc<Mutex<NexusDataset<T, D, F>>> {
+        let attributes = RcAttributeRegister::new(Mutex::new(Vec::new()));
+        
+        if let Some(units) = D::UNITS {
+            NexusAttribute::begin()
+                .fixed_value(
+                    VarLenAscii::from_ascii(&units.to_string()).expect(""),
+                )
+                .finish::<MustEnterFixedValue>("units", attributes.clone());
+        }
+
+        let rc = Rc::new(Mutex::new(NexusDataset {
+            name: name.to_owned(),
+            fixed_value: self.fixed_value,
+            class: D::new(attributes.clone()),
+            attributes,
+            dataset: None
+        }));
+        parent_content_register.lock().expect("Lock Exists").push(rc.clone());
+        rc
     }
 }

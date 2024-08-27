@@ -5,7 +5,7 @@ use hdf5::{
     Group,
 };
 
-use super::dataset::{NexusDataset, NxDataset};
+use super::{dataset::NexusDataset, NxLivesInGroup};
 
 /*
 pub(crate) enum ClassName {
@@ -38,14 +38,13 @@ impl ClassName {
     }
 } */
 
-pub(crate) type RcDatasetRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxDataset>>>>>;
+pub(crate) type RcGroupContentRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxLivesInGroup>>>>>;
 
-pub(crate) trait NxGroup : Sized {
+pub(crate) trait NxGroup: Sized {
     const CLASS_NAME: &'static str;
 
-    fn new(nexus_group : RcDatasetRegister) -> Self;
+    fn new(content_register: RcGroupContentRegister) -> Self;
 }
-
 
 pub(crate) trait NxPushMessage<T> {
     type MessageType;
@@ -53,81 +52,40 @@ pub(crate) trait NxPushMessage<T> {
     fn push_message(&mut self, message: &Self::MessageType);
 }
 
-
-impl<G: NxGroup + NxPushMessage<T,MessageType = T>, T> NxPushMessage<T> for NexusGroup<G> {
+impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T> for Rc<Mutex<NexusGroup<G>>> {
     type MessageType = T;
 
     fn push_message(&mut self, message: &Self::MessageType) {
-        self.class.push_message(message)
+        self.lock().expect("").class.push_message(message)
     }
 }
 
-
+pub(crate) type RcNexusGroup<G> = Rc<Mutex<NexusGroup<G>>>;
 
 pub(crate) struct NexusGroup<G: NxGroup> {
     name: String,
     class: G,
     group: Option<Group>,
-    datasets: RcDatasetRegister,
+    content_register: RcGroupContentRegister,
 }
 
-impl<G: NxGroup> NexusGroup<G> {
-    pub(crate) fn new(name: &str) -> Self {
-        let datasets = RcDatasetRegister::new(Vec::new().into());
-        Self {
+impl<G: NxGroup + 'static> NexusGroup<G> {
+    pub(crate) fn new(name: &str, parent_content_register: Option<RcGroupContentRegister>) -> Rc<Mutex<Self>> {
+        let content_register = RcGroupContentRegister::new(Vec::new().into());
+        let rc = Rc::new(Mutex::new(Self {
             name: name.to_owned(),
-            class: G::new(datasets.clone()),
+            class: G::new(content_register.clone()),
             group: None,
-            datasets
+            content_register,
+        }));
+        if let Some(parent_content_register) = parent_content_register {
+            parent_content_register.lock().expect("Lock Exists").push(rc.clone());
         }
+        rc
     }
-
-    pub(crate) fn create(&mut self, parent: &Group) {
-        match parent.create_group(&self.name) {
-            Ok(group) => {
-                group
-                    .new_attr_builder()
-                    .with_data_as(G::CLASS_NAME, &TypeDescriptor::VarLenAscii)
-                    .create("NXclass")
-                    .expect("Can write");
-                for dataset in self.datasets.lock().expect("Lock Exists").iter_mut() {
-                    dataset.lock().expect("Lock Exists").create(&group);
-                }
-                self.group = Some(group)
-            }
-            Err(e) => panic!("{e}"),
-        }
-    }
-
-    pub(crate) fn open(&mut self, parent: &Group) {
-        if self.group.is_some() {
-            panic!("{} group already open", self.name)
-        } else {
-            match parent.group(&self.name) {
-                Ok(group) => {
-                    for dataset in self.datasets.lock().expect("Lock Exists").iter_mut() {
-                        dataset.lock().expect("Lock Exists").open(&group);
-                    }
-                    self.group = Some(group);
-                }
-                Err(e) => panic!("{e}"),
-            }
-        }
-    }
-
+    
     pub(crate) fn get_group(&self) -> Option<&Group> {
         self.group.as_ref()
-    }
-
-    pub(crate) fn close(&mut self) {
-        if self.group.is_none() {
-            panic!("{} group already closed", self.name)
-        } else {
-            for dataset in self.datasets.lock().expect("Lock Exists").iter_mut() {
-                dataset.lock().expect("Lock Exists").close();
-            }
-            self.group = None
-        }
     }
 
     pub(crate) fn validate_self(&self) -> bool {
@@ -140,6 +98,52 @@ impl<G: NxGroup> NexusGroup<G> {
             group.name().cmp(&self.name).is_eq() && class_name.as_str().cmp(G::CLASS_NAME).is_eq()
         } else {
             true
+        }
+    }
+}
+
+impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
+    fn create(&mut self, parent: &Group) {
+        match parent.create_group(&self.name) {
+            Ok(group) => {
+                group
+                    .new_attr_builder()
+                    .with_data_as(G::CLASS_NAME, &TypeDescriptor::VarLenAscii)
+                    .create("NXclass")
+                    .expect("Can write");
+                for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
+                    content.lock().expect("Lock Exists").create(&group);
+                }
+                self.group = Some(group)
+            }
+            Err(e) => panic!("{e}"),
+        }
+    }
+
+    fn open(&mut self, parent: &Group) {
+        if self.group.is_some() {
+            panic!("{} group already open", self.name)
+        } else {
+            match parent.group(&self.name) {
+                Ok(group) => {
+                    for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
+                        content.lock().expect("Lock Exists").open(&group);
+                    }
+                    self.group = Some(group);
+                }
+                Err(e) => panic!("{e}"),
+            }
+        }
+    }
+
+    fn close(&mut self) {
+        if self.group.is_none() {
+            panic!("{} group already closed", self.name)
+        } else {
+            for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
+                content.lock().expect("Lock Exists").close();
+            }
+            self.group = None
         }
     }
 }

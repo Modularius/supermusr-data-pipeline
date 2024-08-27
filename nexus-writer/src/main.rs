@@ -143,6 +143,9 @@ async fn main() -> Result<()> {
     let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size);
     let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
 
+    let mut nexus_file = schematic::Nexus::new(&args.file_name);
+    nexus_file.create();
+
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
 
