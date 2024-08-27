@@ -7,7 +7,7 @@ use crate::schematic::{
         dataset::{NexusDataset, RcNexusDatasetVar},
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
-    groups::log::Log,
+    groups::log::Log, nexus_class,
 };
 
 mod source;
@@ -18,7 +18,7 @@ pub(super) struct Instrument {
 }
 
 impl NxGroup for Instrument {
-    const CLASS_NAME: &'static str = "NXinstrument";
+    const CLASS_NAME: &'static str = nexus_class::INSTRUMENT;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -31,7 +31,7 @@ impl NxGroup for Instrument {
 impl<'a> NxPushMessage<RunStart<'a>> for Instrument {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         
     }
 }

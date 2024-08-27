@@ -8,37 +8,6 @@ use tracing::{info, instrument};
 
 use super::NxLivesInGroup;
 
-/*
-pub(crate) enum ClassName {
-    Entry,
-    EventData,
-    Instrument,
-    Detector,
-    Source,
-    Period,
-    Runlog,
-    Log,
-    Selog,
-    Seblock,
-}
-
-impl ClassName {
-    fn get(&self) -> &'static str {
-        match self {
-            ClassName::Entry => "NXentry",
-            ClassName::EventData => "NXevent_data",
-            ClassName::Instrument => "NXinstrument",
-            ClassName::Detector => "NXdetector",
-            ClassName::Source => "NXsource",
-            ClassName::Period => "NXperiod",
-            ClassName::Runlog => "NXrunlog",
-            ClassName::Log => "NXlog",
-            ClassName::Selog => "IXselog",
-            ClassName::Seblock => "IXseblock",
-        }
-    }
-} */
-
 pub(crate) type RcGroupContentRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxLivesInGroup>>>>>;
 
 pub(crate) trait NxGroup: Sized {
@@ -50,15 +19,13 @@ pub(crate) trait NxGroup: Sized {
 pub(crate) trait NxPushMessage<T> {
     type MessageType;
 
-    fn push_message(&mut self, message: &Self::MessageType);
+    fn push_message(&self, message: &Self::MessageType);
 }
 
-impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T> for Rc<Mutex<NexusGroup<G>>> {
-    type MessageType = T;
+pub(crate) trait NxPushMessageMut<T> {
+    type MessageType;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.lock().expect("").class.push_message(message)
-    }
+    fn push_message_mut(&mut self, message: &Self::MessageType);
 }
 
 pub(crate) type RcNexusGroup<G> = Rc<Mutex<NexusGroup<G>>>;
@@ -102,7 +69,7 @@ impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
                         .expect("Can write");
                     
                     for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
-                        content.lock().expect("Lock Exists").create(&group);
+                        content.lock().expect("Lock Exists").create(&group)?;
                     }
                     self.group = Some(group);
                     Ok(())
@@ -120,7 +87,7 @@ impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
             match parent.group(&self.name) {
                 Ok(group) => {
                     for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
-                        content.lock().expect("Lock Exists").open(&group);
+                        content.lock().expect("Lock Exists").open(&group)?;
                     }
                     self.group = Some(group);
                     Ok(())
@@ -136,10 +103,27 @@ impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
             Err(anyhow::anyhow!("{} group already closed", self.name))
         } else {
             for content in self.content_register.lock().expect("Lock Exists").iter_mut() {
-                content.lock().expect("Lock Exists").close();
+                content.lock().expect("Lock Exists").close()?;
             }
             self.group = None;
             Ok(())
         }
+    }
+}
+
+
+impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T> for Rc<Mutex<NexusGroup<G>>> {
+    type MessageType = T;
+
+    fn push_message(&self, message: &Self::MessageType) {
+        self.lock().expect("").class.push_message(message)
+    }
+}
+
+impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T> NxPushMessageMut<T> for Rc<Mutex<NexusGroup<G>>> {
+    type MessageType = T;
+
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.lock().expect("").class.push_message_mut(message)
     }
 }

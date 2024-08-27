@@ -16,13 +16,13 @@ use supermusr_streaming_types::{
 };
 use user::User;
 
-use crate::schematic::elements::{
+use crate::schematic::{elements::{
     attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed},
     dataset::{
         CanWriteScalar, NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetFixed, RcNexusDatasetVar
     },
-    group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
-};
+    group::{NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
+}, nexus_class};
 
 mod data;
 mod instrument;
@@ -100,7 +100,7 @@ pub(super) struct RawData {
 }
 
 impl NxGroup for RawData {
-    const CLASS_NAME: &'static str = "NXentry";
+    const CLASS_NAME: &'static str = nexus_class::ENTRY;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         //  definition and local_definition
@@ -148,7 +148,7 @@ impl NxGroup for RawData {
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for RawData {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         self.detector_1.push_message(message)
     }
 }
@@ -156,7 +156,7 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for RawData {
 impl<'a> NxPushMessage<RunStart<'a>> for RawData {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         self.user_1.push_message(message);
         self.periods.push_message(message);
         self.sample.push_message(message);
@@ -181,31 +181,31 @@ impl<'a> NxPushMessage<RunStart<'a>> for RawData {
 impl<'a> NxPushMessage<RunStop<'a>> for RawData {
     type MessageType = RunStop<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         //self.raw_data_1.push_message(message)
     }
 }
 
-impl<'a> NxPushMessage<Alarm<'a>> for RawData {
+impl<'a> NxPushMessageMut<Alarm<'a>> for RawData {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.selog.push_message(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.selog.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessage<se00_SampleEnvironmentData<'a>> for RawData {
+impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for RawData {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.selog.push_message(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.selog.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessage<f144_LogData<'a>> for RawData {
+impl<'a> NxPushMessageMut<f144_LogData<'a>> for RawData {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.run_log.push_message(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.run_log.push_message_mut(message)
     }
 }

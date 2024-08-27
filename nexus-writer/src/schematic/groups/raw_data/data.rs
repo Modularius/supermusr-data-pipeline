@@ -6,11 +6,11 @@ use hdf5::{
 };
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
-use crate::schematic::elements::{
+use crate::schematic::{elements::{
     attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
     dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize, RcNexusDatasetVar},
     group::{NxGroup, NxPushMessage, RcGroupContentRegister},
-};
+}, nexus_class};
 
 #[derive(Clone)]
 struct EventTimeOffsetAttributes {}
@@ -48,7 +48,7 @@ pub(super) struct Data {
 }
 
 impl NxGroup for Data {
-    const CLASS_NAME: &'static str = "NXperiod";
+    const CLASS_NAME: &'static str = nexus_class::EVENT_DATA;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -69,7 +69,7 @@ impl NxGroup for Data {
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         // Here is where we extend the datasets
     }
 }

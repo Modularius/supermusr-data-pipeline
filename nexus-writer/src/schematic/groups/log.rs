@@ -1,10 +1,10 @@
 use hdf5::{types::VarLenAscii, Group};
 
-use crate::schematic::elements::{
+use crate::{nexus::nexus_class, schematic::elements::{
     attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
     dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize, RcNexusDatasetVar},
     group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
-};
+}};
 
 #[derive(Clone)]
 struct TimeAttributes {
@@ -27,7 +27,7 @@ pub(super) struct Log {
 }
 
 impl NxGroup for Log {
-    const CLASS_NAME: &'static str = "NXlog";
+    const CLASS_NAME: &'static str = nexus_class::LOG;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -46,7 +46,7 @@ pub(super) struct ValueLog {
 }
 
 impl NxGroup for ValueLog {
-    const CLASS_NAME: &'static str = "NXlog";
+    const CLASS_NAME: &'static str = nexus_class::LOG;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {

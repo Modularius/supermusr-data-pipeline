@@ -3,17 +3,17 @@ use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 
-use crate::schematic::elements::{
+use crate::schematic::{elements::{
     dataset::{NexusDataset, RcNexusDatasetVar},
-    group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
-};
+    group::{NexusGroup, NxGroup, NxPushMessageMut, RcGroupContentRegister},
+}, nexus_class};
 
 pub(super) struct Selog {
     name: RcNexusDatasetVar<VarLenAscii>,
 }
 
 impl NxGroup for Selog {
-    const CLASS_NAME: &'static str = "NXselog";
+    const CLASS_NAME: &'static str = nexus_class::SELOG;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -22,17 +22,17 @@ impl NxGroup for Selog {
     }
 }
 
-impl<'a> NxPushMessage<se00_SampleEnvironmentData<'a>> for Selog {
+impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for Selog {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
         //self.selog.push_message(message)
     }
 }
-impl<'a> NxPushMessage<Alarm<'a>> for Selog {
+impl<'a> NxPushMessageMut<Alarm<'a>> for Selog {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
         //self.selog.push_message(message)
     }
 }

@@ -3,13 +3,28 @@ mod groups;
 
 use std::path::Path;
 
-use elements::{group::{NexusGroup, NxPushMessage, RcNexusGroup}, NxLivesInGroup};
+use elements::{group::{NexusGroup, RcNexusGroup}, NxLivesInGroup};
 use groups::NXRoot;
 use hdf5::File;
-use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    ecs_pl72_run_start_generated::RunStart,
-};
+
+
+pub(crate) mod nexus_class {
+    pub(crate) const DETECTOR: &str = "NXdetector";
+    pub(crate) const ENTRY: &str = "NXentry";
+    pub(crate) const ENVIRONMENT: &str = "NXenvironment";
+    pub(crate) const EVENT_DATA: &str = "NXevent_data";
+    pub(crate) const GEOMETRY: &str = "NXgeometry";
+    pub(crate) const INSTRUMENT: &str = "NXinstrument";
+    pub(crate) const LOG: &str = "NXlog";
+    pub(crate) const PERIOD: &str = "NXperiod";
+    pub(crate) const ROOT: &str = "NX_root";
+    pub(crate) const RUNLOG: &str = "NXrunlog";
+    pub(crate) const SAMPLE: &str = "NXsample";
+    pub(crate) const SELOG: &str = "IXselog";
+    pub(crate) const SELOG_BLOCK: &str = "IXseblock";
+    pub(crate) const SOURCE: &str = "NXsource";
+    pub(crate) const USER: &str = "NXuser";
+}
 
 pub(crate) struct Nexus {
     file: Option<File>,
@@ -30,8 +45,12 @@ impl Nexus {
         })
     }
 
-    pub(crate) fn get_root(&mut self) -> RcNexusGroup<NXRoot> {
-        self.nx_root.clone()
+    pub(crate) fn get_root(&self) -> &RcNexusGroup<NXRoot> {
+        &self.nx_root
+    }
+
+    pub(crate) fn get_root_mut(&mut self) -> &mut RcNexusGroup<NXRoot> {
+        &mut self.nx_root
     }
 
     pub(crate) fn create(&mut self) -> anyhow::Result<()> {
@@ -51,7 +70,7 @@ impl Nexus {
     }
 
     pub(crate) fn close(&mut self) -> anyhow::Result<()> {
-        if let Some(file) = &mut self.file {
+        if self.file.is_some() {
             Ok(self.nx_root.lock().expect("Can lock").close()?)
         } else {
             Err(anyhow::anyhow!("No File"))

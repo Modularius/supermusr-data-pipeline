@@ -3,10 +3,10 @@ use geometry::Geometry;
 use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
-use crate::schematic::elements::{
+use crate::schematic::{elements::{
     dataset::{NexusDataset, RcNexusDatasetVar},
     group::{NxGroup, NxPushMessage, RcGroupContentRegister},
-};
+}, nexus_class};
 
 mod environment;
 mod geometry;
@@ -38,7 +38,7 @@ pub(super) struct Sample {
 }
 
 impl NxGroup for Sample {
-    const CLASS_NAME: &'static str = "NXperiod";
+    const CLASS_NAME: &'static str = nexus_class::SAMPLE;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -74,7 +74,7 @@ impl NxGroup for Sample {
 impl<'a> NxPushMessage<RunStart<'a>> for Sample {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         
     }
 }

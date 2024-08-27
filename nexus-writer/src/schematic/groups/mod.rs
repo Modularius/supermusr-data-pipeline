@@ -11,11 +11,11 @@ use crate::schematic::elements::{
     group::{NexusGroup, NxGroup},
 };
 
-use super::elements::{
+use super::{elements::{
     attribute::{RcNexusAttributeFixed, RcNexusAttributeVar},
     dataset::{NxContainerAttributes, RcAttributeRegister},
-    group::{NxPushMessage, RcGroupContentRegister, RcNexusGroup},
-};
+    group::{NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
+}, nexus_class};
 
 pub(super) mod log;
 pub(crate) mod raw_data;
@@ -63,7 +63,7 @@ pub(crate) struct NXRoot {
 }
 
 impl NxGroup for NXRoot {
-    const CLASS_NAME: &'static str = "NXroot";
+    const CLASS_NAME: &'static str = nexus_class::ROOT;
 
     fn new(database_register: RcGroupContentRegister) -> Self {
         Self {
@@ -72,19 +72,10 @@ impl NxGroup for NXRoot {
     }
 }
 
-/*
-pub(crate) mod sample;
-pub(crate) mod geometry;
-pub(crate) mod environment;
-pub(crate) mod log;
-pub(crate) mod selog;
-pub(crate) mod user;
-*/
-
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         self.raw_data_1.push_message(message)
     }
 }
@@ -92,38 +83,38 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
 impl<'a> NxPushMessage<RunStart<'a>> for NXRoot {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         self.raw_data_1.push_message(message)
     }
 }
 impl<'a> NxPushMessage<RunStop<'a>> for NXRoot {
     type MessageType = RunStop<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         self.raw_data_1.push_message(message)
     }
 }
 
-impl<'a> NxPushMessage<Alarm<'a>> for NXRoot {
+impl<'a> NxPushMessageMut<Alarm<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.raw_data_1.push_message(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.raw_data_1.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessage<se00_SampleEnvironmentData<'a>> for NXRoot {
+impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.raw_data_1.push_message(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.raw_data_1.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessage<f144_LogData<'a>> for NXRoot {
+impl<'a> NxPushMessageMut<f144_LogData<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
-        self.raw_data_1.push_message(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
+        self.raw_data_1.push_message_mut(message)
     }
 }

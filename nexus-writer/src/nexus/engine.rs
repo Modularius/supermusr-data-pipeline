@@ -106,7 +106,10 @@ impl NexusEngine {
                 RunParameters::new(data, self.run_number)?,
                 &self.nexus_settings,
             )?;
-            run.run_file.get_root().push_message(&data);
+            run.run_file.create().expect("");
+            run.run_file.get_root_mut().push_message(&data);
+            run.run_file.close_file().expect("");
+            run.run_file.close().expect("");
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().unwrap())

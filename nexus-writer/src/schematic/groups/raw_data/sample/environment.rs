@@ -5,7 +5,7 @@ use crate::schematic::{
         dataset::{NexusDataset, RcNexusDatasetVar},
         group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup},
     },
-    groups::log::Log,
+    groups::log::Log, nexus_class,
 };
 
 pub(super) struct Environment {
@@ -18,7 +18,7 @@ pub(super) struct Environment {
 }
 
 impl NxGroup for Environment {
-    const CLASS_NAME: &'static str = "NXenvironment";
+    const CLASS_NAME: &'static str = nexus_class::ENVIRONMENT;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {

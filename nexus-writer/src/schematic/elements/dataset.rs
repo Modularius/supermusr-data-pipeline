@@ -1,13 +1,13 @@
-use std::{any::Any, marker::PhantomData, rc::Rc, str::FromStr, sync::Mutex};
+use std::{marker::PhantomData, rc::Rc, sync::Mutex};
 
 use hdf5::{types::VarLenAscii, Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
 use tracing::{info, instrument};
 
 use super::{
-    attribute::{self, NexusAttribute, NexusUnits, NxAttribute},
+    attribute::{NexusAttribute, NexusUnits, NxAttribute},
     group::RcGroupContentRegister,
-    FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded, NxLivesInGroup,
+    MustEnterFixedValue, NxLivesInGroup,
 };
 
 // Dataset Resizable Option
@@ -150,7 +150,7 @@ where
                             .expect("");
                     }
                     for attribute in self.attributes.lock().expect("Lock Exists").iter_mut() {
-                        attribute.lock().expect("Lock Exists").create(&dataset);
+                        attribute.lock().expect("Lock Exists").create(&dataset)?;
                     }
                     self.dataset = Some(dataset);
                     Ok(())
@@ -168,7 +168,7 @@ where
             match parent.dataset(&self.name) {
                 Ok(dataset) => {
                     for attribute in self.attributes.lock().expect("Lock Exists").iter_mut() {
-                        attribute.lock().expect("Lock Exists").open(&dataset);
+                        attribute.lock().expect("Lock Exists").open(&dataset)?;
                     }
                     self.dataset = Some(dataset);
                     Ok(())
@@ -184,7 +184,7 @@ where
             Err(anyhow::anyhow!("{} dataset already open", self.name))
         } else {
             for attribute in self.attributes.lock().expect("Lock Exists").iter_mut() {
-                attribute.lock().expect("Lock Exists").close();
+                attribute.lock().expect("Lock Exists").close()?;
             }
             self.dataset = None;
             Ok(())
@@ -252,7 +252,7 @@ where
                 .fixed_value(
                     VarLenAscii::from_ascii(&units.to_string()).expect(""),
                 )
-                .finish::<MustEnterFixedValue>("units", attributes.clone());
+                .finish("units", attributes.clone());
         }
 
         let rc = Rc::new(Mutex::new(NexusDataset::<_,_,F0,R0> {

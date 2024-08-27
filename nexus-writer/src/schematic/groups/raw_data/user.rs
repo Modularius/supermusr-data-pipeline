@@ -4,11 +4,11 @@ use hdf5::{
 };
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
-use crate::schematic::elements::{
+use crate::schematic::{elements::{
     attribute::{NexusAttribute, RcNexusAttributeFixed, RcNexusAttributeVar},
     dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
     group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
-};
+}, nexus_class};
 
 #[derive(Clone)]
 struct NameAttributes {
@@ -34,7 +34,7 @@ pub(super) struct User {
 }
 
 impl NxGroup for User {
-    const CLASS_NAME: &'static str = "NXuser";
+    const CLASS_NAME: &'static str = nexus_class::USER;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -54,7 +54,7 @@ impl NxGroup for User {
 impl<'a> NxPushMessage<RunStart<'a>> for User {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) {
         
     }
 }

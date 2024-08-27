@@ -1,10 +1,9 @@
 use std::{marker::PhantomData, rc::Rc, sync::Mutex};
 
 use hdf5::{
-    types::{TypeDescriptor, VarLenAscii},
-    Attribute, Dataset, H5Type, Location,
+    Attribute, Dataset, H5Type
 };
-use tracing::{info, instrument};
+use tracing::instrument;
 
 use super::{
     dataset::RcAttributeRegister, FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded,
@@ -46,8 +45,8 @@ pub(crate) struct NexusAttribute<T: H5Type, F: FixedValueOption> {
 }
 
 impl<T: H5Type, F: FixedValueOption> NexusAttribute<T, F> {
-    pub(crate) fn begin() -> NexusAttributeBuilder<T, F> {
-        NexusAttributeBuilder::<T, F> {
+    pub(crate) fn begin() -> NexusAttributeBuilder<T, F, F> {
+        NexusAttributeBuilder::<T, F, F> {
             fixed_value: None,
             phantom: PhantomData,
         }
@@ -60,7 +59,7 @@ impl<T: H5Type + Clone, F: FixedValueOption> NxAttribute for NexusAttribute<T, F
         if self.attribute.is_some() {
             Err(anyhow::anyhow!("{} attribute already open", self.name))
         } else {
-            let mut attribute = dataset
+            let attribute = dataset
                 .new_attr::<T>()
                 .create(self.name.as_str())?;
             if let Some(fixed_value) = &self.fixed_value {
@@ -95,33 +94,32 @@ impl<T: H5Type + Clone, F: FixedValueOption> NxAttribute for NexusAttribute<T, F
 
 /// NexusAttributeBuilder
 #[derive(Clone)]
-pub(crate) struct NexusAttributeBuilder<T: H5Type, F: FixedValueOption> {
+pub(crate) struct NexusAttributeBuilder<T: H5Type, F0: FixedValueOption, F: FixedValueOption> {
     fixed_value: Option<T>,
-    phantom: PhantomData<F>,
+    phantom: PhantomData<(F0, F)>,
 }
 
-impl<T: H5Type> NexusAttributeBuilder<T, MustEnterFixedValue> {
-    pub(crate) fn fixed_value(self, value: T) -> NexusAttributeBuilder<T, NoFixedValueNeeded> {
-        NexusAttributeBuilder::<T, NoFixedValueNeeded> {
+impl<T: H5Type, F0: FixedValueOption> NexusAttributeBuilder<T, F0, MustEnterFixedValue> {
+    pub(crate) fn fixed_value(self, value: T) -> NexusAttributeBuilder<T, F0, NoFixedValueNeeded> {
+        NexusAttributeBuilder::<T, F0, NoFixedValueNeeded> {
             fixed_value: Some(value),
             phantom: PhantomData,
         }
     }
 }
 
-impl<T: H5Type + Clone> NexusAttributeBuilder<T, NoFixedValueNeeded> {
+impl<T: H5Type + Clone, F0: FixedValueOption + 'static> NexusAttributeBuilder<T, F0, NoFixedValueNeeded> {
     #[instrument(skip_all)]
-    pub(crate) fn finish<F: FixedValueOption + 'static>(
+    pub(crate) fn finish(
         self,
         name: &str,
         register: RcAttributeRegister,
-    ) -> Rc<Mutex<NexusAttribute<T, F>>> {
-        let attributes = RcAttributeRegister::new(Vec::new().into());
+    ) -> Rc<Mutex<NexusAttribute<T, F0>>> {
         let rc = Rc::new(Mutex::new(NexusAttribute {
             name: name.to_owned(),
             fixed_value: self.fixed_value,
             attribute: None,
-            phantom: PhantomData::<F>,
+            phantom: PhantomData::<F0>,
         }));
         register.lock().expect("Lock Exists").push(rc.clone());
         rc

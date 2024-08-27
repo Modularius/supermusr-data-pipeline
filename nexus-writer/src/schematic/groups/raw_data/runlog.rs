@@ -4,9 +4,9 @@ use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use crate::schematic::{
     elements::{
         dataset::NexusDataset,
-        group::{self, NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
+        group::{self, NexusGroup, NxGroup, NxPushMessageMut, RcGroupContentRegister},
     },
-    groups::log::Log,
+    groups::log::Log, nexus_class,
 };
 
 pub(super) struct RunLog {
@@ -14,7 +14,7 @@ pub(super) struct RunLog {
 }
 
 impl NxGroup for RunLog {
-    const CLASS_NAME: &'static str = "NXrunlog";
+    const CLASS_NAME: &'static str = nexus_class::RUNLOG;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
@@ -23,10 +23,10 @@ impl NxGroup for RunLog {
     }
 }
 
-impl<'a> NxPushMessage<f144_LogData<'a>> for RunLog {
+impl<'a> NxPushMessageMut<f144_LogData<'a>> for RunLog {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) {
         //self.run_log.push_message(message)
     }
 }
