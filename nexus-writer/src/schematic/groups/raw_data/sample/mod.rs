@@ -3,10 +3,13 @@ use geometry::Geometry;
 use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
-use crate::schematic::{elements::{
-    dataset::{NexusDataset, RcNexusDatasetVar},
-    group::{NxGroup, NxPushMessage, RcGroupContentRegister},
-}, nexus_class};
+use crate::schematic::{
+    elements::{
+        dataset::{NexusDataset, RcNexusDatasetVar},
+        group::{NxGroup, NxPushMessage, RcGroupContentRegister},
+    },
+    nexus_class,
+};
 
 mod environment;
 mod geometry;
@@ -74,7 +77,5 @@ impl NxGroup for Sample {
 impl<'a> NxPushMessage<RunStart<'a>> for Sample {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
-        
-    }
+    fn push_message(&self, message: &Self::MessageType) {}
 }

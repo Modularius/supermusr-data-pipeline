@@ -34,7 +34,8 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
-    }, flatbuffers::FlatBufferBuilder,
+    },
+    flatbuffers::FlatBufferBuilder,
 };
 use tokio::time;
 use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
@@ -109,8 +110,6 @@ async fn main() -> Result<()> {
         args.otel_endpoint.as_deref(),
         args.otel_level
     ));
-
-
 
     trace_span!("Args:").in_scope(|| debug!("{args:?}"));
 

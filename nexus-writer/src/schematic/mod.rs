@@ -3,10 +3,12 @@ mod groups;
 
 use std::path::Path;
 
-use elements::{group::{NexusGroup, RcNexusGroup}, NxLivesInGroup};
+use elements::{
+    group::{NexusGroup, RcNexusGroup},
+    NxLivesInGroup,
+};
 use groups::NXRoot;
 use hdf5::File;
-
 
 pub(crate) mod nexus_class {
     pub(crate) const DETECTOR: &str = "NXdetector";
@@ -41,7 +43,8 @@ impl Nexus {
                     .ok_or(anyhow::anyhow!("Path Error: {filename:?}"))?
                     .to_str()
                     .ok_or(anyhow::anyhow!("Conversion Error: {filename:?}"))?,
-            None),
+                None,
+            ),
         })
     }
 

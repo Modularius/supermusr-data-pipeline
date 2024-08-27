@@ -6,7 +6,8 @@ use crate::schematic::{
         dataset::NexusDataset,
         group::{self, NexusGroup, NxGroup, NxPushMessageMut, RcGroupContentRegister},
     },
-    groups::log::Log, nexus_class,
+    groups::log::Log,
+    nexus_class,
 };
 
 pub(super) struct RunLog {

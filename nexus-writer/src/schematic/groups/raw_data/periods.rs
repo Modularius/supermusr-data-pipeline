@@ -7,7 +7,8 @@ use crate::schematic::{
         dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
-    groups::log::Log, nexus_class,
+    groups::log::Log,
+    nexus_class,
 };
 
 #[derive(Clone)]
@@ -70,7 +71,5 @@ impl NxGroup for Periods {
 impl<'a> NxPushMessage<RunStart<'a>> for Periods {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
-        
-    }
+    fn push_message(&self, message: &Self::MessageType) {}
 }

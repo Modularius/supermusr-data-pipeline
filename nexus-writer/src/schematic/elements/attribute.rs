@@ -1,8 +1,6 @@
 use std::{marker::PhantomData, rc::Rc, sync::Mutex};
 
-use hdf5::{
-    Attribute, Dataset, H5Type
-};
+use hdf5::{Attribute, Dataset, H5Type};
 use tracing::instrument;
 
 use super::{
@@ -59,9 +57,7 @@ impl<T: H5Type + Clone, F: FixedValueOption> NxAttribute for NexusAttribute<T, F
         if self.attribute.is_some() {
             Err(anyhow::anyhow!("{} attribute already open", self.name))
         } else {
-            let attribute = dataset
-                .new_attr::<T>()
-                .create(self.name.as_str())?;
+            let attribute = dataset.new_attr::<T>().create(self.name.as_str())?;
             if let Some(fixed_value) = &self.fixed_value {
                 attribute.write_scalar(fixed_value)?
             }
@@ -108,7 +104,9 @@ impl<T: H5Type, F0: FixedValueOption> NexusAttributeBuilder<T, F0, MustEnterFixe
     }
 }
 
-impl<T: H5Type + Clone, F0: FixedValueOption + 'static> NexusAttributeBuilder<T, F0, NoFixedValueNeeded> {
+impl<T: H5Type + Clone, F0: FixedValueOption + 'static>
+    NexusAttributeBuilder<T, F0, NoFixedValueNeeded>
+{
     #[instrument(skip_all)]
     pub(crate) fn finish(
         self,

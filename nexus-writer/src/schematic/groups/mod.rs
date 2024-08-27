@@ -11,11 +11,14 @@ use crate::schematic::elements::{
     group::{NexusGroup, NxGroup},
 };
 
-use super::{elements::{
-    attribute::{RcNexusAttributeFixed, RcNexusAttributeVar},
-    dataset::{NxContainerAttributes, RcAttributeRegister},
-    group::{NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
-}, nexus_class};
+use super::{
+    elements::{
+        attribute::{RcNexusAttributeFixed, RcNexusAttributeVar},
+        dataset::{NxContainerAttributes, RcAttributeRegister},
+        group::{NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
+    },
+    nexus_class,
+};
 
 pub(super) mod log;
 pub(crate) mod raw_data;

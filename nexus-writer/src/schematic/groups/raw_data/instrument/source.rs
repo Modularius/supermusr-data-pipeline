@@ -6,7 +6,8 @@ use crate::schematic::{
         dataset::{NexusDataset, RcNexusDatasetVar},
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
-    groups::log::Log, nexus_class,
+    groups::log::Log,
+    nexus_class,
 };
 
 pub(super) struct Source {

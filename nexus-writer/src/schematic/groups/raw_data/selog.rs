@@ -3,10 +3,13 @@ use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 
-use crate::schematic::{elements::{
-    dataset::{NexusDataset, RcNexusDatasetVar},
-    group::{NexusGroup, NxGroup, NxPushMessageMut, RcGroupContentRegister},
-}, nexus_class};
+use crate::schematic::{
+    elements::{
+        dataset::{NexusDataset, RcNexusDatasetVar},
+        group::{NexusGroup, NxGroup, NxPushMessageMut, RcGroupContentRegister},
+    },
+    nexus_class,
+};
 
 pub(super) struct Selog {
     name: RcNexusDatasetVar<VarLenAscii>,

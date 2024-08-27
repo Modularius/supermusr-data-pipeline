@@ -1,9 +1,12 @@
 use hdf5::{types::VarLenAscii, Group};
 
-use crate::schematic::{elements::{
-    dataset::{NexusDataset, RcNexusDatasetVar},
-    group::{NexusGroup, NxGroup, RcGroupContentRegister},
-}, nexus_class};
+use crate::schematic::{
+    elements::{
+        dataset::{NexusDataset, RcNexusDatasetVar},
+        group::{NexusGroup, NxGroup, RcGroupContentRegister},
+    },
+    nexus_class,
+};
 
 pub(super) struct Geometry {
     name: RcNexusDatasetVar<VarLenAscii>,
