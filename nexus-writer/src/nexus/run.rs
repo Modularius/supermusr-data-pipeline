@@ -14,8 +14,7 @@ use supermusr_streaming_types::{
 
 pub(crate) struct Run {
     span: SpanOnce,
-    parameters: RunParameters,
-    pub run_file: crate::schematic::Nexus,
+    parameters: RunParameters
 }
 
 impl Run {
@@ -32,12 +31,10 @@ impl Run {
         }
         Ok(Self {
             span: Default::default(),
-            parameters,
-            run_file: crate::schematic::Nexus::new(&PathBuf::from_str("TestFile.nxs").expect(""))
-                .expect(""),
+            parameters
         })
     }
-    #[cfg(test)]
+    //#[cfg(test)]  Uncomment this at a later stage
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }

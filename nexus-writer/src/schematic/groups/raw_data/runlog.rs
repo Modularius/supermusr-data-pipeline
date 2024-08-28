@@ -35,11 +35,11 @@ impl<'a> NxPushMessageMut<f144_LogData<'a>> for RunLog {
             .iter()
             .find(|log| log.lock().expect("Lock exists").get_name() == message.source_name())
         {
-            log.push_message(message);
+            log.push_message(message)?;
         } else {
             let log =
                 NexusGroup::<Log>::new(message.source_name(), Some(self.dataset_register.clone()));
-            log.push_message(message);
+            log.push_message(message)?;
             self.logs.push(log);
         }
         Ok(())

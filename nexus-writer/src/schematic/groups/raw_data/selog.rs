@@ -35,11 +35,11 @@ impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for Selog {
             .iter()
             .find(|selog| selog.lock().expect("Lock exists").get_name() == message.name())
         {
-            selog.push_message(message);
+            selog.push_message(message)?;
         } else {
             let selog_block =
                 NexusGroup::<SelogBlock>::new(message.name(), Some(self.dataset_register.clone()));
-            selog_block.push_message(message);
+            selog_block.push_message(message)?;
             self.selogs.push(selog_block);
         }
         Ok(())
@@ -53,13 +53,13 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for Selog {
         if let Some(selog) = self.selogs.iter().find(|selog| {
             selog.lock().expect("Lock exists").get_name() == message.source_name().expect("")
         }) {
-            selog.push_message(message);
+            selog.push_message(message)?;
         } else {
             let selog_block = NexusGroup::<SelogBlock>::new(
                 message.source_name().expect(""),
                 Some(self.dataset_register.clone()),
             );
-            selog_block.push_message(message);
+            selog_block.push_message(message)?;
             self.selogs.push(selog_block);
         }
         Ok(())

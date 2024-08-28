@@ -1,9 +1,9 @@
-use hdf5::{types::VarLenAscii, Group};
+use hdf5::types::VarLenAscii;
 
 use crate::schematic::{
     elements::{
         dataset::{NexusDataset, RcNexusDatasetVar},
-        group::{NexusGroup, NxGroup, RcGroupContentRegister},
+        group::{NxGroup, RcGroupContentRegister},
     },
     nexus_class,
 };

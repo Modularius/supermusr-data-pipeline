@@ -11,7 +11,7 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use std::{net::SocketAddr, path::PathBuf, str::FromStr};
+use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
     metrics::{
@@ -35,7 +35,6 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
-    flatbuffers::FlatBufferBuilder,
 };
 use tokio::time;
 use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};

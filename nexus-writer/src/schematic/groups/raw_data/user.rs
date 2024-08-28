@@ -1,14 +1,11 @@
-use hdf5::{
-    types::{TypeDescriptor, VarLenAscii},
-    Group,
-};
+use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, RcNexusAttributeFixed, RcNexusAttributeVar},
+        attribute::{NexusAttribute, RcNexusAttributeVar},
         dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
-        group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
+        group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
     nexus_class,
 };
