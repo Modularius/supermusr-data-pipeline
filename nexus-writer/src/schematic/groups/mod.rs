@@ -78,7 +78,7 @@ impl NxGroup for NXRoot {
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.raw_data_1.push_message(message)
     }
 }
@@ -86,14 +86,14 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
 impl<'a> NxPushMessage<RunStart<'a>> for NXRoot {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.raw_data_1.push_message(message)
     }
 }
 impl<'a> NxPushMessage<RunStop<'a>> for NXRoot {
     type MessageType = RunStop<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.raw_data_1.push_message(message)
     }
 }
@@ -101,7 +101,7 @@ impl<'a> NxPushMessage<RunStop<'a>> for NXRoot {
 impl<'a> NxPushMessageMut<Alarm<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.raw_data_1.push_message_mut(message)
     }
 }
@@ -109,7 +109,7 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for NXRoot {
 impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.raw_data_1.push_message_mut(message)
     }
 }
@@ -117,7 +117,7 @@ impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for NXRoot {
 impl<'a> NxPushMessageMut<f144_LogData<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.raw_data_1.push_message_mut(message)
     }
 }

@@ -1,10 +1,7 @@
 use std::{rc::Rc, sync::Mutex};
 
-use hdf5::{
-    types::{TypeDescriptor, VarLenAscii},
-    Group,
-};
-use tracing::{info, instrument};
+use hdf5::{types::VarLenAscii, Group};
+use tracing::instrument;
 
 use super::NxLivesInGroup;
 
@@ -19,13 +16,13 @@ pub(crate) trait NxGroup: Sized {
 pub(crate) trait NxPushMessage<T> {
     type MessageType;
 
-    fn push_message(&self, message: &Self::MessageType);
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
 pub(crate) trait NxPushMessageMut<T> {
     type MessageType;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType);
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
 pub(crate) type RcNexusGroup<G> = Rc<Mutex<NexusGroup<G>>>;
@@ -57,6 +54,14 @@ impl<G: NxGroup + 'static> NexusGroup<G> {
                 .push(rc.clone());
         }
         rc
+    }
+
+    pub(crate) fn get_group_mut(&mut self) -> &mut G {
+        &mut self.class
+    }
+
+    pub(crate) fn get_name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -137,7 +142,7 @@ impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T>
 {
     type MessageType = T;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.lock().expect("").class.push_message(message)
     }
 }
@@ -147,7 +152,7 @@ impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T> NxPushMessageMut<T>
 {
     type MessageType = T;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.lock().expect("").class.push_message_mut(message)
     }
 }

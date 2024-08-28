@@ -155,7 +155,7 @@ impl NxGroup for RawData {
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for RawData {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.detector_1.push_message(message)
     }
 }
@@ -163,54 +163,49 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for RawData {
 impl<'a> NxPushMessage<RunStart<'a>> for RawData {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
-        self.user_1.push_message(message);
-        self.periods.push_message(message);
-        self.sample.push_message(message);
-        self.instrument.push_message(message);
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        self.user_1.push_message(message)?;
+        self.periods.push_message(message)?;
+        self.sample.push_message(message)?;
+        self.instrument.push_message(message)?;
 
         self.program_name
-            .write_scalar(VarLenAscii::from_ascii("The Program").unwrap())
-            .expect("");
-        self.run_number.write_scalar(0).expect("");
+            .write_scalar(VarLenAscii::from_ascii("The Program")?)?;
+        self.run_number.write_scalar(0)?;
         self.title
-            .write_scalar(VarLenAscii::from_ascii("The Title").unwrap())
-            .expect("");
+            .write_scalar(VarLenAscii::from_ascii("The Title")?)?;
         self.notes
-            .write_scalar(VarLenAscii::from_ascii(message.metadata().unwrap_or_default()).unwrap())
-            .expect("");
+            .write_scalar(VarLenAscii::from_ascii(message.metadata().unwrap_or_default())?)?;
         self.start_time
-            .write_scalar(VarLenAscii::from_ascii("Now").unwrap())
-            .expect("");
+            .write_scalar(VarLenAscii::from_ascii("Now")?)?;
         self.end_time
-            .write_scalar(VarLenAscii::from_ascii("Then").unwrap())
-            .expect("");
-        self.duration.write_scalar(1).expect("");
-        self.collection_time.write_scalar(1000.0).expect("");
-        self.total_counts.write_scalar(1).expect("");
-        self.good_frames.write_scalar(1).expect("");
-        self.raw_frames.write_scalar(1).expect("");
-        self.proton_charge.write_scalar(1.0).expect("");
+            .write_scalar(VarLenAscii::from_ascii("Then")?)?;
+        self.duration.write_scalar(1)?;
+        self.collection_time.write_scalar(1000.0)?;
+        self.total_counts.write_scalar(1)?;
+        self.good_frames.write_scalar(1)?;
+        self.raw_frames.write_scalar(1)?;
+        self.proton_charge.write_scalar(1.0)?;
         self.experiment_identifier
-            .write_scalar(VarLenAscii::from_ascii("POAS35").unwrap())
-            .expect("");
+            .write_scalar(VarLenAscii::from_ascii("POAS35")?)?;
         self.run_cycle
-            .write_scalar(VarLenAscii::from_ascii("This").unwrap())
-            .expect("");
+            .write_scalar(VarLenAscii::from_ascii("This")?)?;
+        Ok(())
     }
 }
 impl<'a> NxPushMessage<RunStop<'a>> for RawData {
     type MessageType = RunStop<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         //self.raw_data_1.push_message(message)
+        Ok(())
     }
 }
 
 impl<'a> NxPushMessageMut<Alarm<'a>> for RawData {
     type MessageType = Alarm<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.selog.push_message_mut(message)
     }
 }
@@ -218,7 +213,7 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for RawData {
 impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for RawData {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.selog.push_message_mut(message)
     }
 }
@@ -226,7 +221,7 @@ impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for RawData {
 impl<'a> NxPushMessageMut<f144_LogData<'a>> for RawData {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
         self.run_log.push_message_mut(message)
     }
 }

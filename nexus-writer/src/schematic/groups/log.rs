@@ -1,14 +1,18 @@
-use hdf5::{types::VarLenAscii, Group};
+use hdf5::types::VarLenAscii;
+use supermusr_streaming_types::{
+    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
+    ecs_se00_data_generated::se00_SampleEnvironmentData,
+};
 
 use crate::{
     nexus::nexus_class,
     schematic::elements::{
-        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
+        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
         dataset::{
-            NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize,
-            RcNexusDatasetVar,
+            CanAppend, NexusDataset, NxContainerAttributes, RcAttributeRegister,
+            RcNexusDatasetResize,
         },
-        group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister},
+        group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
 };
 
@@ -28,7 +32,7 @@ impl NxContainerAttributes for TimeAttributes {
 }
 
 pub(super) struct Log {
-    time: RcNexusDatasetResize<u32, TimeAttributes>,
+    time: RcNexusDatasetResize<i64, TimeAttributes>,
     value: RcNexusDatasetResize<u32>,
 }
 
@@ -47,11 +51,22 @@ impl NxGroup for Log {
     }
 }
 
+impl<'a> NxPushMessage<f144_LogData<'a>> for Log {
+    type MessageType = f144_LogData<'a>;
+
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        self.time.append(&[message.timestamp()])?;
+        self.value
+            .append(&[message.value_as_uint().unwrap().value()])?;
+        Ok(())
+    }
+}
+
 pub(super) struct ValueLog {
     alarm_severity: RcNexusDatasetResize<VarLenAscii>,
     alarm_status: RcNexusDatasetResize<VarLenAscii>,
     alarm_time: RcNexusDatasetResize<i64>,
-    time: RcNexusDatasetResize<u32, TimeAttributes>,
+    time: RcNexusDatasetResize<i64, TimeAttributes>,
     value: RcNexusDatasetResize<u32>,
 }
 
@@ -76,5 +91,38 @@ impl NxGroup for ValueLog {
                 .resizable(0, 128)
                 .finish("value", dataset_register.clone()),
         }
+    }
+}
+
+impl<'a> NxPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
+    type MessageType = se00_SampleEnvironmentData<'a>;
+
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        self.time
+            .append(&message.timestamps().unwrap().iter().collect::<Vec<_>>())?;
+        self.value.append(
+            &message
+                .values_as_uint_32_array()
+                .unwrap()
+                .value()
+                .iter()
+                .collect::<Vec<_>>(),
+        )?;
+        Ok(())
+    }
+}
+
+impl<'a> NxPushMessage<Alarm<'a>> for ValueLog {
+    type MessageType = Alarm<'a>;
+
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        self.alarm_severity
+            .append(&[
+                VarLenAscii::from_ascii(message.severity().variant_name().unwrap()).unwrap(),
+            ])?;
+        self.alarm_status
+            .append(&[VarLenAscii::from_ascii(message.message().unwrap()).unwrap()])?;
+        self.alarm_time.append(&[message.timestamp()])?;
+        Ok(())
     }
 }

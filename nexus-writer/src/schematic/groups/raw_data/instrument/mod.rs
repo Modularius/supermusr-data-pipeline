@@ -32,5 +32,7 @@ impl NxGroup for Instrument {
 impl<'a> NxPushMessage<RunStart<'a>> for Instrument {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {}
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        Ok(())
+    }
 }

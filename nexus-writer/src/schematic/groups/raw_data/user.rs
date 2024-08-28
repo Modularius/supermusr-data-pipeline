@@ -57,5 +57,7 @@ impl NxGroup for User {
 impl<'a> NxPushMessage<RunStart<'a>> for User {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {}
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        Ok(())
+    }
 }

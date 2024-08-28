@@ -10,8 +10,7 @@ use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
         dataset::{
-            NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize,
-            RcNexusDatasetVar,
+            CanAppend, NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize, RcNexusDatasetVar
         },
         group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
@@ -83,7 +82,10 @@ impl NxGroup for Data {
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         // Here is where we extend the datasets
+        self.event_id.append(&message.channel().expect("").iter().collect::<Vec<_>>())?;
+        //TODO
+        Ok(())
     }
 }

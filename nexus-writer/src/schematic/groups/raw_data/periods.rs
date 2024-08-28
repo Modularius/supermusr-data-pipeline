@@ -71,5 +71,7 @@ impl NxGroup for Periods {
 impl<'a> NxPushMessage<RunStart<'a>> for Periods {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) {}
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
