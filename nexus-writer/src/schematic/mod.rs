@@ -8,7 +8,9 @@ use elements::{
     NxLivesInGroup,
 };
 use groups::NXRoot;
-use hdf5::File;
+use hdf5::{types::VarLenUnicode, File};
+
+type H5String = VarLenUnicode;
 
 pub(crate) mod nexus_class {
     pub(crate) const DETECTOR: &str = "NXdetector";

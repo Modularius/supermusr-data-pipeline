@@ -1,20 +1,15 @@
-use std::rc::Rc;
-
-use hdf5::{
-    types::{IntSize, TypeDescriptor, VarLenAscii},
-    Group,
-};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed, RcNexusAttributeVar},
+        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
         dataset::{
-            CanAppend, NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetResize, RcNexusDatasetVar
+            Buildable, CanAppend, NexusDataset, NexusDatasetResize, NxContainerAttributes,
+            RcAttributeRegister,
         },
         group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
-    nexus_class,
+    nexus_class, H5String,
 };
 
 #[derive(Clone)]
@@ -30,7 +25,7 @@ impl NxContainerAttributes for EventTimeOffsetAttributes {
 
 #[derive(Clone)]
 struct EventTimeZeroAttributes {
-    offset: RcNexusAttributeVar<VarLenAscii>,
+    offset: RcNexusAttributeVar<H5String>,
 }
 
 impl NxContainerAttributes for EventTimeZeroAttributes {
@@ -44,12 +39,12 @@ impl NxContainerAttributes for EventTimeZeroAttributes {
 }
 
 pub(super) struct Data {
-    event_id: RcNexusDatasetResize<u32>,
-    event_index: RcNexusDatasetResize<u32>,
-    event_time_offset: RcNexusDatasetResize<u32, EventTimeOffsetAttributes>,
-    event_time_zero: RcNexusDatasetResize<u64, EventTimeZeroAttributes>,
-    event_period_number: RcNexusDatasetResize<u64>,
-    event_pulse_height: RcNexusDatasetResize<f64>,
+    event_id: NexusDatasetResize<u32>,
+    event_index: NexusDatasetResize<u32>,
+    event_time_offset: NexusDatasetResize<u32, EventTimeOffsetAttributes>,
+    event_time_zero: NexusDatasetResize<u64, EventTimeZeroAttributes>,
+    event_period_number: NexusDatasetResize<u64>,
+    event_pulse_height: NexusDatasetResize<f64>,
 }
 
 impl NxGroup for Data {
@@ -84,7 +79,8 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
 
     fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         // Here is where we extend the datasets
-        self.event_id.append(&message.channel().expect("").iter().collect::<Vec<_>>())?;
+        self.event_id
+            .append(&message.channel().expect("").iter().collect::<Vec<_>>())?;
         //TODO
         Ok(())
     }

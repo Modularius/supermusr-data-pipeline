@@ -52,18 +52,18 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            if let Some(filename) = &self.filename {
+            /*             if let Some(filename) = &self.filename {
                 let mut new_filename = filename.to_owned();
                 new_filename.push("experimental");
                 new_filename.push(&run.parameters().run_name);
                 new_filename.set_extension("nxs");
-                
+
                 let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
                 run_file.open().expect("");
                 run_file.get_root_mut().push_message_mut(&data).expect("");
                 run_file.close_file().expect("");
                 run_file.close().expect("");
-            }
+            } */
 
             run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
@@ -81,18 +81,18 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            if let Some(filename) = &self.filename {
+            /*             if let Some(filename) = &self.filename {
                 let mut new_filename = filename.to_owned();
                 new_filename.push("experimental");
                 new_filename.push(&run.parameters().run_name);
                 new_filename.set_extension("nxs");
-                
+
                 let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
                 run_file.open().expect("");
                 run_file.get_root_mut().push_message_mut(data).expect("");
                 run_file.close_file().expect("");
                 run_file.close().expect("");
-            }
+            } */
 
             run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
@@ -110,18 +110,18 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            if let Some(filename) = &self.filename {
+            /*             if let Some(filename) = &self.filename {
                 let mut new_filename = filename.to_owned();
                 new_filename.push("experimental");
                 new_filename.push(&run.parameters().run_name);
                 new_filename.set_extension("nxs");
-                
+
                 let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
                 run_file.open().expect("");
                 run_file.get_root_mut().push_message_mut(&data).expect("");
                 run_file.close_file().expect("");
                 run_file.close().expect("");
-            }
+            } */
             run.push_alarm_to_run(self.filename.as_deref(), data)?;
             Ok(Some(run))
         } else {
@@ -144,12 +144,12 @@ impl NexusEngine {
                 new_filename.push("experimental");
                 new_filename.push(data.run_name().unwrap());
                 new_filename.set_extension("nxs");
-                
+
                 let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
                 run_file.create().expect("");
                 run_file.get_root_mut().push_message(&data).expect("");
-                run_file.close_file().expect("");
                 run_file.close().expect("");
+                run_file.close_file().expect("");
             }
 
             let run = Run::new_run(
@@ -168,13 +168,12 @@ impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-
             if let Some(filename) = &self.filename {
                 let mut new_filename = filename.to_owned();
                 new_filename.push("experimental");
                 new_filename.push(&last_run.parameters().run_name);
                 new_filename.set_extension("nxs");
-                
+
                 let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
                 run_file.open().expect("");
                 run_file.get_root_mut().push_message(&data).expect("");
@@ -206,18 +205,18 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            if let Some(filename) = &self.filename {
+            /*if let Some(filename) = &self.filename {
                 let mut new_filename = filename.to_owned();
                 new_filename.push("experimental");
                 new_filename.push(&run.parameters().run_name);
                 new_filename.set_extension("nxs");
-                
+
                 let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
                 run_file.open().expect("");
                 run_file.get_root_mut().push_message(message).expect("");
                 run_file.close_file().expect("");
                 run_file.close().expect("");
-            }
+            } */
             run.push_message(self.filename.as_deref(), message)?;
             Ok(Some(run))
         } else {

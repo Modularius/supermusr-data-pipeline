@@ -1,31 +1,30 @@
 use environment::Environment;
 use geometry::Geometry;
-use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::{NexusDataset, RcNexusDatasetVar},
+        dataset::{Buildable, NexusDataset},
         group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
-    nexus_class,
+    nexus_class, H5String,
 };
 
 mod environment;
 mod geometry;
 
 pub(super) struct Sample {
-    name: RcNexusDatasetVar<VarLenAscii>,
-    chemical_formula: RcNexusDatasetVar<VarLenAscii>,
-    description: RcNexusDatasetVar<VarLenAscii>,
-    sample_type: RcNexusDatasetVar<VarLenAscii>,
-    situation: RcNexusDatasetVar<VarLenAscii>,
-    shape: RcNexusDatasetVar<VarLenAscii>,
-    preparation_date: RcNexusDatasetVar<VarLenAscii>,
-    sample_holder: RcNexusDatasetVar<VarLenAscii>,
-    /*flypast: RcNexusDatasetVar<VarLenAscii>,
+    name: NexusDataset<H5String>,
+    chemical_formula: NexusDataset<H5String>,
+    description: NexusDataset<H5String>,
+    sample_type: NexusDataset<H5String>,
+    situation: NexusDataset<H5String>,
+    shape: NexusDataset<H5String>,
+    preparation_date: NexusDataset<H5String>,
+    sample_holder: NexusDataset<H5String>,
+    /*flypast: RcNexusDatasetVar<H5String>,
     geometry: NexusGroup<Geometry>,
-    sample_component: RcNexusDatasetVar<VarLenAscii>,
+    sample_component: RcNexusDatasetVar<H5String>,
     thickness: RcNexusDatasetVar<u32, MustEnterAttributes<1>>,
     mass: RcNexusDatasetVar<u32, MustEnterAttributes<1>>,
     density: RcNexusDatasetVar<u32, MustEnterAttributes<1>>,

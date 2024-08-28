@@ -79,8 +79,8 @@ impl<T: H5Type + Clone, F: FixedValueOption> NxAttribute for NexusAttribute<T, F
 
     #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
     fn close(&mut self) -> anyhow::Result<()> {
-        if self.attribute.is_some() {
-            Err(anyhow::anyhow!("{} attribute already open", self.name))
+        if self.attribute.is_none() {
+            Err(anyhow::anyhow!("{} attribute already closed", self.name))
         } else {
             self.attribute = None;
             Ok(())

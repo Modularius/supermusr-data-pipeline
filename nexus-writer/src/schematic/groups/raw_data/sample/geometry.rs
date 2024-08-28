@@ -1,15 +1,13 @@
-use hdf5::types::VarLenAscii;
-
 use crate::schematic::{
     elements::{
-        dataset::{NexusDataset, RcNexusDatasetVar},
+        dataset::{Buildable, NexusDataset},
         group::{NxGroup, RcGroupContentRegister},
     },
-    nexus_class,
+    nexus_class, H5String,
 };
 
 pub(super) struct Geometry {
-    name: RcNexusDatasetVar<VarLenAscii>,
+    name: NexusDataset<H5String>,
 }
 
 impl NxGroup for Geometry {

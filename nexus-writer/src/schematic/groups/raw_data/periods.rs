@@ -1,19 +1,18 @@
-use hdf5::types::{TypeDescriptor, VarLenAscii};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, RcNexusAttributeVar},
-        dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
+        dataset::{Buildable, NexusDataset, NxContainerAttributes, RcAttributeRegister},
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
-    nexus_class,
+    nexus_class, H5String,
 };
 
 #[derive(Clone)]
 struct FramesRequestedAttributes {
-    frame_type: RcNexusAttributeVar<VarLenAscii>,
+    frame_type: RcNexusAttributeVar<H5String>,
 }
 
 impl NxContainerAttributes for FramesRequestedAttributes {
@@ -26,7 +25,7 @@ impl NxContainerAttributes for FramesRequestedAttributes {
 
 #[derive(Clone)]
 struct LabelsAttributes {
-    separator: RcNexusAttributeVar<VarLenAscii>,
+    separator: RcNexusAttributeVar<H5String>,
 }
 
 impl NxContainerAttributes for LabelsAttributes {
@@ -38,14 +37,14 @@ impl NxContainerAttributes for LabelsAttributes {
 }
 
 pub(super) struct Periods {
-    number: RcNexusDatasetVar<u32>,
-    period_types: RcNexusDatasetVar<u32>,
-    frames_requested: RcNexusDatasetVar<u32, FramesRequestedAttributes>,
-    output: RcNexusDatasetVar<u32>,
-    labels: RcNexusDatasetVar<VarLenAscii, LabelsAttributes>,
-    raw_frames: RcNexusDatasetVar<u32>,
-    good_frames: RcNexusDatasetVar<u32>,
-    sequences: RcNexusDatasetVar<u32>,
+    number: NexusDataset<u32>,
+    period_types: NexusDataset<u32>,
+    frames_requested: NexusDataset<u32, FramesRequestedAttributes>,
+    output: NexusDataset<u32>,
+    labels: NexusDataset<H5String, LabelsAttributes>,
+    raw_frames: NexusDataset<u32>,
+    good_frames: NexusDataset<u32>,
+    sequences: NexusDataset<u32>,
     counts: RcNexusGroup<Log>,
 }
 

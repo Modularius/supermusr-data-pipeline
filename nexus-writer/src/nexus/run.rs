@@ -14,7 +14,7 @@ use supermusr_streaming_types::{
 
 pub(crate) struct Run {
     span: SpanOnce,
-    parameters: RunParameters
+    parameters: RunParameters,
 }
 
 impl Run {
@@ -31,7 +31,7 @@ impl Run {
         }
         Ok(Self {
             span: Default::default(),
-            parameters
+            parameters,
         })
     }
     //#[cfg(test)]  Uncomment this at a later stage

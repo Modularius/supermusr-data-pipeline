@@ -1,4 +1,3 @@
-use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -17,21 +16,21 @@ use super::{
         dataset::{NxContainerAttributes, RcAttributeRegister},
         group::{NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
     },
-    nexus_class,
+    nexus_class, H5String,
 };
 
 pub(super) mod log;
 pub(crate) mod raw_data;
 
 struct RawData1Attributes {
-    file_name: RcNexusAttributeVar<VarLenAscii>,
-    file_time: RcNexusAttributeVar<VarLenAscii>,
-    initial_file_format: RcNexusAttributeFixed<VarLenAscii>,
-    nexus_version: RcNexusAttributeFixed<VarLenAscii>,
-    hdf_version: RcNexusAttributeFixed<VarLenAscii>,
-    hdf5_version: RcNexusAttributeFixed<VarLenAscii>,
-    xml_version: RcNexusAttributeFixed<VarLenAscii>,
-    creator: RcNexusAttributeFixed<VarLenAscii>,
+    file_name: RcNexusAttributeVar<H5String>,
+    file_time: RcNexusAttributeVar<H5String>,
+    initial_file_format: RcNexusAttributeFixed<H5String>,
+    nexus_version: RcNexusAttributeFixed<H5String>,
+    hdf_version: RcNexusAttributeFixed<H5String>,
+    hdf5_version: RcNexusAttributeFixed<H5String>,
+    xml_version: RcNexusAttributeFixed<H5String>,
+    creator: RcNexusAttributeFixed<H5String>,
 }
 
 impl NxContainerAttributes for RawData1Attributes {
@@ -40,22 +39,22 @@ impl NxContainerAttributes for RawData1Attributes {
             file_name: NexusAttribute::begin().finish("file_name", attribute_register.clone()),
             file_time: NexusAttribute::begin().finish("file_time", attribute_register.clone()),
             initial_file_format: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("initial_file_format", attribute_register.clone()),
             nexus_version: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("nexus_version", attribute_register.clone()),
             hdf_version: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("hdf_version", attribute_register.clone()),
             hdf5_version: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("hdf5_version", attribute_register.clone()),
             xml_version: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("xml_version", attribute_register.clone()),
             creator: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("creator", attribute_register.clone()),
         }
     }

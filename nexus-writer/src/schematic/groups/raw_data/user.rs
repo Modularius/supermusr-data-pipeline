@@ -1,18 +1,17 @@
-use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, RcNexusAttributeVar},
-        dataset::{NexusDataset, NxContainerAttributes, RcAttributeRegister, RcNexusDatasetVar},
+        dataset::{Buildable, NexusDataset, NxContainerAttributes, RcAttributeRegister},
         group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
-    nexus_class,
+    nexus_class, H5String,
 };
 
 #[derive(Clone)]
 struct NameAttributes {
-    role: RcNexusAttributeVar<VarLenAscii>,
+    role: RcNexusAttributeVar<H5String>,
 }
 
 impl NxContainerAttributes for NameAttributes {
@@ -24,13 +23,13 @@ impl NxContainerAttributes for NameAttributes {
 }
 
 pub(super) struct User {
-    name: RcNexusDatasetVar<VarLenAscii, NameAttributes>,
-    affiliation: RcNexusDatasetVar<VarLenAscii>,
-    address: RcNexusDatasetVar<VarLenAscii>,
-    telephone_number: RcNexusDatasetVar<VarLenAscii>,
-    fax_number: RcNexusDatasetVar<VarLenAscii>,
-    email: RcNexusDatasetVar<VarLenAscii>,
-    facility_user_id: RcNexusDatasetVar<VarLenAscii>,
+    name: NexusDataset<H5String, NameAttributes>,
+    affiliation: NexusDataset<H5String>,
+    address: NexusDataset<H5String>,
+    telephone_number: NexusDataset<H5String>,
+    fax_number: NexusDataset<H5String>,
+    email: NexusDataset<H5String>,
+    facility_user_id: NexusDataset<H5String>,
 }
 
 impl NxGroup for User {

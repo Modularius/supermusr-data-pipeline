@@ -1,20 +1,18 @@
-use hdf5::{types::VarLenAscii, Group};
-
 use crate::schematic::{
     elements::{
-        dataset::{NexusDataset, RcNexusDatasetVar},
+        dataset::{Buildable, NexusDataset},
         group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
-    nexus_class,
+    nexus_class, H5String,
 };
 
 pub(super) struct Environment {
-    name: RcNexusDatasetVar<VarLenAscii>,
-    short_name: RcNexusDatasetVar<VarLenAscii>,
-    env_type: RcNexusDatasetVar<VarLenAscii>,
-    description: RcNexusDatasetVar<VarLenAscii>,
-    program: RcNexusDatasetVar<VarLenAscii>,
+    name: NexusDataset<H5String>,
+    short_name: NexusDataset<H5String>,
+    env_type: NexusDataset<H5String>,
+    description: NexusDataset<H5String>,
+    program: NexusDataset<H5String>,
     hardware_log: RcNexusGroup<Log>,
 }
 

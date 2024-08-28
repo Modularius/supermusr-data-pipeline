@@ -1,20 +1,19 @@
-use hdf5::{types::VarLenAscii, Group};
 use source::Source;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::{NexusDataset, RcNexusDatasetVar},
+        dataset::{Buildable, NexusDataset},
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
-    nexus_class,
+    nexus_class, H5String,
 };
 
 mod source;
 
 pub(super) struct Instrument {
-    name: RcNexusDatasetVar<VarLenAscii>,
+    name: NexusDataset<H5String>,
     source: RcNexusGroup<Source>,
 }
 

@@ -1,8 +1,4 @@
 use data::Data;
-use hdf5::{
-    types::{FixedAscii, TypeDescriptor, VarLenAscii},
-    Group,
-};
 use instrument::Instrument;
 use periods::Periods;
 use runlog::RunLog;
@@ -20,15 +16,15 @@ use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed},
         dataset::{
-            CanWriteScalar, NexusDataset, NxContainerAttributes, RcAttributeRegister,
-            RcNexusDatasetFixed, RcNexusDatasetVar,
+            Buildable, CanWriteScalar, NexusDataset, NexusDatasetFixed, NxContainerAttributes,
+            RcAttributeRegister,
         },
         group::{
             NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, RcGroupContentRegister,
             RcNexusGroup,
         },
     },
-    nexus_class,
+    nexus_class, H5String,
 };
 
 mod data;
@@ -41,18 +37,18 @@ mod user;
 
 #[derive(Clone)]
 struct DefinitionAttributes {
-    version: RcNexusAttributeFixed<VarLenAscii>,
-    url: RcNexusAttributeFixed<VarLenAscii>,
+    version: RcNexusAttributeFixed<H5String>,
+    url: RcNexusAttributeFixed<H5String>,
 }
 
 impl NxContainerAttributes for DefinitionAttributes {
     fn new(attribute_register: RcAttributeRegister) -> Self {
         Self {
             version: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("version", attribute_register.clone()),
             url: NexusAttribute::begin()
-                .fixed_value(VarLenAscii::from_ascii("TODO").expect(""))
+                .fixed_value("TODO".parse().expect(""))
                 .finish("URL", attribute_register.clone()),
         }
     }
@@ -80,23 +76,23 @@ impl NxContainerAttributes for ProtonChargeAttributes {
 }
 
 pub(super) struct RawData {
-    idf_version: RcNexusDatasetFixed<u32>,
-    definition: RcNexusDatasetFixed<FixedAscii<6>, DefinitionAttributes>,
-    definition_local: RcNexusDatasetFixed<FixedAscii<6>, DefinitionAttributes>,
-    program_name: RcNexusDatasetVar<VarLenAscii>,
-    run_number: RcNexusDatasetVar<u32>,
-    title: RcNexusDatasetVar<VarLenAscii>,
-    notes: RcNexusDatasetVar<VarLenAscii>,
-    start_time: RcNexusDatasetVar<VarLenAscii>,
-    end_time: RcNexusDatasetVar<VarLenAscii>,
-    duration: RcNexusDatasetVar<u32, DurationAttributes>,
-    collection_time: RcNexusDatasetVar<f64>,
-    total_counts: RcNexusDatasetVar<u32>,
-    good_frames: RcNexusDatasetVar<u32>,
-    raw_frames: RcNexusDatasetVar<u32>,
-    proton_charge: RcNexusDatasetVar<f64, ProtonChargeAttributes>,
-    experiment_identifier: RcNexusDatasetVar<VarLenAscii>,
-    run_cycle: RcNexusDatasetVar<VarLenAscii>,
+    idf_version: NexusDatasetFixed<u32>,
+    definition: NexusDatasetFixed<H5String, DefinitionAttributes>,
+    definition_local: NexusDatasetFixed<H5String, DefinitionAttributes>,
+    program_name: NexusDataset<H5String>,
+    run_number: NexusDataset<u32>,
+    title: NexusDataset<H5String>,
+    notes: NexusDataset<H5String>,
+    start_time: NexusDataset<H5String>,
+    end_time: NexusDataset<H5String>,
+    duration: NexusDataset<u32, DurationAttributes>,
+    collection_time: NexusDataset<f64>,
+    total_counts: NexusDataset<u32>,
+    good_frames: NexusDataset<u32>,
+    raw_frames: NexusDataset<u32>,
+    proton_charge: NexusDataset<f64, ProtonChargeAttributes>,
+    experiment_identifier: NexusDataset<H5String>,
+    run_cycle: NexusDataset<H5String>,
     user_1: RcNexusGroup<User>,
     run_log: RcNexusGroup<RunLog>,
     selog: RcNexusGroup<Selog>,
@@ -111,8 +107,7 @@ impl NxGroup for RawData {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         //  definition and local_definition
-        let definition =
-            NexusDataset::begin().fixed_value(FixedAscii::from_ascii("muonTD").expect(""));
+        let definition = NexusDataset::begin().fixed_value("muonTD".parse().expect(""));
 
         //  program_name
         let program_name = NexusDataset::begin();
@@ -169,27 +164,21 @@ impl<'a> NxPushMessage<RunStart<'a>> for RawData {
         self.sample.push_message(message)?;
         self.instrument.push_message(message)?;
 
-        self.program_name
-            .write_scalar(VarLenAscii::from_ascii("The Program")?)?;
+        self.program_name.write_scalar("The Program".parse()?)?;
         self.run_number.write_scalar(0)?;
-        self.title
-            .write_scalar(VarLenAscii::from_ascii("The Title")?)?;
+        self.title.write_scalar("The Title".parse()?)?;
         self.notes
-            .write_scalar(VarLenAscii::from_ascii(message.metadata().unwrap_or_default())?)?;
-        self.start_time
-            .write_scalar(VarLenAscii::from_ascii("Now")?)?;
-        self.end_time
-            .write_scalar(VarLenAscii::from_ascii("Then")?)?;
+            .write_scalar(message.metadata().unwrap_or_default().parse()?)?;
+        self.start_time.write_scalar("Now".parse()?)?;
+        self.end_time.write_scalar("Then".parse()?)?;
         self.duration.write_scalar(1)?;
         self.collection_time.write_scalar(1000.0)?;
         self.total_counts.write_scalar(1)?;
         self.good_frames.write_scalar(1)?;
         self.raw_frames.write_scalar(1)?;
         self.proton_charge.write_scalar(1.0)?;
-        self.experiment_identifier
-            .write_scalar(VarLenAscii::from_ascii("POAS35")?)?;
-        self.run_cycle
-            .write_scalar(VarLenAscii::from_ascii("This")?)?;
+        self.experiment_identifier.write_scalar("POAS35".parse()?)?;
+        self.run_cycle.write_scalar("This".parse()?)?;
         Ok(())
     }
 }

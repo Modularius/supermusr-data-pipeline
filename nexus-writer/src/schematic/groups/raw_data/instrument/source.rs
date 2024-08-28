@@ -1,27 +1,24 @@
-use hdf5::{types::VarLenAscii, Group};
-use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
-
 use crate::schematic::{
     elements::{
-        dataset::{NexusDataset, RcNexusDatasetVar},
-        group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
+        dataset::{Buildable, NexusDataset},
+        group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
-    nexus_class,
+    nexus_class, H5String,
 };
 
 pub(super) struct Source {
-    name: RcNexusDatasetVar<VarLenAscii>,
-    source_type: RcNexusDatasetVar<VarLenAscii>,
-    probe: RcNexusDatasetVar<VarLenAscii>,
-    source_frequency: RcNexusDatasetVar<VarLenAscii>,
-    source_frame_pattern: RcNexusDatasetVar<VarLenAscii>,
-    source_energy: RcNexusDatasetVar<VarLenAscii>,
-    source_current: RcNexusDatasetVar<VarLenAscii>,
+    name: NexusDataset<H5String>,
+    source_type: NexusDataset<H5String>,
+    probe: NexusDataset<H5String>,
+    source_frequency: NexusDataset<H5String>,
+    source_frame_pattern: NexusDataset<H5String>,
+    source_energy: NexusDataset<H5String>,
+    source_current: NexusDataset<H5String>,
     source_current_log: RcNexusGroup<Log>,
-    source_pulse_width: RcNexusDatasetVar<VarLenAscii>,
-    target_material: RcNexusDatasetVar<VarLenAscii>,
-    target_thickness: RcNexusDatasetVar<VarLenAscii>,
+    source_pulse_width: NexusDataset<H5String>,
+    target_material: NexusDataset<H5String>,
+    target_thickness: NexusDataset<H5String>,
 }
 
 impl NxGroup for Source {

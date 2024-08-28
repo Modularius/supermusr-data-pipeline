@@ -1,35 +1,88 @@
 use std::{marker::PhantomData, rc::Rc, sync::Mutex};
 
-use hdf5::{types::VarLenAscii, Dataset, Group, H5Type, SimpleExtents};
+use class::Class;
+use hdf5::{types::VarLenAscii, Dataset, Group, H5Type};
 use ndarray::s;
-use tracing::{info, instrument};
+use tracing::instrument;
 
 use super::{
     attribute::{NexusAttribute, NexusUnits, NxAttribute},
     group::RcGroupContentRegister,
-    MustEnterFixedValue, NxLivesInGroup,
+    NxLivesInGroup,
 };
 
 // Dataset Resizable Option
-/*
-trait DatasetResizableOption<T : H5Type> {
-    fn create_dataset(parent: &Group) -> Dataset;
-}
+mod class {
+    use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 
-struct DatasetNoResize;
-impl<T : H5Type> DatasetResizableOption<T> for DatasetNoResize {
-    fn create_dataset(parent: &Group) -> Dataset {
-        parent
-            .new_dataset_builder()
-            .with_data(&[fixed_value.clone()])
-            .create(self.name.as_str())
+    pub(crate) trait Class<T>: Clone {
+        fn create_dataset(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error>;
+    }
+
+    #[derive(Clone)]
+    pub(crate) struct Constant<T: H5Type>(pub(crate) T);
+
+    #[derive(Clone)]
+    pub(crate) struct Resizable {
+        pub(crate) initial_size: usize,
+        pub(crate) chunk_size: usize,
+    }
+
+    impl<T: H5Type> Class<T> for () {
+        fn create_dataset(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
+            let dataset = parent.new_dataset::<T>().create(name)?;
+            Ok(dataset)
+        }
+    }
+    impl<T: H5Type + Clone> Class<T> for Constant<T> {
+        fn create_dataset(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
+            let dataset = parent.new_dataset::<T>().create(name)?;
+            dataset.write_scalar(&self.0).expect("");
+            Ok(dataset)
+        }
+    }
+
+    impl<T: H5Type> Class<T> for Resizable {
+        fn create_dataset(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
+            let dataset = parent
+                .new_dataset::<T>()
+                .shape(SimpleExtents::resizable(vec![self.initial_size]))
+                .chunk(vec![self.chunk_size])
+                .create(name)?;
+            Ok(dataset)
+        }
+    }
+
+    pub(crate) mod tags {
+        use hdf5::H5Type;
+
+        pub(crate) trait Tag<T: H5Type>: Clone {
+            type ClassType: super::Class<T>;
+        }
+
+        #[derive(Clone)]
+        pub(crate) struct Constant;
+
+        #[derive(Clone)]
+        pub(crate) struct Resizable;
+
+        impl<T: H5Type> Tag<T> for () {
+            type ClassType = ();
+        }
+        impl<T: H5Type + Clone> Tag<T> for Constant {
+            type ClassType = super::Constant<T>;
+        }
+        impl<T: H5Type> Tag<T> for Resizable {
+            type ClassType = super::Resizable;
+        }
     }
 }
- */
 
-pub(crate) type RcNexusDatasetVar<T, D = ()> = Rc<Mutex<NexusDataset<T, D, false>>>;
-pub(crate) type RcNexusDatasetFixed<T, D = ()> = Rc<Mutex<NexusDataset<T, D, true>>>;
-pub(crate) type RcNexusDatasetResize<T, D = ()> = Rc<Mutex<NexusDataset<T, D, false, true>>>;
+//pub(crate) type RcNexusDatasetVar<T, D = ()> = Rc<Mutex<UnderlyingNexusDataset<T, (), D>>>;
+pub(crate) type NexusDatasetFixed<T, D = ()> =
+    Rc<Mutex<UnderlyingNexusDataset<T, D, class::tags::Constant>>>;
+pub(crate) type NexusDatasetResize<T, D = ()> =
+    Rc<Mutex<UnderlyingNexusDataset<T, D, class::tags::Resizable>>>;
 
 pub(crate) type RcAttributeRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxAttribute>>>>>;
 
@@ -47,31 +100,38 @@ impl NxContainerAttributes for () {
 
 /// NxDataset Trait
 #[derive(Default)]
-pub(crate) struct NexusDataset<
+pub(crate) struct UnderlyingNexusDataset<
     T: H5Type,
     D: NxContainerAttributes = (),
-    const F: bool = false,
-    const R: bool = false,
+    C: class::tags::Tag<T> = (),
 > {
     name: String,
-    fixed_value: Option<T>,
-    attributes: RcAttributeRegister,
-    initial_size: usize,
-    chunk_size: usize,
-    class: D,
+    attributes_register: RcAttributeRegister,
+    attributes: D,
+    class: C::ClassType,
     dataset: Option<Dataset>,
 }
 
-impl<T, D, const F: bool, const R: bool> NexusDataset<T, D, F, R>
+pub(crate) type NexusDataset<T, D = (), C = ()> = Rc<Mutex<UnderlyingNexusDataset<T, D, C>>>;
+
+pub(crate) trait Buildable<T, D, C>
 where
     T: H5Type + Clone,
     D: NxContainerAttributes,
+    C: class::tags::Tag<T>,
 {
-    pub(crate) fn begin() -> NexusDatasetBuilder<T, D, F, R, F, R> {
-        NexusDatasetBuilder::<T, D, F, R, F, R> {
-            fixed_value: None,
-            initial_size: Default::default(),
-            chunk_size: Default::default(),
+    fn begin() -> NexusDatasetBuilder<T, D, (), C>;
+}
+
+impl<T, D, C> Buildable<T, D, C> for NexusDataset<T, D, C>
+where
+    T: H5Type + Clone,
+    D: NxContainerAttributes,
+    C: class::tags::Tag<T>,
+{
+    fn begin() -> NexusDatasetBuilder<T, D, (), C> {
+        NexusDatasetBuilder {
+            class: (),
             phantom: PhantomData,
         }
     }
@@ -82,7 +142,7 @@ pub(crate) trait CanWriteScalar {
     fn write_scalar(&self, value: Self::Type) -> Result<(), hdf5::Error>;
 }
 
-impl<T, D> CanWriteScalar for Rc<Mutex<NexusDataset<T, D, false, false>>>
+impl<T, D> CanWriteScalar for NexusDataset<T, D, ()>
 where
     T: H5Type + Clone,
     D: NxContainerAttributes,
@@ -90,12 +150,12 @@ where
     type Type = T;
 
     fn write_scalar(&self, value: T) -> Result<(), hdf5::Error> {
-        if let Some(dataset) = &self.lock().expect("Can Lock").dataset {
-            info!("{}", &self.lock().expect("Can Lock").name);
-            dataset.write_scalar(&value)
-        } else {
-            panic!("Dataset Not Created")
-        }
+        self.lock()
+            .expect("Can Lock")
+            .dataset
+            .as_ref()
+            .map(|dataset| dataset.write_scalar(&value).unwrap())
+            .ok_or_else(|| hdf5::Error::Internal("No Dataset Present".to_owned()))
     }
 }
 
@@ -103,7 +163,7 @@ pub(crate) trait CanAppend {
     type Type: H5Type;
     fn append(&self, value: &[Self::Type]) -> Result<(), hdf5::Error>;
 }
-impl<T, D> CanAppend for Rc<Mutex<NexusDataset<T, D, false, true>>>
+impl<T, D> CanAppend for NexusDataset<T, D, class::tags::Resizable>
 where
     T: H5Type + Clone,
     D: NxContainerAttributes,
@@ -127,38 +187,28 @@ where
     }
 }
 
-impl<T, D, const F: bool, const R: bool> NxLivesInGroup for NexusDataset<T, D, F, R>
+impl<T, D, C> NxLivesInGroup for UnderlyingNexusDataset<T, D, C>
 where
     T: H5Type + Clone,
     D: NxContainerAttributes,
+    C: class::tags::Tag<T>,
 {
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
     fn create(&mut self, parent: &Group) -> Result<(), anyhow::Error> {
         if self.dataset.is_some() {
             Err(anyhow::anyhow!("{} dataset already open", self.name))
         } else {
-            let dataset = if R {
-                parent
-                    .new_dataset::<T>()
-                    .shape(SimpleExtents::resizable(vec![self.initial_size]))
-                    .chunk(vec![self.chunk_size])
-                    .create(self.name.as_str())
-            } else {
-                parent.new_dataset::<T>().create(self.name.as_str())
-            };
-            match dataset {
-                Ok(dataset) => {
-                    if let Some(fixed_value) = &self.fixed_value {
-                        dataset.write_scalar(fixed_value).expect("");
-                    }
-                    for attribute in self.attributes.lock().expect("Lock Exists").iter_mut() {
-                        attribute.lock().expect("Lock Exists").create(&dataset)?;
-                    }
-                    self.dataset = Some(dataset);
-                    Ok(())
-                }
-                Err(e) => Err(e.into()),
+            let dataset = self.class.create_dataset(parent, &self.name)?;
+            for attribute in self
+                .attributes_register
+                .lock()
+                .expect("Lock Exists")
+                .iter_mut()
+            {
+                attribute.lock().expect("Lock Exists").create(&dataset)?;
             }
+            self.dataset = Some(dataset);
+            Ok(())
         }
     }
 
@@ -169,7 +219,12 @@ where
         } else {
             match parent.dataset(&self.name) {
                 Ok(dataset) => {
-                    for attribute in self.attributes.lock().expect("Lock Exists").iter_mut() {
+                    for attribute in self
+                        .attributes_register
+                        .lock()
+                        .expect("Lock Exists")
+                        .iter_mut()
+                    {
                         attribute.lock().expect("Lock Exists").open(&dataset)?;
                     }
                     self.dataset = Some(dataset);
@@ -183,9 +238,14 @@ where
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
     fn close(&mut self) -> Result<(), anyhow::Error> {
         if self.dataset.is_none() {
-            Err(anyhow::anyhow!("{} dataset already open", self.name))
+            Err(anyhow::anyhow!("{} dataset already closed", self.name))
         } else {
-            for attribute in self.attributes.lock().expect("Lock Exists").iter_mut() {
+            for attribute in self
+                .attributes_register
+                .lock()
+                .expect("Lock Exists")
+                .iter_mut()
+            {
                 attribute.lock().expect("Lock Exists").close()?;
             }
             self.dataset = None;
@@ -196,82 +256,77 @@ where
 
 /// NexusDatasetBuilder
 #[derive(Clone)]
-pub(crate) struct NexusDatasetBuilder<
-    T,
-    D,
-    const F0: bool,
-    const R0: bool,
-    const F: bool,
-    const R: bool,
-> where
-    T: H5Type,
+pub(crate) struct NexusDatasetBuilder<T, D, C0, C>
+where
+    T: H5Type + Clone,
     D: NxContainerAttributes,
+    C0: class::tags::Tag<T>,
+    C: class::tags::Tag<T>,
 {
-    fixed_value: Option<T>,
-    initial_size: usize,
-    chunk_size: usize,
-    phantom: PhantomData<D>,
+    class: C0::ClassType,
+    phantom: PhantomData<(T, D, C)>,
 }
 
-impl<T, D, const F0: bool, const R0: bool> NexusDatasetBuilder<T, D, F0, R0, true, false>
+impl<T, D> NexusDatasetBuilder<T, D, (), class::tags::Constant>
 where
-    T: H5Type,
+    T: H5Type + Clone,
     D: NxContainerAttributes,
 {
-    pub(crate) fn fixed_value(self, value: T) -> NexusDatasetBuilder<T, D, F0, R0, false, false> {
+    pub(crate) fn fixed_value(
+        self,
+        value: T,
+    ) -> NexusDatasetBuilder<T, D, class::tags::Constant, ()> {
         NexusDatasetBuilder {
-            fixed_value: Some(value),
-            initial_size: self.initial_size,
-            chunk_size: self.chunk_size,
+            class: class::Constant(value),
             phantom: PhantomData,
         }
     }
 }
 
-impl<T, D, const F0: bool, const R0: bool> NexusDatasetBuilder<T, D, F0, R0, false, true>
+impl<T, D> NexusDatasetBuilder<T, D, (), class::tags::Resizable>
 where
-    T: H5Type,
+    T: H5Type + Clone,
     D: NxContainerAttributes,
 {
     pub(crate) fn resizable(
         self,
         initial_size: usize,
         chunk_size: usize,
-    ) -> NexusDatasetBuilder<T, D, F0, R0, false, false> {
+    ) -> NexusDatasetBuilder<T, D, class::tags::Resizable, ()> {
         NexusDatasetBuilder {
-            fixed_value: self.fixed_value,
-            initial_size,
-            chunk_size,
+            class: class::Resizable {
+                initial_size,
+                chunk_size,
+            },
             phantom: PhantomData,
         }
     }
 }
 
-impl<T, D, const F0: bool, const R0: bool> NexusDatasetBuilder<T, D, F0, R0, false, false>
+impl<T, D, C0> NexusDatasetBuilder<T, D, C0, ()>
 where
     T: H5Type + Clone,
-    D: NxContainerAttributes + Clone + 'static,
+    D: NxContainerAttributes + 'static,
+    C0: class::tags::Tag<T> + 'static,
 {
     pub(crate) fn finish(
         self,
         name: &str,
         parent_content_register: RcGroupContentRegister,
-    ) -> Rc<Mutex<NexusDataset<T, D, F0, R0>>> {
-        let attributes = RcAttributeRegister::new(Mutex::new(Vec::new()));
+    ) -> NexusDataset<T, D, C0> {
+        let attributes_register = RcAttributeRegister::new(Mutex::new(Vec::new()));
 
         if let Some(units) = D::UNITS {
             NexusAttribute::begin()
                 .fixed_value(VarLenAscii::from_ascii(&units.to_string()).expect(""))
-                .finish("units", attributes.clone());
+                .finish("units", attributes_register.clone());
         }
 
-        let rc = Rc::new(Mutex::new(NexusDataset::<_, _, F0, R0> {
+        let rc = Rc::new(Mutex::new(UnderlyingNexusDataset {
             name: name.to_owned(),
-            fixed_value: self.fixed_value,
-            initial_size: self.initial_size,
-            chunk_size: self.chunk_size,
-            class: D::new(attributes.clone()),
-            attributes,
+            attributes: D::new(attributes_register.clone()),
+            attributes_register,
+            class: self.class,
             dataset: None,
         }));
         parent_content_register

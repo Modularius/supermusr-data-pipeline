@@ -1,5 +1,4 @@
-use dataset::NxContainerAttributes;
-use hdf5::{Group, Location};
+use hdf5::Group;
 
 pub(crate) mod attribute;
 pub(crate) mod dataset;

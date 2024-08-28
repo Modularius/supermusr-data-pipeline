@@ -1,4 +1,3 @@
-use hdf5::types::VarLenAscii;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
@@ -6,19 +5,22 @@ use supermusr_streaming_types::{
 
 use crate::{
     nexus::nexus_class,
-    schematic::elements::{
-        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
-        dataset::{
-            CanAppend, NexusDataset, NxContainerAttributes, RcAttributeRegister,
-            RcNexusDatasetResize,
+    schematic::{
+        elements::{
+            attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
+            dataset::{
+                Buildable, CanAppend, NexusDataset, NexusDatasetResize, NxContainerAttributes,
+                RcAttributeRegister,
+            },
+            group::{NxGroup, NxPushMessage, RcGroupContentRegister},
         },
-        group::{NxGroup, NxPushMessage, RcGroupContentRegister},
+        H5String,
     },
 };
 
 #[derive(Clone)]
 struct TimeAttributes {
-    offset: RcNexusAttributeVar<VarLenAscii>,
+    offset: RcNexusAttributeVar<H5String>,
 }
 
 impl NxContainerAttributes for TimeAttributes {
@@ -32,8 +34,8 @@ impl NxContainerAttributes for TimeAttributes {
 }
 
 pub(super) struct Log {
-    time: RcNexusDatasetResize<i64, TimeAttributes>,
-    value: RcNexusDatasetResize<u32>,
+    time: NexusDatasetResize<i64, TimeAttributes>,
+    value: NexusDatasetResize<u32>,
 }
 
 impl NxGroup for Log {
@@ -63,11 +65,11 @@ impl<'a> NxPushMessage<f144_LogData<'a>> for Log {
 }
 
 pub(super) struct ValueLog {
-    alarm_severity: RcNexusDatasetResize<VarLenAscii>,
-    alarm_status: RcNexusDatasetResize<VarLenAscii>,
-    alarm_time: RcNexusDatasetResize<i64>,
-    time: RcNexusDatasetResize<i64, TimeAttributes>,
-    value: RcNexusDatasetResize<u32>,
+    alarm_severity: NexusDatasetResize<H5String>,
+    alarm_status: NexusDatasetResize<H5String>,
+    alarm_time: NexusDatasetResize<i64>,
+    time: NexusDatasetResize<i64, TimeAttributes>,
+    value: NexusDatasetResize<u32>,
 }
 
 impl NxGroup for ValueLog {
@@ -116,12 +118,14 @@ impl<'a> NxPushMessage<Alarm<'a>> for ValueLog {
     type MessageType = Alarm<'a>;
 
     fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
-        self.alarm_severity
-            .append(&[
-                VarLenAscii::from_ascii(message.severity().variant_name().unwrap()).unwrap(),
-            ])?;
+        self.alarm_severity.append(&[message
+            .severity()
+            .variant_name()
+            .unwrap()
+            .parse()
+            .unwrap()])?;
         self.alarm_status
-            .append(&[VarLenAscii::from_ascii(message.message().unwrap()).unwrap()])?;
+            .append(&[message.message().unwrap().parse().unwrap()])?;
         self.alarm_time.append(&[message.timestamp()])?;
         Ok(())
     }
