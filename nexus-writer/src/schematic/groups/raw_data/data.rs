@@ -4,10 +4,9 @@ use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
         dataset::{
-            Buildable, CanAppend, NexusDataset, NexusDatasetResize, NxContainerAttributes,
-            RcAttributeRegister,
+            AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset
         },
-        group::{NxGroup, NxPushMessage, RcGroupContentRegister},
+        group::{NxGroup, NxPushMessage, RcGroupContentRegister},traits::{Buildable, CanAppend},
     },
     nexus_class, H5String,
 };
@@ -15,10 +14,10 @@ use crate::schematic::{
 #[derive(Clone)]
 struct EventTimeOffsetAttributes {}
 
-impl NxContainerAttributes for EventTimeOffsetAttributes {
+impl NxDataset for EventTimeOffsetAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
 
-    fn new(_attribute_register: RcAttributeRegister) -> Self {
+    fn new(_attribute_register: AttributeRegister) -> Self {
         Self {}
     }
 }
@@ -28,10 +27,10 @@ struct EventTimeZeroAttributes {
     offset: RcNexusAttributeVar<H5String>,
 }
 
-impl NxContainerAttributes for EventTimeZeroAttributes {
+impl NxDataset for EventTimeZeroAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
 
-    fn new(attribute_register: RcAttributeRegister) -> Self {
+    fn new(attribute_register: AttributeRegister) -> Self {
         Self {
             offset: NexusAttribute::begin().finish("offset", attribute_register.clone()),
         }
@@ -52,24 +51,24 @@ impl NxGroup for Data {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            event_id: NexusDataset::begin()
+            event_id: NexusDataset::begin("event_id")
                 .resizable(0, 128)
-                .finish("event_id", dataset_register.clone()),
-            event_index: NexusDataset::begin()
+                .finish(&dataset_register),
+            event_index: NexusDataset::begin("event_index")
                 .resizable(0, 128)
-                .finish("event_index", dataset_register.clone()),
-            event_time_offset: NexusDataset::begin()
+                .finish(&dataset_register),
+            event_time_offset: NexusDataset::begin("event_time_offset")
                 .resizable(0, 128)
-                .finish("event_time_offset", dataset_register.clone()),
-            event_time_zero: NexusDataset::begin()
+                .finish(&dataset_register),
+            event_time_zero: NexusDataset::begin("event_time_zero")
                 .resizable(0, 128)
-                .finish("event_time_zero", dataset_register.clone()),
-            event_period_number: NexusDataset::begin()
+                .finish(&dataset_register),
+            event_period_number: NexusDataset::begin("event_period_number")
                 .resizable(0, 128)
-                .finish("event_period_number", dataset_register.clone()),
-            event_pulse_height: NexusDataset::begin()
+                .finish(&dataset_register),
+            event_pulse_height: NexusDataset::begin("event_pulse_height")
                 .resizable(0, 128)
-                .finish("event_pulse_height", dataset_register.clone()),
+                .finish(&dataset_register),
         }
     }
 }

@@ -9,10 +9,9 @@ use crate::{
         elements::{
             attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
             dataset::{
-                Buildable, CanAppend, NexusDataset, NexusDatasetResize, NxContainerAttributes,
-                RcAttributeRegister,
+                AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset
             },
-            group::{NxGroup, NxPushMessage, RcGroupContentRegister},
+            group::{NxGroup, NxPushMessage, RcGroupContentRegister}, traits::{Buildable, CanAppend},
         },
         H5String,
     },
@@ -23,10 +22,10 @@ struct TimeAttributes {
     offset: RcNexusAttributeVar<H5String>,
 }
 
-impl NxContainerAttributes for TimeAttributes {
+impl NxDataset for TimeAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
 
-    fn new(attribute_register: RcAttributeRegister) -> Self {
+    fn new(attribute_register: AttributeRegister) -> Self {
         Self {
             offset: NexusAttribute::begin().finish("offset", attribute_register.clone()),
         }
@@ -43,12 +42,12 @@ impl NxGroup for Log {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            time: NexusDataset::begin()
+            time: NexusDataset::begin("time")
                 .resizable(0, 128)
-                .finish("time", dataset_register.clone()),
-            value: NexusDataset::begin()
+                .finish(&dataset_register),
+            value: NexusDataset::begin("value")
                 .resizable(0, 128)
-                .finish("value", dataset_register.clone()),
+                .finish(&dataset_register),
         }
     }
 }
@@ -77,21 +76,21 @@ impl NxGroup for ValueLog {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            alarm_severity: NexusDataset::begin()
+            alarm_severity: NexusDataset::begin("alarm_severity")
                 .resizable(0, 128)
-                .finish("alarm_severity", dataset_register.clone()),
-            alarm_status: NexusDataset::begin()
+                .finish(&dataset_register),
+            alarm_status: NexusDataset::begin("alarm_status")
                 .resizable(0, 128)
-                .finish("alarm_status", dataset_register.clone()),
-            alarm_time: NexusDataset::begin()
+                .finish(&dataset_register),
+            alarm_time: NexusDataset::begin("alarm_time")
                 .resizable(0, 128)
-                .finish("alarm_time", dataset_register.clone()),
-            time: NexusDataset::begin()
+                .finish(&dataset_register),
+            time: NexusDataset::begin("time")
                 .resizable(0, 128)
-                .finish("time", dataset_register.clone()),
-            value: NexusDataset::begin()
+                .finish(&dataset_register),
+            value: NexusDataset::begin("value")
                 .resizable(0, 128)
-                .finish("value", dataset_register.clone()),
+                .finish(&dataset_register),
         }
     }
 }

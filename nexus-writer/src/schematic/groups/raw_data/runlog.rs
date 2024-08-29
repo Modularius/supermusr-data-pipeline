@@ -38,7 +38,7 @@ impl<'a> NxPushMessageMut<f144_LogData<'a>> for RunLog {
             log.push_message(message)?;
         } else {
             let log =
-                NexusGroup::<Log>::new(message.source_name(), Some(self.dataset_register.clone()));
+                NexusGroup::<Log>::new(message.source_name(), &self.dataset_register);
             log.push_message(message)?;
             self.logs.push(log);
         }

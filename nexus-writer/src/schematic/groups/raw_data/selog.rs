@@ -38,7 +38,7 @@ impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for Selog {
             selog.push_message(message)?;
         } else {
             let selog_block =
-                NexusGroup::<SelogBlock>::new(message.name(), Some(self.dataset_register.clone()));
+                NexusGroup::<SelogBlock>::new(message.name(), &self.dataset_register);
             selog_block.push_message(message)?;
             self.selogs.push(selog_block);
         }
@@ -57,7 +57,7 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for Selog {
         } else {
             let selog_block = NexusGroup::<SelogBlock>::new(
                 message.source_name().expect(""),
-                Some(self.dataset_register.clone()),
+                &self.dataset_register,
             );
             selog_block.push_message(message)?;
             self.selogs.push(selog_block);
@@ -75,7 +75,7 @@ impl NxGroup for SelogBlock {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            value_log: NexusGroup::new("value_log", Some(dataset_register.clone())),
+            value_log: NexusGroup::new("value_log", &dataset_register),
         }
     }
 }

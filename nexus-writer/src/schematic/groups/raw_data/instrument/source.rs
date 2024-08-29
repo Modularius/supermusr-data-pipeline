@@ -1,7 +1,7 @@
 use crate::schematic::{
     elements::{
-        dataset::{Buildable, NexusDataset},
-        group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup},
+        dataset::NexusDataset,
+        group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup}, traits::Buildable,
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -26,23 +26,19 @@ impl NxGroup for Source {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin().finish("name", dataset_register.clone()),
-            source_type: NexusDataset::begin().finish("source_type", dataset_register.clone()),
-            probe: NexusDataset::begin().finish("probe", dataset_register.clone()),
-            source_frequency: NexusDataset::begin()
-                .finish("source_frequency", dataset_register.clone()),
-            source_frame_pattern: NexusDataset::begin()
-                .finish("source_frame_pattern", dataset_register.clone()),
-            source_energy: NexusDataset::begin().finish("source_energy", dataset_register.clone()),
-            source_current: NexusDataset::begin()
-                .finish("source_current", dataset_register.clone()),
-            source_current_log: NexusGroup::new("source_current_log", None),
-            source_pulse_width: NexusDataset::begin()
-                .finish("source_pulse_width", dataset_register.clone()),
-            target_material: NexusDataset::begin()
-                .finish("target_material", dataset_register.clone()),
-            target_thickness: NexusDataset::begin()
-                .finish("target_thickness", dataset_register.clone()),
+            name: NexusDataset::begin("name").finish(&dataset_register),
+            source_type: NexusDataset::begin("source_type").finish(&dataset_register),
+            probe: NexusDataset::begin("probe").finish(&dataset_register),
+            source_frequency: NexusDataset::begin("source_frequency").finish(&dataset_register),
+            source_frame_pattern: NexusDataset::begin("source_frame_pattern")
+                .finish(&dataset_register),
+            source_energy: NexusDataset::begin("source_energy").finish(&dataset_register),
+            source_current: NexusDataset::begin("tarsource_currentget_thickness")
+                .finish(&dataset_register),
+            source_current_log: NexusGroup::new("source_current_log", &dataset_register),
+            source_pulse_width: NexusDataset::begin("source_pulse_width").finish(&dataset_register),
+            target_material: NexusDataset::begin("target_material").finish(&dataset_register),
+            target_thickness: NexusDataset::begin("target_thickness").finish(&dataset_register),
         }
     }
 }

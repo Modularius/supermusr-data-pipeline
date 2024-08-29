@@ -3,7 +3,7 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::{Buildable, NexusDataset},
+        dataset::NexusDataset,traits::Buildable,
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
@@ -22,8 +22,8 @@ impl NxGroup for Instrument {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin().finish("name", dataset_register.clone()),
-            source: NexusGroup::new("source", Some(dataset_register)),
+            name: NexusDataset::begin("name").finish(&dataset_register),
+            source: NexusGroup::new("source", &dataset_register),
         }
     }
 }

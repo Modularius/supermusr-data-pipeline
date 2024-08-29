@@ -13,7 +13,7 @@ use crate::schematic::elements::{
 use super::{
     elements::{
         attribute::{RcNexusAttributeFixed, RcNexusAttributeVar},
-        dataset::{NxContainerAttributes, RcAttributeRegister},
+        dataset::{NxDataset, AttributeRegister},
         group::{NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
     },
     nexus_class, H5String,
@@ -33,8 +33,8 @@ struct RawData1Attributes {
     creator: RcNexusAttributeFixed<H5String>,
 }
 
-impl NxContainerAttributes for RawData1Attributes {
-    fn new(attribute_register: RcAttributeRegister) -> Self {
+impl NxDataset for RawData1Attributes {
+    fn new(attribute_register: AttributeRegister) -> Self {
         Self {
             file_name: NexusAttribute::begin().finish("file_name", attribute_register.clone()),
             file_time: NexusAttribute::begin().finish("file_time", attribute_register.clone()),
@@ -69,7 +69,7 @@ impl NxGroup for NXRoot {
 
     fn new(database_register: RcGroupContentRegister) -> Self {
         Self {
-            raw_data_1: NexusGroup::new("raw_data_1", Some(database_register)),
+            raw_data_1: NexusGroup::new("raw_data_1", &database_register),
         }
     }
 }

@@ -3,7 +3,7 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, RcNexusAttributeVar},
-        dataset::{Buildable, NexusDataset, NxContainerAttributes, RcAttributeRegister},
+        dataset::{NexusDataset, NxDataset, AttributeRegister},traits::Buildable,
         group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
@@ -15,8 +15,8 @@ struct FramesRequestedAttributes {
     frame_type: RcNexusAttributeVar<H5String>,
 }
 
-impl NxContainerAttributes for FramesRequestedAttributes {
-    fn new(attribute_register: RcAttributeRegister) -> Self {
+impl NxDataset for FramesRequestedAttributes {
+    fn new(attribute_register: AttributeRegister) -> Self {
         Self {
             frame_type: NexusAttribute::begin().finish("frame_type", attribute_register.clone()),
         }
@@ -28,8 +28,8 @@ struct LabelsAttributes {
     separator: RcNexusAttributeVar<H5String>,
 }
 
-impl NxContainerAttributes for LabelsAttributes {
-    fn new(attribute_register: RcAttributeRegister) -> Self {
+impl NxDataset for LabelsAttributes {
+    fn new(attribute_register: AttributeRegister) -> Self {
         Self {
             separator: NexusAttribute::begin().finish("separator", attribute_register.clone()),
         }
@@ -53,16 +53,15 @@ impl NxGroup for Periods {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            number: NexusDataset::begin().finish("number", dataset_register.clone()),
-            period_types: NexusDataset::begin().finish("type", dataset_register.clone()),
-            frames_requested: NexusDataset::begin()
-                .finish("frames_requested", dataset_register.clone()),
-            output: NexusDataset::begin().finish("output", dataset_register.clone()),
-            labels: NexusDataset::begin().finish("labels", dataset_register.clone()),
-            raw_frames: NexusDataset::begin().finish("raw_frames", dataset_register.clone()),
-            good_frames: NexusDataset::begin().finish("good_frames", dataset_register.clone()),
-            sequences: NexusDataset::begin().finish("sequences", dataset_register.clone()),
-            counts: NexusGroup::new("counts", Some(dataset_register)),
+            number: NexusDataset::begin("number").finish(&dataset_register),
+            period_types: NexusDataset::begin("type").finish(&dataset_register),
+            frames_requested: NexusDataset::begin("frames_requested").finish(&dataset_register),
+            output: NexusDataset::begin("output").finish(&dataset_register),
+            labels: NexusDataset::begin("labels").finish(&dataset_register),
+            raw_frames: NexusDataset::begin("raw_frames").finish(&dataset_register),
+            good_frames: NexusDataset::begin("good_frames").finish(&dataset_register),
+            sequences: NexusDataset::begin("sequences").finish(&dataset_register),
+            counts: NexusGroup::new("counts", &dataset_register),
         }
     }
 }

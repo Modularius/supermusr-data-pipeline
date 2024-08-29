@@ -36,9 +36,22 @@ pub(crate) struct NexusGroup<G: NxGroup> {
 
 impl<G: NxGroup + 'static> NexusGroup<G> {
     #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
+    pub(crate) fn new_toplevel(
+        name: &str
+    ) -> Rc<Mutex<Self>> {
+        let content_register = RcGroupContentRegister::new(Vec::new().into());
+        Rc::new(Mutex::new(Self {
+            name: name.to_owned(),
+            class: G::new(content_register.clone()),
+            group: None,
+            content_register,
+        }))
+    }
+
+    #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
     pub(crate) fn new(
         name: &str,
-        parent_content_register: Option<RcGroupContentRegister>,
+        parent_content_register: &RcGroupContentRegister,
     ) -> Rc<Mutex<Self>> {
         let content_register = RcGroupContentRegister::new(Vec::new().into());
         let rc = Rc::new(Mutex::new(Self {
@@ -47,12 +60,10 @@ impl<G: NxGroup + 'static> NexusGroup<G> {
             group: None,
             content_register,
         }));
-        if let Some(parent_content_register) = parent_content_register {
-            parent_content_register
-                .lock()
-                .expect("Lock Exists")
-                .push(rc.clone());
-        }
+        parent_content_register
+            .lock()
+            .expect("Lock Exists")
+            .push(rc.clone());
         rc
     }
 

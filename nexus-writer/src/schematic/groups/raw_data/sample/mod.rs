@@ -4,7 +4,7 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::{Buildable, NexusDataset},
+        dataset::NexusDataset,traits::Buildable,
         group::{NxGroup, NxPushMessage, RcGroupContentRegister},
     },
     nexus_class, H5String,
@@ -44,16 +44,14 @@ impl NxGroup for Sample {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin().finish("name", dataset_register.clone()),
-            chemical_formula: NexusDataset::begin()
-                .finish("chemical_formula", dataset_register.clone()),
-            description: NexusDataset::begin().finish("description", dataset_register.clone()),
-            sample_type: NexusDataset::begin().finish("sample_type", dataset_register.clone()),
-            situation: NexusDataset::begin().finish("situation", dataset_register.clone()),
-            shape: NexusDataset::begin().finish("shape", dataset_register.clone()),
-            preparation_date: NexusDataset::begin()
-                .finish("preparation_date", dataset_register.clone()),
-            sample_holder: NexusDataset::begin().finish("sample_holder", dataset_register),
+            name: NexusDataset::begin("name").finish(&dataset_register),
+            chemical_formula: NexusDataset::begin("chemical_formula").finish(&dataset_register),
+            description: NexusDataset::begin("description").finish(&dataset_register),
+            sample_type: NexusDataset::begin("sample_type").finish(&dataset_register),
+            situation: NexusDataset::begin("situation").finish(&dataset_register),
+            shape: NexusDataset::begin("shape").finish(&dataset_register),
+            preparation_date: NexusDataset::begin("preparation_date").finish(&dataset_register),
+            sample_holder: NexusDataset::begin("sample_holder").finish(&dataset_register),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
             sample_component: NexusDataset::begin().finish("sample_component"),

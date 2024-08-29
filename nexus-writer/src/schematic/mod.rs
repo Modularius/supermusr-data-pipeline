@@ -39,13 +39,12 @@ impl Nexus {
     pub(crate) fn new(filename: &Path) -> anyhow::Result<Self> {
         Ok(Self {
             file: Some(File::create(filename).expect("")),
-            nx_root: NexusGroup::new(
+            nx_root: NexusGroup::new_toplevel(
                 filename
                     .file_name()
                     .ok_or(anyhow::anyhow!("Path Error: {filename:?}"))?
                     .to_str()
-                    .ok_or(anyhow::anyhow!("Conversion Error: {filename:?}"))?,
-                None,
+                    .ok_or(anyhow::anyhow!("Conversion Error: {filename:?}"))?
             ),
         })
     }

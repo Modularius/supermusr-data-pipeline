@@ -4,7 +4,7 @@ use hdf5::{Attribute, Dataset, H5Type};
 use tracing::instrument;
 
 use super::{
-    dataset::RcAttributeRegister, FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded,
+    dataset::AttributeRegister, FixedValueOption, MustEnterFixedValue, NoFixedValueNeeded,
 };
 
 #[derive(strum::Display)]
@@ -111,7 +111,7 @@ impl<T: H5Type + Clone, F0: FixedValueOption + 'static>
     pub(crate) fn finish(
         self,
         name: &str,
-        register: RcAttributeRegister,
+        register: AttributeRegister,
     ) -> Rc<Mutex<NexusAttribute<T, F0>>> {
         let rc = Rc::new(Mutex::new(NexusAttribute {
             name: name.to_owned(),

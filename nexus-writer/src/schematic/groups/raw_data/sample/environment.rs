@@ -1,6 +1,6 @@
 use crate::schematic::{
     elements::{
-        dataset::{Buildable, NexusDataset},
+        dataset::NexusDataset,traits::Buildable,
         group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup},
     },
     groups::log::Log,
@@ -21,12 +21,12 @@ impl NxGroup for Environment {
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin().finish("name", dataset_register.clone()),
-            short_name: NexusDataset::begin().finish("short_name", dataset_register.clone()),
-            env_type: NexusDataset::begin().finish("env_type", dataset_register.clone()),
-            description: NexusDataset::begin().finish("description", dataset_register.clone()),
-            program: NexusDataset::begin().finish("program", dataset_register.clone()),
-            hardware_log: NexusGroup::new("hardware_log", None),
+            name: NexusDataset::begin("name").finish(&dataset_register),
+            short_name: NexusDataset::begin("short_name").finish(&dataset_register),
+            env_type: NexusDataset::begin("env_type").finish(&dataset_register),
+            description: NexusDataset::begin("description").finish(&dataset_register),
+            program: NexusDataset::begin("program").finish(&dataset_register),
+            hardware_log: NexusGroup::new("hardware_log", &dataset_register),
         }
     }
 }

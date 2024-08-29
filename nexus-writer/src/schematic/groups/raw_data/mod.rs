@@ -16,13 +16,12 @@ use crate::schematic::{
     elements::{
         attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed},
         dataset::{
-            Buildable, CanWriteScalar, NexusDataset, NexusDatasetFixed, NxContainerAttributes,
-            RcAttributeRegister,
+            AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset
         },
         group::{
             NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, RcGroupContentRegister,
             RcNexusGroup,
-        },
+        },traits::{Buildable, CanWriteScalar},
     },
     nexus_class, H5String,
 };
@@ -41,8 +40,8 @@ struct DefinitionAttributes {
     url: RcNexusAttributeFixed<H5String>,
 }
 
-impl NxContainerAttributes for DefinitionAttributes {
-    fn new(attribute_register: RcAttributeRegister) -> Self {
+impl NxDataset for DefinitionAttributes {
+    fn new(attribute_register: AttributeRegister) -> Self {
         Self {
             version: NexusAttribute::begin()
                 .fixed_value("TODO".parse().expect(""))
@@ -56,10 +55,10 @@ impl NxContainerAttributes for DefinitionAttributes {
 
 #[derive(Clone)]
 struct DurationAttributes;
-impl NxContainerAttributes for DurationAttributes {
+impl NxDataset for DurationAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Seconds);
 
-    fn new(_attribute_register: RcAttributeRegister) -> Self {
+    fn new(_attribute_register: AttributeRegister) -> Self {
         Self
     }
 }
@@ -67,10 +66,10 @@ impl NxContainerAttributes for DurationAttributes {
 #[derive(Clone)]
 struct ProtonChargeAttributes;
 
-impl NxContainerAttributes for ProtonChargeAttributes {
+impl NxDataset for ProtonChargeAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::MicroAmpHours);
 
-    fn new(_attribute_register: RcAttributeRegister) -> Self {
+    fn new(_attribute_register: AttributeRegister) -> Self {
         Self
     }
 }
@@ -106,43 +105,38 @@ impl NxGroup for RawData {
     const CLASS_NAME: &'static str = nexus_class::ENTRY;
 
     fn new(dataset_register: RcGroupContentRegister) -> Self {
-        //  definition and local_definition
-        let definition = NexusDataset::begin().fixed_value("muonTD".parse().expect(""));
-
-        //  program_name
-        let program_name = NexusDataset::begin();
-
         Self {
-            idf_version: NexusDataset::begin()
+            idf_version: NexusDataset::begin("idf_version")
                 .fixed_value(2)
-                .finish("idf_version", dataset_register.clone()),
-            definition: definition
-                .clone()
-                .finish("definition", dataset_register.clone()),
-            definition_local: definition.finish("definition_local", dataset_register.clone()),
-            program_name: program_name.finish("program_name", dataset_register.clone()),
-            run_number: NexusDataset::begin().finish("run_number", dataset_register.clone()),
-            title: NexusDataset::begin().finish("title", dataset_register.clone()),
-            notes: NexusDataset::begin().finish("notes", dataset_register.clone()),
-            start_time: NexusDataset::begin().finish("start_time", dataset_register.clone()),
-            end_time: NexusDataset::begin().finish("end_time", dataset_register.clone()),
-            duration: NexusDataset::begin().finish("duration", dataset_register.clone()),
-            collection_time: NexusDataset::begin()
-                .finish("collection_time", dataset_register.clone()),
-            total_counts: NexusDataset::begin().finish("total_counts", dataset_register.clone()),
-            good_frames: NexusDataset::begin().finish("good_frames", dataset_register.clone()),
-            raw_frames: NexusDataset::begin().finish("raw_frames", dataset_register.clone()),
-            proton_charge: NexusDataset::begin().finish("proton_charge", dataset_register.clone()),
-            experiment_identifier: NexusDataset::begin()
-                .finish("experiment_identifier", dataset_register.clone()),
-            run_cycle: NexusDataset::begin().finish("run_cycle", dataset_register.clone()),
-            user_1: NexusGroup::new("user_1", Some(dataset_register.clone())),
-            run_log: NexusGroup::new("run_log", Some(dataset_register.clone())),
-            selog: NexusGroup::new("selog", Some(dataset_register.clone())),
-            periods: NexusGroup::new("periods", Some(dataset_register.clone())),
-            sample: NexusGroup::new("sample", Some(dataset_register.clone())),
-            instrument: NexusGroup::new("instrument", Some(dataset_register.clone())),
-            detector_1: NexusGroup::new("detector_1", Some(dataset_register.clone())),
+                .finish(&dataset_register),
+            definition: NexusDataset::begin("definition")
+                .fixed_value("muonTD".parse().expect(""))
+                .finish(&dataset_register),
+            definition_local: NexusDataset::begin("definition_local")
+                .fixed_value("muonTD".parse().expect(""))
+                .finish(&dataset_register),
+            program_name: NexusDataset::begin("program_name").finish(&dataset_register),
+            run_number: NexusDataset::begin("run_number").finish(&dataset_register),
+            title: NexusDataset::begin("title").finish(&dataset_register),
+            notes: NexusDataset::begin("notes").finish(&dataset_register),
+            start_time: NexusDataset::begin("start_time").finish(&dataset_register),
+            end_time: NexusDataset::begin("end_time").finish(&dataset_register),
+            duration: NexusDataset::begin("duration").finish(&dataset_register),
+            collection_time: NexusDataset::begin("collection_time").finish(&dataset_register),
+            total_counts: NexusDataset::begin("total_counts").finish(&dataset_register),
+            good_frames: NexusDataset::begin("good_frames").finish(&dataset_register),
+            raw_frames: NexusDataset::begin("raw_frames").finish(&dataset_register),
+            proton_charge: NexusDataset::begin("proton_charge").finish(&dataset_register),
+            experiment_identifier: NexusDataset::begin("experiment_identifier")
+                .finish(&dataset_register),
+            run_cycle: NexusDataset::begin("run_cycle").finish(&dataset_register),
+            user_1: NexusGroup::new("user_1", &dataset_register),
+            run_log: NexusGroup::new("run_log", &dataset_register),
+            selog: NexusGroup::new("selog", &dataset_register),
+            periods: NexusGroup::new("periods", &dataset_register),
+            sample: NexusGroup::new("sample", &dataset_register),
+            instrument: NexusGroup::new("instrument", &dataset_register),
+            detector_1: NexusGroup::new("detector_1", &dataset_register),
         }
     }
 }
