@@ -28,7 +28,7 @@ pub(crate) mod tags {
 }
 
 //  Traits for Dataset and Attribute
-pub(crate) trait Buildable<T, D, C>
+pub(crate) trait Buildable<T>
 where
     T: H5Type + Clone,
 {
