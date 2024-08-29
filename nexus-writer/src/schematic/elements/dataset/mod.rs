@@ -1,17 +1,32 @@
 use builder::NexusDatasetBuilder;
 use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
+use underlying::UnderlyingNexusDataset;
 use std::{rc::Rc, sync::Mutex};
 use super::{
-    attribute::{NexusUnits, NxAttribute}, traits::{Buildable, CanAppend, CanWriteScalar, Class}, NxLivesInGroup
+    attribute::{NexusUnits, NxAttribute}, traits::{Buildable, CanAppend, CanWriteScalar}
 };
 use tracing::instrument;
 use crate::schematic::elements::traits;
 
 mod builder;
+mod underlying;
 
-// Implement Database Classes 
 
+/// NxDataset Trait
+pub(crate) trait NxDataset: Sized {
+    const UNITS: Option<NexusUnits> = None;
+
+    fn new(attribute_register: AttributeRegister) -> Self;
+}
+
+impl NxDataset for () {
+    fn new(_attribute_register: AttributeRegister) -> Self {
+        Default::default()
+    }
+}
+
+/// Class Implementation
 impl<T: H5Type> traits::Class<T, Dataset> for () {
     fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
         let dataset = parent.new_dataset::<T>().create(name)?;
@@ -38,6 +53,7 @@ impl<T: H5Type> traits::Class<T, Dataset> for traits::Resizable {
 }
 
 
+/// Class Tag Implementation
 impl<T: H5Type> traits::tags::Tag<T, Dataset> for () {
     type ClassType = ();
 }
@@ -48,39 +64,15 @@ impl<T: H5Type> traits::tags::Tag<T, Dataset> for traits::tags::Resizable {
     type ClassType = traits::Resizable;
 }
 
-// Aliases to hide the class structrure
-pub(crate) type NexusDatasetFixed<T, D = ()> =
-    Rc<Mutex<UnderlyingNexusDataset<T, D, traits::tags::Constant>>>;
-pub(crate) type NexusDatasetResize<T, D = ()> =
-    Rc<Mutex<UnderlyingNexusDataset<T, D, traits::tags::Resizable>>>;
-
+/// Defining Types
+pub(crate) type NexusDataset<T, D = (), C = ()> = Rc<Mutex<UnderlyingNexusDataset<T, D, C>>>;
 pub(crate) type AttributeRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxAttribute>>>>>;
 
-/// NxDataset Trait
-pub(crate) trait NxDataset: Sized {
-    const UNITS: Option<NexusUnits> = None;
+// Aliases to hide the class structrure
+pub(crate) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, traits::tags::Constant>;
+pub(crate) type NexusDatasetResize<T, D = ()> = NexusDataset<T, D, traits::tags::Resizable>;
 
-    fn new(attribute_register: AttributeRegister) -> Self;
-}
-
-impl NxDataset for () {
-    fn new(_attribute_register: AttributeRegister) -> Self {
-        Default::default()
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct UnderlyingNexusDataset<T: H5Type, D: NxDataset = (), C: traits::tags::Tag<T,Dataset> = ()>
-{
-    name: String,
-    attributes_register: AttributeRegister,
-    attributes: D,
-    class: C::ClassType,
-    dataset: Option<Dataset>,
-}
-
-pub(crate) type NexusDataset<T, D = (), C = ()> = Rc<Mutex<UnderlyingNexusDataset<T, D, C>>>;
-
+// Dataset Implementations
 impl<T, D, C> Buildable<T, D, C> for NexusDataset<T, D, C>
 where
     T: H5Type + Clone,
@@ -133,71 +125,3 @@ where
             })
     }
 }
-
-impl<T, D, C> NxLivesInGroup for UnderlyingNexusDataset<T, D, C>
-where
-    T: H5Type + Clone,
-    D: NxDataset,
-    C: traits::tags::Tag<T,Dataset>,
-{
-    #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn create(&mut self, parent: &Group) -> Result<(), anyhow::Error> {
-        if self.dataset.is_some() {
-            Err(anyhow::anyhow!("{} dataset already open", self.name))
-        } else {
-            let dataset = self.class.create(parent, &self.name)?;
-            for attribute in self
-                .attributes_register
-                .lock()
-                .expect("Lock Exists")
-                .iter_mut()
-            {
-                attribute.lock().expect("Lock Exists").create(&dataset)?;
-            }
-            self.dataset = Some(dataset);
-            Ok(())
-        }
-    }
-
-    #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn open(&mut self, parent: &Group) -> Result<(), anyhow::Error> {
-        if self.dataset.is_some() {
-            Err(anyhow::anyhow!("{} dataset already open", self.name))
-        } else {
-            match parent.dataset(&self.name) {
-                Ok(dataset) => {
-                    for attribute in self
-                        .attributes_register
-                        .lock()
-                        .expect("Lock Exists")
-                        .iter_mut()
-                    {
-                        attribute.lock().expect("Lock Exists").open(&dataset)?;
-                    }
-                    self.dataset = Some(dataset);
-                    Ok(())
-                }
-                Err(e) => Err(e.into()),
-            }
-        }
-    }
-
-    #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn close(&mut self) -> Result<(), anyhow::Error> {
-        if self.dataset.is_none() {
-            Err(anyhow::anyhow!("{} dataset already closed", self.name))
-        } else {
-            for attribute in self
-                .attributes_register
-                .lock()
-                .expect("Lock Exists")
-                .iter_mut()
-            {
-                attribute.lock().expect("Lock Exists").close()?;
-            }
-            self.dataset = None;
-            Ok(())
-        }
-    }
-}
-
