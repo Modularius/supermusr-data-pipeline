@@ -1,30 +1,30 @@
-use hdf5::{types::VarLenAscii, Dataset, H5Type};
+use crate::schematic::elements::traits::{self, Buildable};
+use hdf5::{types::VarLenAscii, Dataset, Group, H5Type};
 use std::{marker::PhantomData, rc::Rc, sync::Mutex};
-use crate::schematic::elements::traits;
 
 use super::{
-    super::{attribute::NexusAttribute, group::RcGroupContentRegister}, AttributeRegister, NexusDataset, NxDataset, UnderlyingNexusDataset
+    super::{attribute::NexusAttribute, group::GroupContentRegister},
+    AttributeRegister, NexusDataset, NxDataset, UnderlyingNexusDataset,
 };
-
 
 #[derive(Clone)]
 pub(crate) struct NexusDatasetBuilder<T, D, C0, C>
 where
     T: H5Type + Clone,
     D: NxDataset,
-    C0: traits::tags::Tag<T,Dataset>,
-    C: traits::tags::Tag<T,Dataset>,
+    C0: traits::tags::Tag<T, Group, Dataset>,
+    C: traits::tags::Tag<T, Group, Dataset>,
 {
     name: String,
     class: C0::ClassType,
     phantom: PhantomData<(T, D, C)>,
 }
 
-impl<T, D, C> NexusDatasetBuilder<T, D, (), C> 
+impl<T, D, C> NexusDatasetBuilder<T, D, (), C>
 where
     T: H5Type + Clone,
     D: NxDataset,
-    C: traits::tags::Tag<T,Dataset>
+    C: traits::tags::Tag<T, Group, Dataset>,
 {
     pub(super) fn new(name: &str) -> Self {
         Self {
@@ -77,18 +77,18 @@ impl<T, D, C0> NexusDatasetBuilder<T, D, C0, ()>
 where
     T: H5Type + Clone,
     D: NxDataset + 'static,
-    C0: traits::tags::Tag<T,Dataset> + 'static,
+    C0: traits::tags::Tag<T, Group, Dataset> + 'static,
 {
     pub(crate) fn finish(
         self,
-        parent_content_register: &RcGroupContentRegister,
+        parent_content_register: &GroupContentRegister,
     ) -> NexusDataset<T, D, C0> {
         let attributes_register = AttributeRegister::default();
 
         if let Some(units) = D::UNITS {
-            NexusAttribute::begin()
+            NexusAttribute::begin("units")
                 .fixed_value(VarLenAscii::from_ascii(&units.to_string()).expect(""))
-                .finish("units", attributes_register.clone());
+                .finish(&attributes_register);
         }
 
         let rc = Rc::new(Mutex::new(UnderlyingNexusDataset {

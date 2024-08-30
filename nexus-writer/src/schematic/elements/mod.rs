@@ -10,14 +10,3 @@ pub(crate) trait NxLivesInGroup {
     fn open(&mut self, parent: &Group) -> anyhow::Result<()>;
     fn close(&mut self) -> anyhow::Result<()>;
 }
-
-// Nexus Value Options
-pub(crate) trait FixedValueOption: Clone {}
-
-#[derive(Clone)]
-pub(crate) struct MustEnterFixedValue {}
-impl FixedValueOption for MustEnterFixedValue {}
-
-#[derive(Clone)]
-pub(crate) struct NoFixedValueNeeded {}
-impl FixedValueOption for NoFixedValueNeeded {}

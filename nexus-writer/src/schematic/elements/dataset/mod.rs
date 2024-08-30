@@ -1,17 +1,17 @@
+use super::{
+    attribute::{NexusUnits, NxAttribute},
+    traits::{Buildable, CanAppend, CanWriteScalar},
+};
+use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
 use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
-use underlying::UnderlyingNexusDataset;
 use std::{rc::Rc, sync::Mutex};
-use super::{
-    attribute::{NexusUnits, NxAttribute}, traits::{Buildable, CanAppend, CanWriteScalar}
-};
 use tracing::instrument;
-use crate::schematic::elements::traits;
+use underlying::UnderlyingNexusDataset;
 
 mod builder;
 mod underlying;
-
 
 /// NxDataset Trait
 pub(crate) trait NxDataset: Sized {
@@ -27,13 +27,14 @@ impl NxDataset for () {
 }
 
 /// Class Implementation
-impl<T: H5Type> traits::Class<T, Dataset> for () {
+impl<T: H5Type> traits::Class<T, Group, Dataset> for () {
     fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
         let dataset = parent.new_dataset::<T>().create(name)?;
         Ok(dataset)
     }
 }
-impl<T: H5Type + Clone> traits::Class<T,Dataset> for traits::Constant<T> {
+
+impl<T: H5Type + Clone> traits::Class<T, Group, Dataset> for traits::Constant<T> {
     fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
         let dataset = parent.new_dataset::<T>().create(name)?;
         dataset.write_scalar(&self.0).expect("");
@@ -41,7 +42,7 @@ impl<T: H5Type + Clone> traits::Class<T,Dataset> for traits::Constant<T> {
     }
 }
 
-impl<T: H5Type> traits::Class<T, Dataset> for traits::Resizable {
+impl<T: H5Type> traits::Class<T, Group, Dataset> for traits::Resizable {
     fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
         let dataset = parent
             .new_dataset::<T>()
@@ -52,15 +53,23 @@ impl<T: H5Type> traits::Class<T, Dataset> for traits::Resizable {
     }
 }
 
-
 /// Class Tag Implementation
-impl<T: H5Type> traits::tags::Tag<T, Dataset> for () {
+impl<T: H5Type> traits::tags::Tag<T, Group, Dataset> for ()
+where
+    T: H5Type + Clone,
+{
     type ClassType = ();
 }
-impl<T: H5Type + Clone> traits::tags::Tag<T, Dataset> for traits::tags::Constant {
+impl<T> traits::tags::Tag<T, Group, Dataset> for traits::tags::Constant
+where
+    T: H5Type + Clone,
+{
     type ClassType = traits::Constant<T>;
 }
-impl<T: H5Type> traits::tags::Tag<T, Dataset> for traits::tags::Resizable {
+impl<T> traits::tags::Tag<T, Group, Dataset> for traits::tags::Resizable
+where
+    T: H5Type + Clone,
+{
     type ClassType = traits::Resizable;
 }
 
@@ -73,11 +82,11 @@ pub(crate) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, traits::tags::
 pub(crate) type NexusDatasetResize<T, D = ()> = NexusDataset<T, D, traits::tags::Resizable>;
 
 // Dataset Implementations
-impl<T, D, C> Buildable<T, D, C> for NexusDataset<T, D, C>
+impl<T, D, C> Buildable<T> for NexusDataset<T, D, C>
 where
     T: H5Type + Clone,
     D: NxDataset,
-    C: traits::tags::Tag<T,Dataset>,
+    C: traits::tags::Tag<T, Group, Dataset>,
 {
     type BuilderType = NexusDatasetBuilder<T, D, (), C>;
     fn begin(name: &str) -> NexusDatasetBuilder<T, D, (), C> {

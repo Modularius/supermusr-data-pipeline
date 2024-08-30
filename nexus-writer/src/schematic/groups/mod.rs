@@ -12,9 +12,10 @@ use crate::schematic::elements::{
 
 use super::{
     elements::{
-        attribute::{RcNexusAttributeFixed, RcNexusAttributeVar},
-        dataset::{NxDataset, AttributeRegister},
-        group::{NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup},
+        attribute::NexusAttributeFixed,
+        dataset::{AttributeRegister, NxDataset},
+        group::{GroupBuildable, GroupContentRegister, NxPushMessage, NxPushMessageMut},
+        traits::Buildable,
     },
     nexus_class, H5String,
 };
@@ -23,53 +24,53 @@ pub(super) mod log;
 pub(crate) mod raw_data;
 
 struct RawData1Attributes {
-    file_name: RcNexusAttributeVar<H5String>,
-    file_time: RcNexusAttributeVar<H5String>,
-    initial_file_format: RcNexusAttributeFixed<H5String>,
-    nexus_version: RcNexusAttributeFixed<H5String>,
-    hdf_version: RcNexusAttributeFixed<H5String>,
-    hdf5_version: RcNexusAttributeFixed<H5String>,
-    xml_version: RcNexusAttributeFixed<H5String>,
-    creator: RcNexusAttributeFixed<H5String>,
+    file_name: NexusAttribute<H5String>,
+    file_time: NexusAttribute<H5String>,
+    initial_file_format: NexusAttributeFixed<H5String>,
+    nexus_version: NexusAttributeFixed<H5String>,
+    hdf_version: NexusAttributeFixed<H5String>,
+    hdf5_version: NexusAttributeFixed<H5String>,
+    xml_version: NexusAttributeFixed<H5String>,
+    creator: NexusAttributeFixed<H5String>,
 }
 
 impl NxDataset for RawData1Attributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            file_name: NexusAttribute::begin().finish("file_name", attribute_register.clone()),
-            file_time: NexusAttribute::begin().finish("file_time", attribute_register.clone()),
-            initial_file_format: NexusAttribute::begin()
+            file_name: NexusAttribute::begin("file_name").finish(&attribute_register),
+            file_time: NexusAttribute::begin("file_time").finish(&attribute_register),
+            initial_file_format: NexusAttribute::begin("initial_file_format")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("initial_file_format", attribute_register.clone()),
-            nexus_version: NexusAttribute::begin()
+                .finish(&attribute_register),
+            nexus_version: NexusAttribute::begin("nexus_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("nexus_version", attribute_register.clone()),
-            hdf_version: NexusAttribute::begin()
+                .finish(&attribute_register),
+            hdf_version: NexusAttribute::begin("hdf_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("hdf_version", attribute_register.clone()),
-            hdf5_version: NexusAttribute::begin()
+                .finish(&attribute_register),
+            hdf5_version: NexusAttribute::begin("hdf5_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("hdf5_version", attribute_register.clone()),
-            xml_version: NexusAttribute::begin()
+                .finish(&attribute_register),
+            xml_version: NexusAttribute::begin("xml_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("xml_version", attribute_register.clone()),
-            creator: NexusAttribute::begin()
+                .finish(&attribute_register),
+            creator: NexusAttribute::begin("creator")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("creator", attribute_register.clone()),
+                .finish(&attribute_register),
         }
     }
 }
 
 pub(crate) struct NXRoot {
-    raw_data_1: RcNexusGroup<raw_data::RawData>,
+    raw_data_1: NexusGroup<raw_data::RawData>,
 }
 
 impl NxGroup for NXRoot {
     const CLASS_NAME: &'static str = nexus_class::ROOT;
 
-    fn new(database_register: RcGroupContentRegister) -> Self {
+    fn new(database_register: GroupContentRegister) -> Self {
         Self {
-            raw_data_1: NexusGroup::new("raw_data_1", &database_register),
+            raw_data_1: NexusGroup::new_subgroup("raw_data_1", &database_register),
         }
     }
 }

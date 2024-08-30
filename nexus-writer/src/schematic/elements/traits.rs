@@ -1,7 +1,10 @@
-use hdf5::{Group, H5Type};
+use hdf5::H5Type;
 
-pub(crate) trait Class<T, O>: Clone {
-    fn create(&self, parent: &Group, name: &str) -> Result<O, anyhow::Error>;
+pub(crate) trait Class<T, P, O>: Clone
+where
+    T: H5Type,
+{
+    fn create(&self, parent: &P, name: &str) -> Result<O, anyhow::Error>;
 }
 
 #[derive(Clone)]
@@ -16,8 +19,11 @@ pub(crate) struct Resizable {
 pub(crate) mod tags {
     use hdf5::H5Type;
 
-    pub(crate) trait Tag<T: H5Type,O>: Clone {
-        type ClassType: super::Class<T,O>;
+    pub(crate) trait Tag<T: H5Type, P, O>: Clone
+    where
+        T: H5Type,
+    {
+        type ClassType: super::Class<T, P, O>;
     }
 
     #[derive(Clone)]

@@ -1,7 +1,8 @@
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset,traits::Buildable,
-        group::{NxGroup, RcGroupContentRegister},
+        dataset::NexusDataset,
+        group::{GroupContentRegister, NxGroup},
+        traits::Buildable,
     },
     nexus_class, H5String,
 };
@@ -13,7 +14,7 @@ pub(super) struct Geometry {
 impl NxGroup for Geometry {
     const CLASS_NAME: &'static str = nexus_class::GEOMETRY;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin("name").finish(&dataset_register),
         }

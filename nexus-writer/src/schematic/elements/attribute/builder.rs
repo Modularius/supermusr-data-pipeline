@@ -3,38 +3,71 @@ use std::{marker::PhantomData, rc::Rc, sync::Mutex};
 use hdf5::{Attribute, Dataset, H5Type};
 use tracing::instrument;
 
+use crate::schematic::elements::{dataset::AttributeRegister, traits};
+
+use super::{underlying::UnderlyingNexusAttribute, NexusAttribute};
+
 /// NexusAttributeBuilder
 #[derive(Clone)]
-pub(crate) struct NexusAttributeBuilder<T: H5Type, F0: FixedValueOption, F: FixedValueOption> {
-    pub(super) fixed_value: Option<T>,
-    pub(super) phantom: PhantomData<(F0, F)>,
+pub(crate) struct NexusAttributeBuilder<T: H5Type, C0, C>
+where
+    T: H5Type + Clone,
+    C0: traits::tags::Tag<T, Dataset, Attribute>,
+    C: traits::tags::Tag<T, Dataset, Attribute>,
+{
+    name: String,
+    class: C0::ClassType,
+    phantom: PhantomData<(T, C)>,
 }
 
-impl<T: H5Type, F0: FixedValueOption> NexusAttributeBuilder<T, F0, MustEnterFixedValue> {
-    pub(crate) fn fixed_value(self, value: T) -> NexusAttributeBuilder<T, F0, NoFixedValueNeeded> {
-        NexusAttributeBuilder::<T, F0, NoFixedValueNeeded> {
-            fixed_value: Some(value),
+impl<T, C> NexusAttributeBuilder<T, (), C>
+where
+    T: H5Type + Clone,
+    C: traits::tags::Tag<T, Dataset, Attribute>,
+{
+    pub(super) fn new(name: &str) -> Self {
+        Self {
+            name: name.to_owned(),
+            class: (),
             phantom: PhantomData,
         }
     }
 }
 
-impl<T: H5Type + Clone, F0: FixedValueOption + 'static>
-    NexusAttributeBuilder<T, F0, NoFixedValueNeeded>
+impl<T: H5Type> NexusAttributeBuilder<T, (), traits::tags::Constant>
+where
+    T: H5Type + Clone,
 {
-    #[instrument(skip_all)]
+    pub(crate) fn fixed_value(
+        self,
+        value: T,
+    ) -> NexusAttributeBuilder<T, traits::tags::Constant, ()> {
+        NexusAttributeBuilder {
+            name: self.name,
+            class: traits::Constant(value),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, C0> NexusAttributeBuilder<T, C0, ()>
+where
+    T: H5Type + Clone,
+    C0: traits::tags::Tag<T, Dataset, Attribute> + 'static,
+{
     pub(crate) fn finish(
         self,
-        name: &str,
-        register: AttributeRegister,
-    ) -> Rc<Mutex<NexusAttribute<T, F0>>> {
-        let rc = Rc::new(Mutex::new(NexusAttribute {
-            name: name.to_owned(),
-            fixed_value: self.fixed_value,
+        parent_content_register: &AttributeRegister,
+    ) -> NexusAttribute<T, C0> {
+        let rc = Rc::new(Mutex::new(UnderlyingNexusAttribute {
+            name: self.name,
+            class: self.class,
             attribute: None,
-            phantom: PhantomData::<F0>,
         }));
-        register.lock().expect("Lock Exists").push(rc.clone());
+        parent_content_register
+            .lock()
+            .expect("Lock Exists")
+            .push(rc.clone());
         rc
     }
 }

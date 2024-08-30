@@ -1,18 +1,18 @@
-use hdf5::{Dataset, Group, H5Type, SimpleExtents};
+use crate::schematic::elements::{attribute::NxAttribute, traits, traits::Class, NxLivesInGroup};
+use hdf5::{Dataset, Group, H5Type};
 use tracing::instrument;
-use crate::schematic::elements::{
-    attribute::{NexusUnits, NxAttribute}, traits::{Buildable, CanAppend, CanWriteScalar, Class}, NxLivesInGroup,
-    traits
-};
 
 use super::{AttributeRegister, NxDataset};
 
-// Implement Database Classes 
-
-
+// Implement Database Classes
 
 #[derive(Default)]
-pub(crate) struct UnderlyingNexusDataset<T: H5Type, D: NxDataset = (), C: traits::tags::Tag<T,Dataset> = ()>
+pub(crate) struct UnderlyingNexusDataset<
+    T,
+    D: NxDataset = (),
+    C: traits::tags::Tag<T, Group, Dataset> = (),
+> where
+    T: H5Type + Clone,
 {
     pub(super) name: String,
     pub(super) attributes_register: AttributeRegister,
@@ -25,7 +25,7 @@ impl<T, D, C> NxLivesInGroup for UnderlyingNexusDataset<T, D, C>
 where
     T: H5Type + Clone,
     D: NxDataset,
-    C: traits::tags::Tag<T,Dataset>,
+    C: traits::tags::Tag<T, Group, Dataset>,
 {
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
     fn create(&mut self, parent: &Group) -> Result<(), anyhow::Error> {
@@ -87,4 +87,3 @@ where
         }
     }
 }
-

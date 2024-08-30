@@ -1,7 +1,8 @@
 use crate::schematic::{
     elements::{
         dataset::NexusDataset,
-        group::{NexusGroup, NxGroup, RcGroupContentRegister, RcNexusGroup}, traits::Buildable,
+        group::{GroupContentRegister, NexusGroup, NxGroup, GroupBuildable},
+        traits::Buildable,
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -15,7 +16,7 @@ pub(super) struct Source {
     source_frame_pattern: NexusDataset<H5String>,
     source_energy: NexusDataset<H5String>,
     source_current: NexusDataset<H5String>,
-    source_current_log: RcNexusGroup<Log>,
+    source_current_log: NexusGroup<Log>,
     source_pulse_width: NexusDataset<H5String>,
     target_material: NexusDataset<H5String>,
     target_thickness: NexusDataset<H5String>,
@@ -24,7 +25,7 @@ pub(super) struct Source {
 impl NxGroup for Source {
     const CLASS_NAME: &'static str = nexus_class::SOURCE;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin("name").finish(&dataset_register),
             source_type: NexusDataset::begin("source_type").finish(&dataset_register),
@@ -35,7 +36,7 @@ impl NxGroup for Source {
             source_energy: NexusDataset::begin("source_energy").finish(&dataset_register),
             source_current: NexusDataset::begin("tarsource_currentget_thickness")
                 .finish(&dataset_register),
-            source_current_log: NexusGroup::new("source_current_log", &dataset_register),
+            source_current_log: NexusGroup::new_subgroup("source_current_log", &dataset_register),
             source_pulse_width: NexusDataset::begin("source_pulse_width").finish(&dataset_register),
             target_material: NexusDataset::begin("target_material").finish(&dataset_register),
             target_thickness: NexusDataset::begin("target_thickness").finish(&dataset_register),

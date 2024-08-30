@@ -3,8 +3,9 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset,traits::Buildable,
-        group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
+        dataset::NexusDataset,
+        group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage},
+        traits::Buildable,
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -14,16 +15,16 @@ mod source;
 
 pub(super) struct Instrument {
     name: NexusDataset<H5String>,
-    source: RcNexusGroup<Source>,
+    source: NexusGroup<Source>,
 }
 
 impl NxGroup for Instrument {
     const CLASS_NAME: &'static str = nexus_class::INSTRUMENT;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin("name").finish(&dataset_register),
-            source: NexusGroup::new("source", &dataset_register),
+            source: NexusGroup::new_subgroup("source", &dataset_register),
         }
     }
 }

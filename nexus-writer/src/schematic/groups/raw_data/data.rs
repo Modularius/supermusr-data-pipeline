@@ -2,11 +2,10 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
-        dataset::{
-            AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset
-        },
-        group::{NxGroup, NxPushMessage, RcGroupContentRegister},traits::{Buildable, CanAppend},
+        attribute::{NexusAttribute, NexusUnits},
+        dataset::{AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset},
+        group::{GroupContentRegister, NxGroup, NxPushMessage},
+        traits::{Buildable, CanAppend},
     },
     nexus_class, H5String,
 };
@@ -24,7 +23,7 @@ impl NxDataset for EventTimeOffsetAttributes {
 
 #[derive(Clone)]
 struct EventTimeZeroAttributes {
-    offset: RcNexusAttributeVar<H5String>,
+    offset: NexusAttribute<H5String>,
 }
 
 impl NxDataset for EventTimeZeroAttributes {
@@ -32,7 +31,7 @@ impl NxDataset for EventTimeZeroAttributes {
 
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            offset: NexusAttribute::begin().finish("offset", attribute_register.clone()),
+            offset: NexusAttribute::begin("offset").finish(&attribute_register),
         }
     }
 }
@@ -49,7 +48,7 @@ pub(super) struct Data {
 impl NxGroup for Data {
     const CLASS_NAME: &'static str = nexus_class::EVENT_DATA;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             event_id: NexusDataset::begin("event_id")
                 .resizable(0, 128)

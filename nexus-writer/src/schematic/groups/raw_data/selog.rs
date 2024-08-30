@@ -4,21 +4,21 @@ use supermusr_streaming_types::{
 
 use crate::schematic::{
     elements::group::{
-        NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, RcGroupContentRegister, RcNexusGroup,
+        GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut
     },
     groups::log::ValueLog,
     nexus_class,
 };
 
 pub(super) struct Selog {
-    dataset_register: RcGroupContentRegister,
-    selogs: Vec<RcNexusGroup<SelogBlock>>,
+    dataset_register: GroupContentRegister,
+    selogs: Vec<NexusGroup<SelogBlock>>,
 }
 
 impl NxGroup for Selog {
     const CLASS_NAME: &'static str = nexus_class::SELOG;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             dataset_register,
             selogs: Default::default(),
@@ -33,12 +33,11 @@ impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for Selog {
         if let Some(selog) = self
             .selogs
             .iter()
-            .find(|selog| selog.lock().expect("Lock exists").get_name() == message.name())
+            .find(|log| log.is_name(message.name()))
         {
             selog.push_message(message)?;
         } else {
-            let selog_block =
-                NexusGroup::<SelogBlock>::new(message.name(), &self.dataset_register);
+            let selog_block = NexusGroup::<SelogBlock>::new_subgroup(message.name(), &self.dataset_register);
             selog_block.push_message(message)?;
             self.selogs.push(selog_block);
         }
@@ -50,12 +49,11 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for Selog {
     type MessageType = Alarm<'a>;
 
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
-        if let Some(selog) = self.selogs.iter().find(|selog| {
-            selog.lock().expect("Lock exists").get_name() == message.source_name().expect("")
-        }) {
+        if let Some(selog) = self.selogs.iter()
+        .find(|selog| selog.is_name(message.source_name().expect(""))) {
             selog.push_message(message)?;
         } else {
-            let selog_block = NexusGroup::<SelogBlock>::new(
+            let selog_block = NexusGroup::<SelogBlock>::new_subgroup(
                 message.source_name().expect(""),
                 &self.dataset_register,
             );
@@ -67,15 +65,15 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for Selog {
 }
 
 pub(super) struct SelogBlock {
-    value_log: RcNexusGroup<ValueLog>,
+    value_log: NexusGroup<ValueLog>,
 }
 
 impl NxGroup for SelogBlock {
     const CLASS_NAME: &'static str = nexus_class::SELOG_BLOCK;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            value_log: NexusGroup::new("value_log", &dataset_register),
+            value_log: NexusGroup::new_subgroup("value_log", &dataset_register),
         }
     }
 }

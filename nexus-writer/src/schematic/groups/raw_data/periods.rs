@@ -2,9 +2,7 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, RcNexusAttributeVar},
-        dataset::{NexusDataset, NxDataset, AttributeRegister},traits::Buildable,
-        group::{NexusGroup, NxGroup, NxPushMessage, RcGroupContentRegister, RcNexusGroup},
+        attribute::NexusAttribute, dataset::{AttributeRegister, NexusDataset, NxDataset}, group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage}, traits::Buildable
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -12,26 +10,26 @@ use crate::schematic::{
 
 #[derive(Clone)]
 struct FramesRequestedAttributes {
-    frame_type: RcNexusAttributeVar<H5String>,
+    frame_type: NexusAttribute<H5String>,
 }
 
 impl NxDataset for FramesRequestedAttributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            frame_type: NexusAttribute::begin().finish("frame_type", attribute_register.clone()),
+            frame_type: NexusAttribute::begin("frame_type").finish(&attribute_register),
         }
     }
 }
 
 #[derive(Clone)]
 struct LabelsAttributes {
-    separator: RcNexusAttributeVar<H5String>,
+    separator: NexusAttribute<H5String>,
 }
 
 impl NxDataset for LabelsAttributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            separator: NexusAttribute::begin().finish("separator", attribute_register.clone()),
+            separator: NexusAttribute::begin("separator").finish(&attribute_register),
         }
     }
 }
@@ -45,13 +43,13 @@ pub(super) struct Periods {
     raw_frames: NexusDataset<u32>,
     good_frames: NexusDataset<u32>,
     sequences: NexusDataset<u32>,
-    counts: RcNexusGroup<Log>,
+    counts: NexusGroup<Log>,
 }
 
 impl NxGroup for Periods {
     const CLASS_NAME: &'static str = nexus_class::PERIOD;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             number: NexusDataset::begin("number").finish(&dataset_register),
             period_types: NexusDataset::begin("type").finish(&dataset_register),
@@ -61,7 +59,7 @@ impl NxGroup for Periods {
             raw_frames: NexusDataset::begin("raw_frames").finish(&dataset_register),
             good_frames: NexusDataset::begin("good_frames").finish(&dataset_register),
             sequences: NexusDataset::begin("sequences").finish(&dataset_register),
-            counts: NexusGroup::new("counts", &dataset_register),
+            counts: NexusGroup::new_subgroup("counts", &dataset_register),
         }
     }
 }

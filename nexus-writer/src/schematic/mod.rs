@@ -4,7 +4,7 @@ mod groups;
 use std::path::Path;
 
 use elements::{
-    group::{NexusGroup, RcNexusGroup},
+    group::{GroupBuildable, NexusGroup},
     NxLivesInGroup,
 };
 use groups::NXRoot;
@@ -32,7 +32,7 @@ pub(crate) mod nexus_class {
 
 pub(crate) struct Nexus {
     file: Option<File>,
-    nx_root: RcNexusGroup<NXRoot>,
+    nx_root: NexusGroup<NXRoot>,
 }
 
 impl Nexus {
@@ -44,16 +44,16 @@ impl Nexus {
                     .file_name()
                     .ok_or(anyhow::anyhow!("Path Error: {filename:?}"))?
                     .to_str()
-                    .ok_or(anyhow::anyhow!("Conversion Error: {filename:?}"))?
+                    .ok_or(anyhow::anyhow!("Conversion Error: {filename:?}"))?,
             ),
         })
     }
 
-    pub(crate) fn get_root(&self) -> &RcNexusGroup<NXRoot> {
+    pub(crate) fn get_root(&self) -> &NexusGroup<NXRoot> {
         &self.nx_root
     }
 
-    pub(crate) fn get_root_mut(&mut self) -> &mut RcNexusGroup<NXRoot> {
+    pub(crate) fn get_root_mut(&mut self) -> &mut NexusGroup<NXRoot> {
         &mut self.nx_root
     }
 

@@ -5,12 +5,12 @@ use tracing::instrument;
 
 use super::NxLivesInGroup;
 
-pub(crate) type RcGroupContentRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxLivesInGroup>>>>>;
+pub(crate) type GroupContentRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxLivesInGroup>>>>>;
 
 pub(crate) trait NxGroup: Sized {
     const CLASS_NAME: &'static str;
 
-    fn new(content_register: RcGroupContentRegister) -> Self;
+    fn new(content_register: GroupContentRegister) -> Self;
 }
 
 pub(crate) trait NxPushMessage<T> {
@@ -25,22 +25,26 @@ pub(crate) trait NxPushMessageMut<T> {
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
-pub(crate) type RcNexusGroup<G> = Rc<Mutex<NexusGroup<G>>>;
+pub(crate) type NexusGroup<G> = Rc<Mutex<UnderlyingNexusGroup<G>>>;
 
-pub(crate) struct NexusGroup<G: NxGroup> {
+pub(crate) struct UnderlyingNexusGroup<G: NxGroup> {
     name: String,
     class: G,
     group: Option<Group>,
-    content_register: RcGroupContentRegister,
+    content_register: GroupContentRegister,
 }
 
-impl<G: NxGroup + 'static> NexusGroup<G> {
+pub(crate) trait GroupBuildable {
+    fn new_toplevel(name: &str) -> Self;
+    fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self;
+    fn is_name(&self, name: &str) -> bool;
+}
+
+impl<G: NxGroup + 'static> GroupBuildable for NexusGroup<G> {
     #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
-    pub(crate) fn new_toplevel(
-        name: &str
-    ) -> Rc<Mutex<Self>> {
-        let content_register = RcGroupContentRegister::new(Vec::new().into());
-        Rc::new(Mutex::new(Self {
+    fn new_toplevel(name: &str) -> Self {
+        let content_register = GroupContentRegister::new(Vec::new().into());
+        Rc::new(Mutex::new(UnderlyingNexusGroup::<G> {
             name: name.to_owned(),
             class: G::new(content_register.clone()),
             group: None,
@@ -49,12 +53,12 @@ impl<G: NxGroup + 'static> NexusGroup<G> {
     }
 
     #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
-    pub(crate) fn new(
+    fn new_subgroup(
         name: &str,
-        parent_content_register: &RcGroupContentRegister,
-    ) -> Rc<Mutex<Self>> {
-        let content_register = RcGroupContentRegister::new(Vec::new().into());
-        let rc = Rc::new(Mutex::new(Self {
+        parent_content_register: &GroupContentRegister,
+    ) -> Self {
+        let content_register = GroupContentRegister::new(Vec::new().into());
+        let rc = Rc::new(Mutex::new(UnderlyingNexusGroup {
             name: name.to_owned(),
             class: G::new(content_register.clone()),
             group: None,
@@ -67,16 +71,12 @@ impl<G: NxGroup + 'static> NexusGroup<G> {
         rc
     }
 
-    pub(crate) fn get_group_mut(&mut self) -> &mut G {
-        &mut self.class
-    }
-
-    pub(crate) fn get_name(&self) -> &str {
-        &self.name
+    fn is_name(&self, name: &str) -> bool {
+        self.lock().expect("").name == name
     }
 }
 
-impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
+impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
     fn create(&mut self, parent: &Group) -> anyhow::Result<()> {
         if self.group.is_some() {
@@ -149,7 +149,7 @@ impl<G: NxGroup> NxLivesInGroup for NexusGroup<G> {
 }
 
 impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T>
-    for Rc<Mutex<NexusGroup<G>>>
+    for NexusGroup<G>
 {
     type MessageType = T;
 
@@ -159,7 +159,7 @@ impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T>
 }
 
 impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T> NxPushMessageMut<T>
-    for Rc<Mutex<NexusGroup<G>>>
+    for NexusGroup<G>
 {
     type MessageType = T;
 

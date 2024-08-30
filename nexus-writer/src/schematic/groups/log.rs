@@ -7,11 +7,10 @@ use crate::{
     nexus::nexus_class,
     schematic::{
         elements::{
-            attribute::{NexusAttribute, NexusUnits, RcNexusAttributeVar},
-            dataset::{
-                AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset
-            },
-            group::{NxGroup, NxPushMessage, RcGroupContentRegister}, traits::{Buildable, CanAppend},
+            attribute::{NexusAttribute, NexusUnits},
+            dataset::{AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset},
+            group::{GroupContentRegister, NxGroup, NxPushMessage},
+            traits::{Buildable, CanAppend},
         },
         H5String,
     },
@@ -19,7 +18,7 @@ use crate::{
 
 #[derive(Clone)]
 struct TimeAttributes {
-    offset: RcNexusAttributeVar<H5String>,
+    offset: NexusAttribute<H5String>,
 }
 
 impl NxDataset for TimeAttributes {
@@ -27,7 +26,7 @@ impl NxDataset for TimeAttributes {
 
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            offset: NexusAttribute::begin().finish("offset", attribute_register.clone()),
+            offset: NexusAttribute::begin("offset").finish(&attribute_register),
         }
     }
 }
@@ -40,7 +39,7 @@ pub(super) struct Log {
 impl NxGroup for Log {
     const CLASS_NAME: &'static str = nexus_class::LOG;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             time: NexusDataset::begin("time")
                 .resizable(0, 128)
@@ -74,7 +73,7 @@ pub(super) struct ValueLog {
 impl NxGroup for ValueLog {
     const CLASS_NAME: &'static str = nexus_class::LOG;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             alarm_severity: NexusDataset::begin("alarm_severity")
                 .resizable(0, 128)

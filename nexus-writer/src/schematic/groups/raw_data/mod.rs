@@ -14,14 +14,12 @@ use user::User;
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, NexusUnits, RcNexusAttributeFixed},
-        dataset::{
-            AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset
-        },
+        attribute::{NexusAttribute, NexusAttributeFixed, NexusUnits},
+        dataset::{AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset},
         group::{
-            NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, RcGroupContentRegister,
-            RcNexusGroup,
-        },traits::{Buildable, CanWriteScalar},
+            GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, GroupBuildable
+        },
+        traits::{Buildable, CanWriteScalar},
     },
     nexus_class, H5String,
 };
@@ -36,19 +34,19 @@ mod user;
 
 #[derive(Clone)]
 struct DefinitionAttributes {
-    version: RcNexusAttributeFixed<H5String>,
-    url: RcNexusAttributeFixed<H5String>,
+    version: NexusAttributeFixed<H5String>,
+    url: NexusAttributeFixed<H5String>,
 }
 
 impl NxDataset for DefinitionAttributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            version: NexusAttribute::begin()
+            version: NexusAttribute::begin("version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("version", attribute_register.clone()),
-            url: NexusAttribute::begin()
+                .finish(&attribute_register),
+            url: NexusAttribute::begin("URL")
                 .fixed_value("TODO".parse().expect(""))
-                .finish("URL", attribute_register.clone()),
+                .finish(&attribute_register),
         }
     }
 }
@@ -92,19 +90,19 @@ pub(super) struct RawData {
     proton_charge: NexusDataset<f64, ProtonChargeAttributes>,
     experiment_identifier: NexusDataset<H5String>,
     run_cycle: NexusDataset<H5String>,
-    user_1: RcNexusGroup<User>,
-    run_log: RcNexusGroup<RunLog>,
-    selog: RcNexusGroup<Selog>,
-    periods: RcNexusGroup<Periods>,
-    sample: RcNexusGroup<Sample>,
-    instrument: RcNexusGroup<Instrument>,
-    detector_1: RcNexusGroup<Data>,
+    user_1: NexusGroup<User>,
+    run_log: NexusGroup<RunLog>,
+    selog: NexusGroup<Selog>,
+    periods: NexusGroup<Periods>,
+    sample: NexusGroup<Sample>,
+    instrument: NexusGroup<Instrument>,
+    detector_1: NexusGroup<Data>,
 }
 
 impl NxGroup for RawData {
     const CLASS_NAME: &'static str = nexus_class::ENTRY;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             idf_version: NexusDataset::begin("idf_version")
                 .fixed_value(2)
@@ -130,13 +128,13 @@ impl NxGroup for RawData {
             experiment_identifier: NexusDataset::begin("experiment_identifier")
                 .finish(&dataset_register),
             run_cycle: NexusDataset::begin("run_cycle").finish(&dataset_register),
-            user_1: NexusGroup::new("user_1", &dataset_register),
-            run_log: NexusGroup::new("run_log", &dataset_register),
-            selog: NexusGroup::new("selog", &dataset_register),
-            periods: NexusGroup::new("periods", &dataset_register),
-            sample: NexusGroup::new("sample", &dataset_register),
-            instrument: NexusGroup::new("instrument", &dataset_register),
-            detector_1: NexusGroup::new("detector_1", &dataset_register),
+            user_1: NexusGroup::new_subgroup("user_1", &dataset_register),
+            run_log: NexusGroup::new_subgroup("run_log", &dataset_register),
+            selog: NexusGroup::new_subgroup("selog", &dataset_register),
+            periods: NexusGroup::new_subgroup("periods", &dataset_register),
+            sample: NexusGroup::new_subgroup("sample", &dataset_register),
+            instrument: NexusGroup::new_subgroup("instrument", &dataset_register),
+            detector_1: NexusGroup::new_subgroup("detector_1", &dataset_register),
         }
     }
 }

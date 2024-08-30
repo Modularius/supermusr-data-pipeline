@@ -4,8 +4,9 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset,traits::Buildable,
-        group::{NxGroup, NxPushMessage, RcGroupContentRegister},
+        dataset::NexusDataset,
+        group::{GroupContentRegister, NxGroup, NxPushMessage},
+        traits::Buildable,
     },
     nexus_class, H5String,
 };
@@ -42,7 +43,7 @@ pub(super) struct Sample {
 impl NxGroup for Sample {
     const CLASS_NAME: &'static str = nexus_class::SAMPLE;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin("name").finish(&dataset_register),
             chemical_formula: NexusDataset::begin("chemical_formula").finish(&dataset_register),

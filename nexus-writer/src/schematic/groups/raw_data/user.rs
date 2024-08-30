@@ -2,22 +2,23 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, RcNexusAttributeVar},
+        attribute::NexusAttribute,
         dataset::{AttributeRegister, NexusDataset, NxDataset},
-        group::{NxGroup, NxPushMessage, RcGroupContentRegister}, traits::Buildable,
+        group::{GroupContentRegister, NxGroup, NxPushMessage},
+        traits::Buildable,
     },
     nexus_class, H5String,
 };
 
 #[derive(Clone)]
 struct NameAttributes {
-    role: RcNexusAttributeVar<H5String>,
+    role: NexusAttribute<H5String>,
 }
 
 impl NxDataset for NameAttributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            role: NexusAttribute::begin().finish("role", attribute_register.clone()),
+            role: NexusAttribute::begin("role").finish(&attribute_register),
         }
     }
 }
@@ -35,7 +36,7 @@ pub(super) struct User {
 impl NxGroup for User {
     const CLASS_NAME: &'static str = nexus_class::USER;
 
-    fn new(dataset_register: RcGroupContentRegister) -> Self {
+    fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             name: NexusDataset::begin("name").finish(&dataset_register),
             affiliation: NexusDataset::begin("affiliation").finish(&dataset_register),
