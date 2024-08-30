@@ -3,7 +3,9 @@ use std::{rc::Rc, sync::Mutex};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::schematic::{
-    elements::group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
+    elements::group::{
+        GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut,
+    },
     groups::log::Log,
     nexus_class,
 };
@@ -35,7 +37,8 @@ impl<'a> NxPushMessageMut<f144_LogData<'a>> for RunLog {
         {
             log.push_message(message)?;
         } else {
-            let log = NexusGroup::<Log>::new_subgroup(message.source_name(), &self.dataset_register);
+            let log =
+                NexusGroup::<Log>::new_subgroup(message.source_name(), &self.dataset_register);
             log.push_message(message)?;
             self.logs.push(log);
         }

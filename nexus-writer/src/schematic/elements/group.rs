@@ -53,10 +53,7 @@ impl<G: NxGroup + 'static> GroupBuildable for NexusGroup<G> {
     }
 
     #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
-    fn new_subgroup(
-        name: &str,
-        parent_content_register: &GroupContentRegister,
-    ) -> Self {
+    fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self {
         let content_register = GroupContentRegister::new(Vec::new().into());
         let rc = Rc::new(Mutex::new(UnderlyingNexusGroup {
             name: name.to_owned(),
@@ -148,9 +145,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     }
 }
 
-impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T>
-    for NexusGroup<G>
-{
+impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T> for NexusGroup<G> {
     type MessageType = T;
 
     fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
@@ -158,9 +153,7 @@ impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T>
     }
 }
 
-impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T> NxPushMessageMut<T>
-    for NexusGroup<G>
-{
+impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T> NxPushMessageMut<T> for NexusGroup<G> {
     type MessageType = T;
 
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {

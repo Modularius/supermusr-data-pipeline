@@ -1,7 +1,7 @@
 use crate::schematic::{
     elements::{
         dataset::NexusDataset,
-        group::{GroupContentRegister, NexusGroup, NxGroup, GroupBuildable},
+        group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup},
         traits::Buildable,
     },
     groups::log::Log,

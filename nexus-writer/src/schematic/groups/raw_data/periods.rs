@@ -2,7 +2,10 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        attribute::NexusAttribute, dataset::{AttributeRegister, NexusDataset, NxDataset}, group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage}, traits::Buildable
+        attribute::NexusAttribute,
+        dataset::{AttributeRegister, NexusDataset, NxDataset},
+        group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage},
+        traits::Buildable,
     },
     groups::log::Log,
     nexus_class, H5String,

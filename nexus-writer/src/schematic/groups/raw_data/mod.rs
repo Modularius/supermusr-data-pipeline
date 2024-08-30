@@ -17,7 +17,8 @@ use crate::schematic::{
         attribute::{NexusAttribute, NexusAttributeFixed, NexusUnits},
         dataset::{AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset},
         group::{
-            GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut, GroupBuildable
+            GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage,
+            NxPushMessageMut,
         },
         traits::{Buildable, CanWriteScalar},
     },

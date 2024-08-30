@@ -4,7 +4,7 @@ use supermusr_streaming_types::{
 
 use crate::schematic::{
     elements::group::{
-        GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut
+        GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut,
     },
     groups::log::ValueLog,
     nexus_class,
@@ -30,14 +30,11 @@ impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for Selog {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
-        if let Some(selog) = self
-            .selogs
-            .iter()
-            .find(|log| log.is_name(message.name()))
-        {
+        if let Some(selog) = self.selogs.iter().find(|log| log.is_name(message.name())) {
             selog.push_message(message)?;
         } else {
-            let selog_block = NexusGroup::<SelogBlock>::new_subgroup(message.name(), &self.dataset_register);
+            let selog_block =
+                NexusGroup::<SelogBlock>::new_subgroup(message.name(), &self.dataset_register);
             selog_block.push_message(message)?;
             self.selogs.push(selog_block);
         }
@@ -49,8 +46,11 @@ impl<'a> NxPushMessageMut<Alarm<'a>> for Selog {
     type MessageType = Alarm<'a>;
 
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
-        if let Some(selog) = self.selogs.iter()
-        .find(|selog| selog.is_name(message.source_name().expect(""))) {
+        if let Some(selog) = self
+            .selogs
+            .iter()
+            .find(|selog| selog.is_name(message.source_name().expect("")))
+        {
             selog.push_message(message)?;
         } else {
             let selog_block = NexusGroup::<SelogBlock>::new_subgroup(
