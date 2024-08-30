@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Result};
+use clap::ValueEnum;
+use serde::Deserialize;
 use std::{error::Error, str::FromStr};
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::{
@@ -12,30 +13,56 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, Push, UnionWIPOffset, Vector, WIPOffset},
 };
 
-pub(crate) fn value_type(value_type: &str) -> Result<Value> {
-    Ok(match value_type {
-        "int8" => Value::Byte,
-        "int16" => Value::Short,
-        "int32" => Value::Int,
-        "int64" => Value::Long,
-        "uint8" => Value::UByte,
-        "uint16" => Value::UShort,
-        "uint32" => Value::UInt,
-        "uint64" => Value::ULong,
-        "float32" => Value::Float,
-        "float64" => Value::Double,
-        "[int8]" => Value::ArrayByte,
-        "[int16]" => Value::ArrayShort,
-        "[int32]" => Value::ArrayInt,
-        "[int64]" => Value::ArrayLong,
-        "[uint8]" => Value::ArrayUByte,
-        "[uint16]" => Value::ArrayUShort,
-        "[uint32]" => Value::ArrayUInt,
-        "[uint64]" => Value::ArrayULong,
-        "[float32]" => Value::ArrayFloat,
-        "[float64]" => Value::ArrayDouble,
-        _ => return Err(anyhow!("Invalid HDF5 Type")),
-    })
+#[derive(Clone, Debug, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ValueType {
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+    ArrayUint8,
+    ArrayUint16,
+    ArrayUint32,
+    ArrayUint64,
+    ArrayInt8,
+    ArrayInt16,
+    ArrayInt32,
+    ArrayInt64,
+    ArrayFloat32,
+    ArrayFloat64,
+}
+
+impl From<ValueType> for Value {
+    fn from(source: ValueType) -> Self {
+        match source {
+            ValueType::Uint8 => Value::UByte,
+            ValueType::Uint16 => Value::UShort,
+            ValueType::Uint32 => Value::UInt,
+            ValueType::Uint64 => Value::ULong,
+            ValueType::Int8 => Value::Byte,
+            ValueType::Int16 => Value::Short,
+            ValueType::Int32 => Value::Int,
+            ValueType::Int64 => Value::Long,
+            ValueType::Float32 => Value::Float,
+            ValueType::Float64 => Value::Double,
+            ValueType::ArrayUint8 => Value::ArrayUByte,
+            ValueType::ArrayUint16 => Value::ArrayUShort,
+            ValueType::ArrayUint32 => Value::ArrayUInt,
+            ValueType::ArrayUint64 => Value::ArrayULong,
+            ValueType::ArrayInt8 => Value::ArrayByte,
+            ValueType::ArrayInt16 => Value::ArrayShort,
+            ValueType::ArrayInt32 => Value::ArrayInt,
+            ValueType::ArrayInt64 => Value::ArrayLong,
+            ValueType::ArrayFloat32 => Value::ArrayFloat,
+            ValueType::ArrayFloat64 => Value::ArrayDouble,
+        }
+    }
 }
 
 type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
@@ -43,7 +70,7 @@ type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
 fn to_array<'a, 'fbb: 'a, I: FromStr + Push>(
     fbb: &mut FlatBufferBuilder<'fbb>,
     value: &[String],
-) -> Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
+) -> anyhow::Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
 where
     <I as Push>::Output: 'fbb,
 {
@@ -52,28 +79,28 @@ where
             value
                 .iter()
                 .map(|str| str.parse())
-                .collect::<Result<Vec<I>, <I as FromStr>::Err>>()?
+                .collect::<anyhow::Result<Vec<I>, <I as FromStr>::Err>>()?
                 .as_slice(),
         ),
     ))
 }
 
-fn to_scalar<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> Result<I>
+fn to_scalar<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> anyhow::Result<I>
 where
     <I as FromStr>::Err: Error,
 {
     value
         .first()
-        .ok_or(anyhow!("No value found"))?
+        .ok_or(anyhow::anyhow!("No value found"))?
         .parse::<I>()
-        .map_err(|e| anyhow!("{e}"))
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 pub(crate) fn make_value(
     fbb: &mut FlatBufferBuilder,
     value_type: Value,
     value: &[String],
-) -> Result<WIPOffset<UnionWIPOffset>> {
+) -> anyhow::Result<WIPOffset<UnionWIPOffset>> {
     Ok(match value_type {
         Value::Byte => {
             let value = to_scalar::<i8>(value)?;
@@ -171,7 +198,7 @@ mod tests {
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
         value: WIPOffset<UnionWIPOffset>,
-    ) -> Result<f144_LogData<'a>> {
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let run_log = f144_LogDataArgs {
             source_name: Some(fbb.create_string("")),
             timestamp: 0,
@@ -184,7 +211,10 @@ mod tests {
         Ok(root_as_f_144_log_data(bytes)?)
     }
 
-    fn do_test<'a>(fbb: &'a mut FlatBufferBuilder, value_type: Value) -> Result<f144_LogData<'a>> {
+    fn do_test<'a>(
+        fbb: &'a mut FlatBufferBuilder,
+        value_type: Value,
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let test_value = ["2".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)
@@ -283,7 +313,7 @@ mod tests {
     fn do_array_test<'a>(
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
-    ) -> Result<f144_LogData<'a>> {
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let test_value = ["2".to_owned(), "3".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)
