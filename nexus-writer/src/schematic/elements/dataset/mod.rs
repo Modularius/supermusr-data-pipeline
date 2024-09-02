@@ -9,6 +9,8 @@ use ndarray::s;
 use std::{rc::Rc, sync::Mutex};
 use tracing::instrument;
 use underlying::UnderlyingNexusDataset;
+#[cfg(test)]
+use super::traits::Examine;
 
 mod builder;
 mod underlying;
@@ -133,4 +135,24 @@ where
                 Ok(())
             })
     }
+}
+
+
+#[cfg(test)]
+impl<T, D> Examine<Rc<Mutex<dyn NxAttribute>>, D> for NexusDataset<T,D>
+where 
+    T: H5Type + Clone,
+    D: NxDataset,
+{
+    fn examine<F, X>(&self, f: F) -> X
+    where
+        F: Fn(&D) -> X {
+            f(&self.lock().unwrap().attributes)
+        }
+
+    fn examine_children<F, X>(&self, f: F) -> X
+    where
+        F: Fn(&[Rc<Mutex<dyn NxAttribute>>]) -> X {
+            f(&self.lock().unwrap().attributes_register.lock().unwrap())
+        }
 }

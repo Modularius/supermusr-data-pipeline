@@ -14,8 +14,8 @@ use super::{
     elements::{
         attribute::NexusAttributeFixed,
         dataset::{AttributeRegister, NxDataset},
-        group::{GroupBuildable, GroupContentRegister, NxPushMessage, NxPushMessageMut},
-        traits::Buildable,
+        group::{GroupContentRegister, NxPushMessage, NxPushMessageMut},
+        traits::{Buildable, GroupBuildable},
     },
     nexus_class, H5String,
 };

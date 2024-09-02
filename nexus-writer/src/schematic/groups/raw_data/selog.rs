@@ -3,9 +3,8 @@ use supermusr_streaming_types::{
 };
 
 use crate::schematic::{
-    elements::group::{
-        GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut,
-    },
+    elements::group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
+    elements::traits::GroupBuildable,
     groups::log::ValueLog,
     nexus_class,
 };

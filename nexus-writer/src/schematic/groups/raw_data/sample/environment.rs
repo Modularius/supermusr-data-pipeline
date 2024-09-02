@@ -1,8 +1,8 @@
 use crate::schematic::{
     elements::{
         dataset::NexusDataset,
-        group::{GroupBuildable, GroupContentRegister, NexusGroup, NxGroup},
-        traits::Buildable,
+        group::{GroupContentRegister, NexusGroup, NxGroup},
+        traits::{Buildable, GroupBuildable}
     },
     groups::log::Log,
     nexus_class, H5String,

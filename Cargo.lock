@@ -1850,6 +1850,7 @@ dependencies = [
  "chrono",
  "clap",
  "hdf5",
+ "hdf5-sys",
  "metrics",
  "metrics-exporter-prometheus",
  "ndarray",

@@ -3,9 +3,8 @@ use std::{rc::Rc, sync::Mutex};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::schematic::{
-    elements::group::{
-        GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut,
-    },
+    elements::group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
+    elements::traits::GroupBuildable,
     groups::log::Log,
     nexus_class,
 };

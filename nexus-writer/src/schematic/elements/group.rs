@@ -3,7 +3,9 @@ use std::{rc::Rc, sync::Mutex};
 use hdf5::{types::VarLenAscii, Group};
 use tracing::instrument;
 
-use super::NxLivesInGroup;
+use super::{traits::GroupBuildable, NxLivesInGroup};
+#[cfg(test)]
+use super::traits::Examine;
 
 pub(crate) type GroupContentRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxLivesInGroup>>>>>;
 
@@ -32,12 +34,6 @@ pub(crate) struct UnderlyingNexusGroup<G: NxGroup> {
     class: G,
     group: Option<Group>,
     content_register: GroupContentRegister,
-}
-
-pub(crate) trait GroupBuildable {
-    fn new_toplevel(name: &str) -> Self;
-    fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self;
-    fn is_name(&self, name: &str) -> bool;
 }
 
 impl<G: NxGroup + 'static> GroupBuildable for NexusGroup<G> {
@@ -71,6 +67,21 @@ impl<G: NxGroup + 'static> GroupBuildable for NexusGroup<G> {
     fn is_name(&self, name: &str) -> bool {
         self.lock().expect("").name == name
     }
+}
+
+#[cfg(test)]
+impl<G: NxGroup> Examine<Rc<Mutex<dyn NxLivesInGroup>>, G> for NexusGroup<G> {
+    fn examine<F, T>(&self, f: F) -> T
+    where
+        F: Fn(&G) -> T {
+            f(&self.lock().unwrap().class)
+        }
+
+    fn examine_children<F, T>(&self, f: F) -> T
+    where
+        F: Fn(&[Rc<Mutex<dyn NxLivesInGroup>>]) -> T {
+            f(&self.lock().unwrap().content_register.lock().unwrap())
+        }
 }
 
 impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {

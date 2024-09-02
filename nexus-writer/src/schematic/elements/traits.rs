@@ -1,5 +1,7 @@
 use hdf5::H5Type;
 
+use super::group::GroupContentRegister;
+
 pub(crate) trait Class<T, P, O>: Clone
 where
     T: H5Type,
@@ -51,4 +53,21 @@ pub(crate) trait CanWriteScalar {
 pub(crate) trait CanAppend {
     type Type: H5Type;
     fn append(&self, value: &[Self::Type]) -> Result<(), hdf5::Error>;
+}
+
+pub(crate) trait GroupBuildable {
+    fn new_toplevel(name: &str) -> Self;
+    fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self;
+    fn is_name(&self, name: &str) -> bool;
+}
+
+#[cfg(test)]
+pub(crate) trait Examine<R, C> {
+    fn examine<F, T>(&self, f: F) -> T
+    where
+        F: Fn(&C) -> T;
+
+    fn examine_children<F, T>(&self, f: F) -> T
+    where
+        F: Fn(&[R]) -> T;
 }

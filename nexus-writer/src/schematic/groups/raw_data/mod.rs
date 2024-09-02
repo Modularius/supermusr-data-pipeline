@@ -17,10 +17,10 @@ use crate::schematic::{
         attribute::{NexusAttribute, NexusAttributeFixed, NexusUnits},
         dataset::{AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset},
         group::{
-            GroupBuildable, GroupContentRegister, NexusGroup, NxGroup, NxPushMessage,
+            GroupContentRegister, NexusGroup, NxGroup, NxPushMessage,
             NxPushMessageMut,
         },
-        traits::{Buildable, CanWriteScalar},
+        traits::{Buildable, CanWriteScalar, GroupBuildable},
     },
     nexus_class, H5String,
 };

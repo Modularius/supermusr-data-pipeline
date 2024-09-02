@@ -3,12 +3,9 @@ mod groups;
 
 use std::path::Path;
 
-use elements::{
-    group::{GroupBuildable, NexusGroup},
-    NxLivesInGroup,
-};
+use elements::{group::NexusGroup, traits::GroupBuildable, NxLivesInGroup};
 use groups::NXRoot;
-use hdf5::{types::VarLenUnicode, File};
+use hdf5::{file::FileAccessBuilder, types::VarLenUnicode, File, FileBuilder};
 
 type H5String = VarLenUnicode;
 
@@ -37,8 +34,19 @@ pub(crate) struct Nexus {
 
 impl Nexus {
     pub(crate) fn new(filename: &Path) -> anyhow::Result<Self> {
+        let file = FileBuilder::new()
+            .with_fapl(|fapl|
+                fapl.libver_bounds(hdf5::file::LibraryVersion::V110, hdf5::file::LibraryVersion::V110)
+        )
+        .create(filename)?;
+        {
+            let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
+            if err != 0 {
+                anyhow::bail!("H5Fstart_swmr_write returned error code {err} for {filename:?}");
+            }
+        }
         Ok(Self {
-            file: Some(File::create(filename).expect("")),
+            file: Some(file),
             nx_root: NexusGroup::new_toplevel(
                 filename
                     .file_name()
