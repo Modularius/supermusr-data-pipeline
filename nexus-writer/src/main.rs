@@ -18,7 +18,8 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    spanned::{Spanned, SpannedMut},
+    record_metadata_fields_to_span,
+    spanned::SpannedAggregator,
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
 };
@@ -34,6 +35,7 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
+    FrameMetadata,
 };
 use tokio::time;
 use tracing::{debug, error, info_span, level_filters::LevelFilter, trace_span, warn};
@@ -192,12 +194,8 @@ async fn main() -> anyhow::Result<()> {
 // Handles Run Span for
 macro_rules! link_current_span_to_run_span {
     ($run:ident, $span_name:literal) => {
-        let cur_span = tracing::Span::current();
-        match $run.span().get() {
-            Ok(run_span) => run_span.in_scope(|| {
-                info_span!(target: "otel", $span_name).follows_from(cur_span);
-            }),
-            Err(e) => debug!("No run found. Error: {e}"),
+        if let Err(e) = $run.link_current_span(||info_span!(target: "otel", $span_name)) {
+            error!("No run found. Error: {e}");
         }
     };
 }
@@ -244,6 +242,16 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
+#[tracing::instrument(skip_all,
+    fields(
+        metadata_timestamp = tracing::field::Empty,
+        metadata_frame_number = tracing::field::Empty,
+        metadata_period_number = tracing::field::Empty,
+        metadata_veto_flags = tracing::field::Empty,
+        metadata_protons_per_pulse = tracing::field::Empty,
+        metadata_running = tracing::field::Empty,
+    )
+)]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
@@ -253,6 +261,12 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
             Ok(run) => {
+                match data.metadata().try_into() as Result<FrameMetadata, _> {
+                    Ok(metadata) => {
+                        record_metadata_fields_to_span!(&metadata, tracing::Span::current());
+                    }
+                    Err(e) => error!("{e}"),
+                };
                 if let Some(run) = run {
                     link_current_span_to_run_span!(run, "Frame Event List");
                 }
@@ -280,9 +294,9 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                run.span_mut()
-                    .init(info_span!(target: "otel", parent: None, "Run"))
-                    .unwrap();
+                if let Err(e) = run.span_init() {
+                    error!("{e}")
+                }
                 link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
