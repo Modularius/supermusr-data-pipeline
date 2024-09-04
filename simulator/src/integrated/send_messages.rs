@@ -34,7 +34,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     FrameMetadata,
 };
-use tracing::{debug, debug_span, error, Span};
+use tracing::{debug, debug_span, error, info_span, Span};
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -105,8 +105,8 @@ pub(crate) fn send_run_start_command(
     let mut fbb = FlatBufferBuilder::new();
     let run_start = RunStartArgs {
         start_time: get_time_since_epoch_ms(timestamp)?,
-        run_name: Some(fbb.create_string(&status.name)),
-        instrument_name: Some(fbb.create_string(&status.instrument)),
+        run_name: Some(fbb.create_string(&status.name.value())),
+        instrument_name: Some(fbb.create_string(&status.instrument.value())),
         ..Default::default()
     };
     let message = RunStart::create(&mut fbb, &run_start);
@@ -134,7 +134,7 @@ pub(crate) fn send_run_stop_command(
     let mut fbb = FlatBufferBuilder::new();
     let run_stop = RunStopArgs {
         stop_time: get_time_since_epoch_ms(timestamp)?,
-        run_name: Some(fbb.create_string(&status.name)),
+        run_name: Some(fbb.create_string(&status.name.value())),
         ..Default::default()
     };
     let message = RunStop::create(&mut fbb, &run_stop);
@@ -163,7 +163,7 @@ pub(crate) fn send_run_log_command(
 
     let mut fbb = FlatBufferBuilder::new();
     let run_log_args = f144_LogDataArgs {
-        source_name: Some(fbb.create_string(&status.source_name)),
+        source_name: Some(fbb.create_string(&status.source_name.value())),
         timestamp: get_time_since_epoch_ns(timestamp)?,
         value_type,
         value: Some(runlog::make_value(&mut fbb, value_type, &status.value)?),
@@ -214,7 +214,7 @@ pub(crate) fn send_se_log_command(
     ));
 
     let se_log_args = se00_SampleEnvironmentDataArgs {
-        name: Some(fbb.create_string(&sample_env.name)),
+        name: Some(fbb.create_string(&sample_env.name.value())),
         channel: sample_env.channel.unwrap_or(-1),
         time_delta: sample_env.time_delta.unwrap_or(0.0),
         timestamp_location,
@@ -249,7 +249,7 @@ pub(crate) fn send_alarm_command(
     let mut fbb = FlatBufferBuilder::new();
     let severity = alarm.severity.clone().into();
     let alarm_args = AlarmArgs {
-        source_name: Some(fbb.create_string(&alarm.source_name)),
+        source_name: Some(fbb.create_string(&alarm.source_name.value())),
         timestamp: get_time_since_epoch_ns(timestamp)?,
         severity,
         message: Some(fbb.create_string(&alarm.message)),
@@ -271,7 +271,7 @@ pub(crate) fn send_alarm_command(
 }
 
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
-pub(crate) fn send_trace_message(
+pub(crate) fn send_digitiser_trace_message(
     externals: &mut SimulationEngineExternals,
     sample_rate: u64,
     cache: &mut VecDeque<Trace>,
@@ -293,16 +293,25 @@ pub(crate) fn send_trace_message(
     )
     .unwrap();
 
-    let send_args = SendMessageArgs::new(
-        externals.use_otel,
-        fbb,
-        externals.producer,
-        externals.topics.traces,
-        "Simulated Trace",
-    );
+    let send_args = info_span!(
+        target: "otel", parent: None, "Simulated Digitiser Trace",
+        "frame_number" = metadata.frame_number,
+        "digitiser_id" = digitizer_id,
+    )
+    .in_scope(|| {
+        SendMessageArgs::new(
+            externals.use_otel,
+            fbb,
+            externals.producer,
+            externals.topics.traces,
+            "Simulated Trace",
+        )
+    });
+    send_args.span.follows_from(tracing::Span::current());
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
+
     Ok(())
 }
 
@@ -327,13 +336,21 @@ pub(crate) fn send_digitiser_event_list_message(
     )
     .unwrap();
 
-    let send_args = SendMessageArgs::new(
-        externals.use_otel,
-        fbb,
-        externals.producer,
-        externals.topics.events,
-        "Simulated Digitiser Event List",
-    );
+    let send_args = info_span!(
+        target: "otel", parent: None, "Simulated Digitiser Event List",
+        "frame_number" = metadata.frame_number,
+        "digitiser_id" = digitizer_id
+    )
+    .in_scope(|| {
+        SendMessageArgs::new(
+            externals.use_otel,
+            fbb,
+            externals.producer,
+            externals.topics.events,
+            "Simulated Digitiser Event List",
+        )
+    });
+    send_args.span.follows_from(tracing::Span::current());
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
@@ -353,13 +370,20 @@ pub(crate) fn send_aggregated_frame_event_list_message(
     build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options)
         .unwrap();
 
-    let send_args = SendMessageArgs::new(
-        externals.use_otel,
-        fbb,
-        externals.producer,
-        externals.topics.frame_events,
-        "Simulated Digitiser Event List",
-    );
+    let send_args = info_span!(
+        target: "otel", parent: None, "Simulated Frame Event List",
+        "frame_number" = metadata.frame_number
+    )
+    .in_scope(|| {
+        SendMessageArgs::new(
+            externals.use_otel,
+            fbb,
+            externals.producer,
+            externals.topics.frame_events,
+            "Simulated Digitiser Event List",
+        )
+    });
+    send_args.span.follows_from(tracing::Span::current());
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
