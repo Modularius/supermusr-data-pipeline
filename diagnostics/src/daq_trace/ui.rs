@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 
-const NUM_COLUMNS: usize = 12;
+const NUM_COLUMNS: usize = 15;
 
 /// Draws the ui based on the current app state.
 pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {

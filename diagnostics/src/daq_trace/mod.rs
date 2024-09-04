@@ -15,7 +15,9 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use std::collections::HashMap;
+use supermusr_common::{Channel, Intensity};
+use supermusr_streaming_types::flatbuffers::Vector;
+use std::collections::{HashMap, VecDeque};
 use std::{
     io,
     sync::{mpsc, Arc, Mutex},
@@ -23,7 +25,7 @@ use std::{
     time::{Duration, Instant},
 };
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
+    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage
 };
 use tokio::task;
 use tokio::time::sleep;
@@ -36,6 +38,56 @@ enum Event<I> {
     Tick,
 }
 
+pub struct TraceStats {
+    window_ratio: f64,
+    num_windows: usize,
+    num_mean_values: usize,
+    mean_values: VecDeque<f64>,
+}
+
+impl TraceStats {
+    fn new(window_ratio: f64, num_windows: usize, num_mean_values: usize) -> Self {
+        Self {
+            window_ratio,
+            num_windows,
+            num_mean_values,
+            mean_values: VecDeque::with_capacity(num_mean_values),
+        }
+    }
+    fn get_subtrace_mean(&self, voltage: &Vector<Intensity>) -> f64 {
+        let size = voltage.len();
+        let window_size = (self.window_ratio*size as f64) as usize;
+        (0..self.num_windows).map(|i| {
+            let window_pos = size/self.num_windows
+                + i*window_size
+                + rand::random::<usize>() % window_size;
+            voltage.iter()
+                .map(f64::from)
+                .skip(window_pos)
+                .take(window_size)
+                .sum::<f64>()
+        })
+        .sum::<f64>()/(window_size * self.num_windows) as f64
+    }
+    fn push_trace(&mut self, data: &DigitizerAnalogTraceMessage<'_>) {
+        if let Some(channels) = data.channels() {
+            let channel = channels.get(rand::random::<usize>() % channels.len());
+            if let Some(voltage) = channel.voltage() {
+                self.mean_values.push_back(self.get_subtrace_mean(&voltage));
+                if self.mean_values.len() >= self.num_mean_values {
+                    let _ = self.mean_values.pop_front();
+                }
+            }
+        }
+    }
+    pub fn max(&self) -> Option<f64> {
+        self.mean_values.iter().copied().reduce(f64::max)
+    }
+    pub fn min(&self) -> Option<f64> {
+        self.mean_values.iter().copied().reduce(f64::min)
+    }
+}
+
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
     pub msg_count: usize,
@@ -45,11 +97,13 @@ pub struct DigitiserData {
     pub last_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_frame: u32,
     pub num_channels_present: usize,
+    pub channels_present: Option<Vec<Channel>>,
     pub has_num_channels_changed: bool,
     pub num_samples_in_first_channel: usize,
     pub is_num_samples_identical: bool,
     pub has_num_samples_changed: bool,
     pub bad_frame_count: usize,
+    pub mean_value: TraceStats,
 }
 
 impl DigitiserData {
@@ -69,11 +123,13 @@ impl DigitiserData {
             last_msg_timestamp: timestamp,
             last_msg_frame: frame,
             num_channels_present,
+            channels_present : None,
             has_num_channels_changed: false,
             num_samples_in_first_channel,
             is_num_samples_identical,
             has_num_samples_changed: false,
             bad_frame_count: 0,
+            mean_value: TraceStats::new(0.025, 2, 5),
         }
     }
 }
@@ -284,9 +340,14 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: Digitiser
                                                     num_samples_in_first_channel
                                                         != d.num_samples_in_first_channel;
                                             }
+                                            d.channels_present = data.channels().map(|cs|cs.iter().map(|c|c.channel()).collect());
                                             d.num_samples_in_first_channel =
                                                 num_samples_in_first_channel;
                                             d.is_num_samples_identical = is_num_samples_identical;
+
+
+                                            // digitiser sample mean
+                                            d.mean_value.push_trace(&data);
                                         })
                                         .or_insert(DigitiserData::new(
                                             timestamp,

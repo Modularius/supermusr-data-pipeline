@@ -741,6 +741,7 @@ dependencies = [
  "chrono",
  "clap",
  "crossterm",
+ "rand",
  "ratatui",
  "rdkafka",
  "supermusr-common",

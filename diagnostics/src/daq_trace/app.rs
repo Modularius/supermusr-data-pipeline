@@ -26,6 +26,9 @@ impl App {
                 "#Samples Identical?",   // 10
                 "#Samples Changed?",     // 11
                 "#Bad Frames?",          // 12
+                "Min Mean Value",        // 13
+                "Max Mean Value",        // 14
+                "Channels Present",        // 15
             ]
             .iter()
             .map(|s| s.to_string())
@@ -89,6 +92,15 @@ impl App {
                 ),
                 // 12. Number of Bad Frames
                 format!("{}", digitiser_data.bad_frame_count),
+                // 13. Min mean value
+                format!("{:.2}", digitiser_data.mean_value.min().unwrap_or(-1.0)),
+                // 14. Max mean value
+                format!("{:.2}", digitiser_data.mean_value.max().unwrap_or(-1.0)),
+                // 15. Max mean value
+                digitiser_data.channels_present
+                    .as_ref()
+                    .map(|channels_present|channels_present.iter().fold(String::default(),|a, b|format!("{a} {b}")))
+                    .unwrap_or_default()
             ])
         }
     }
