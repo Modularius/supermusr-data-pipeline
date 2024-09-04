@@ -2,7 +2,7 @@ use crate::schematic::{
     elements::{
         dataset::NexusDataset,
         group::{GroupContentRegister, NexusGroup, NxGroup},
-        traits::{Buildable, GroupBuildable}
+        traits::{Buildable, GroupBuildable},
     },
     groups::log::Log,
     nexus_class, H5String,

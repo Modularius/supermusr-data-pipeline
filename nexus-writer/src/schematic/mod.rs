@@ -35,10 +35,13 @@ pub(crate) struct Nexus {
 impl Nexus {
     pub(crate) fn new(filename: &Path) -> anyhow::Result<Self> {
         let file = FileBuilder::new()
-            .with_fapl(|fapl|
-                fapl.libver_bounds(hdf5::file::LibraryVersion::V110, hdf5::file::LibraryVersion::V110)
-        )
-        .create(filename)?;
+            .with_fapl(|fapl| {
+                fapl.libver_bounds(
+                    hdf5::file::LibraryVersion::V110,
+                    hdf5::file::LibraryVersion::V110,
+                )
+            })
+            .create(filename)?;
         {
             let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
             if err != 0 {
@@ -67,7 +70,7 @@ impl Nexus {
 
     pub(crate) fn create(&mut self) -> anyhow::Result<()> {
         if let Some(file) = &mut self.file {
-            Ok(self.nx_root.lock().expect("Can lock").create(file)?)
+            Ok(self.nx_root.apply_lock().create(file)?)
         } else {
             Err(anyhow::anyhow!("No File"))
         }
@@ -75,7 +78,7 @@ impl Nexus {
 
     pub(crate) fn open(&mut self) -> anyhow::Result<()> {
         if let Some(file) = &mut self.file {
-            Ok(self.nx_root.lock().expect("Can lock").open(file)?)
+            Ok(self.nx_root.apply_lock().open(file)?)
         } else {
             Err(anyhow::anyhow!("No File"))
         }
@@ -83,7 +86,7 @@ impl Nexus {
 
     pub(crate) fn close(&mut self) -> anyhow::Result<()> {
         if self.file.is_some() {
-            Ok(self.nx_root.lock().expect("Can lock").close()?)
+            Ok(self.nx_root.apply_lock().close()?)
         } else {
             Err(anyhow::anyhow!("No File"))
         }

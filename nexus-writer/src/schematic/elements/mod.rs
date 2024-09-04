@@ -124,9 +124,12 @@ mod test {
         assert!(root.is_name("root"));
 
         assert_eq!(root.examine_children(|c| c.len()), 4);
-        assert_eq!(root.examine(|x|x.g1.examine_children(|c| c.len())), 2);
-        assert_eq!(root.examine(|x|x.g2.examine_children(|c| c.len())), 3);
-        
-        assert_eq!(root.examine(|x|x.g1.examine(|y|y.g1.examine_children(|c| c.len()))), 3);
+        assert_eq!(root.examine(|x| x.g1.examine_children(|c| c.len())), 2);
+        assert_eq!(root.examine(|x| x.g2.examine_children(|c| c.len())), 3);
+
+        assert_eq!(
+            root.examine(|x| x.g1.examine(|y| y.g1.examine_children(|c| c.len()))),
+            3
+        );
     }
 }

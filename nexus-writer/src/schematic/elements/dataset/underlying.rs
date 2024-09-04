@@ -33,11 +33,7 @@ where
             Err(anyhow::anyhow!("{} dataset already open", self.name))
         } else {
             let dataset = self.class.create(parent, &self.name)?;
-            for attribute in self
-                .attributes_register
-                .lock()
-                .iter_mut()
-            {
+            for attribute in self.attributes_register.lock().iter_mut() {
                 attribute.lock().expect("Lock Exists").create(&dataset)?;
             }
             self.dataset = Some(dataset);
@@ -52,11 +48,7 @@ where
         } else {
             match parent.dataset(&self.name) {
                 Ok(dataset) => {
-                    for attribute in self
-                        .attributes_register
-                        .lock()
-                        .iter_mut()
-                    {
+                    for attribute in self.attributes_register.lock().iter_mut() {
                         attribute.lock().expect("Lock Exists").open(&dataset)?;
                     }
                     self.dataset = Some(dataset);
@@ -72,11 +64,7 @@ where
         if self.dataset.is_none() {
             Err(anyhow::anyhow!("{} dataset already closed", self.name))
         } else {
-            for attribute in self
-                .attributes_register
-                .lock()
-                .iter_mut()
-            {
+            for attribute in self.attributes_register.lock().iter_mut() {
                 attribute.lock().expect("Lock Exists").close()?;
             }
             self.dataset = None;

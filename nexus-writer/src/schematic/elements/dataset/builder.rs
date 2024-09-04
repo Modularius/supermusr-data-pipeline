@@ -91,16 +91,14 @@ where
                 .finish(&attributes_register);
         }
 
-        let rc = Rc::new(Mutex::new(UnderlyingNexusDataset {
+        let rc = NexusDataset::new(UnderlyingNexusDataset {
             name: self.name,
             attributes: D::new(attributes_register.clone()),
             attributes_register,
             class: self.class,
             dataset: None,
-        }));
-        parent_content_register
-            .lock()
-            .push(rc.clone());
+        });
+        parent_content_register.apply_lock().push(rc.clone_inner());
         rc
     }
 }

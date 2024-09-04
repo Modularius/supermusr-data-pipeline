@@ -1,16 +1,20 @@
+#[cfg(test)]
+use super::traits::Examine;
 use super::{
     attribute::{NexusUnits, NxAttribute},
-    traits::{Buildable, CanAppend, CanWriteScalar}, SmartPointer,
+    traits::{Buildable, CanAppend, CanWriteScalar},
+    SmartPointer,
 };
 use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
 use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
-use std::{rc::Rc, sync::{Mutex, MutexGuard}};
+use std::{
+    rc::Rc,
+    sync::{Mutex, MutexGuard},
+};
 use tracing::instrument;
 use underlying::UnderlyingNexusDataset;
-#[cfg(test)]
-use super::traits::Examine;
 
 mod builder;
 mod underlying;
@@ -76,8 +80,30 @@ where
 }
 
 /// Defining Types
-pub(crate) type NexusDataset<T, D = (), C = ()> = SmartPointer<UnderlyingNexusDataset<T, D, C>>;
+pub(crate) struct NexusDataset<T, D = (), C = ()>(SmartPointer<UnderlyingNexusDataset<T, D, C>>)
+where
+    T: H5Type + Clone,
+    D: NxDataset,
+    C: traits::tags::Tag<T, Group, Dataset>;
 
+impl<T, D, C> NexusDataset<T, D, C>
+where
+    T: H5Type + Clone,
+    D: NxDataset,
+    C: traits::tags::Tag<T, Group, Dataset>,
+{
+    fn new(dataset: UnderlyingNexusDataset<T, D, C>) -> Self {
+        NexusDataset(Rc::new(Mutex::new(dataset)))
+    }
+
+    pub(crate) fn apply_lock(&self) -> MutexGuard<'_, UnderlyingNexusDataset<T, D, C>> {
+        self.0.lock().expect("Lock exists")
+    }
+
+    pub(crate) fn clone_inner(&self) -> SmartPointer<UnderlyingNexusDataset<T, D, C>> {
+        self.0.clone()
+    }
+}
 
 type AttributeRegisterContentType = SmartPointer<dyn NxAttribute>;
 
@@ -89,7 +115,7 @@ impl AttributeRegister {
         AttributeRegister(Rc::new(Mutex::new(vec)))
     }
 
-    pub(crate) fn lock(&self) -> MutexGuard<'_,Vec<AttributeRegisterContentType>> {
+    pub(crate) fn lock(&self) -> MutexGuard<'_, Vec<AttributeRegisterContentType>> {
         self.0.lock().expect("Lock exists")
     }
 }
@@ -120,8 +146,7 @@ where
     type Type = T;
 
     fn write_scalar(&self, value: T) -> Result<(), hdf5::Error> {
-        self.lock()
-            .expect("Can Lock")
+        self.apply_lock()
             .dataset
             .as_ref()
             .map(|dataset| dataset.write_scalar(&value).unwrap())
@@ -138,8 +163,7 @@ where
 
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
     fn append(&self, values: &[T]) -> Result<(), hdf5::Error> {
-        let lock_self = self.lock().expect("Can Lock");
-        lock_self
+        self.apply_lock()
             .dataset
             .as_ref()
             .ok_or_else(|| hdf5::Error::Internal("No Dataset Present".to_owned()))
@@ -153,22 +177,23 @@ where
     }
 }
 
-
 #[cfg(test)]
-impl<T, D> Examine<Rc<Mutex<dyn NxAttribute>>, D> for NexusDataset<T,D>
-where 
+impl<T, D> Examine<Rc<Mutex<dyn NxAttribute>>, D> for NexusDataset<T, D>
+where
     T: H5Type + Clone,
     D: NxDataset,
 {
     fn examine<F, X>(&self, f: F) -> X
     where
-        F: Fn(&D) -> X {
-            f(&self.lock().unwrap().attributes)
-        }
+        F: Fn(&D) -> X,
+    {
+        f(&self.lock().unwrap().attributes)
+    }
 
     fn examine_children<F, X>(&self, f: F) -> X
     where
-        F: Fn(&[Rc<Mutex<dyn NxAttribute>>]) -> X {
-            f(&self.lock().unwrap().attributes_register.lock().unwrap())
-        }
+        F: Fn(&[Rc<Mutex<dyn NxAttribute>>]) -> X,
+    {
+        f(&self.lock().unwrap().attributes_register.lock().unwrap())
+    }
 }

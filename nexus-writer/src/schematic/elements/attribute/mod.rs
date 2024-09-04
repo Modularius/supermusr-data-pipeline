@@ -1,4 +1,7 @@
-use std::{marker::PhantomData, rc::Rc, sync::Mutex};
+use std::{
+    rc::Rc,
+    sync::{Mutex, MutexGuard},
+};
 
 use builder::NexusAttributeBuilder;
 use hdf5::{Attribute, Dataset, H5Type};
@@ -7,7 +10,10 @@ use underlying::UnderlyingNexusAttribute;
 mod builder;
 mod underlying;
 
-use super::traits::{self, Buildable};
+use super::{
+    traits::{self, Buildable},
+    SmartPointer,
+};
 
 pub(crate) trait NxAttribute {
     fn create(&mut self, dataset: &Dataset) -> anyhow::Result<()>;
@@ -33,9 +39,33 @@ pub(crate) enum NexusUnits {
     Counts,
 }
 
-pub(crate) type NexusAttribute<T, C = ()> = Rc<Mutex<UnderlyingNexusAttribute<T, C>>>;
-pub(crate) type NexusAttributeFixed<T> =
-    Rc<Mutex<UnderlyingNexusAttribute<T, traits::tags::Constant>>>;
+//pub(crate) type NexusAttribute<T, C = ()> = SmartPointer<UnderlyingNexusAttribute<T, C>>;
+
+#[derive(Clone)]
+pub(crate) struct NexusAttribute<T, C = ()>(SmartPointer<UnderlyingNexusAttribute<T, C>>)
+where
+    T: H5Type + Clone,
+    C: traits::tags::Tag<T, Dataset, Attribute>;
+
+impl<T, C> NexusAttribute<T, C>
+where
+    T: H5Type + Clone,
+    C: traits::tags::Tag<T, Dataset, Attribute>,
+{
+    fn new(attribute: UnderlyingNexusAttribute<T, C>) -> Self {
+        NexusAttribute(Rc::new(Mutex::new(attribute)))
+    }
+
+    pub(crate) fn apply_lock(&self) -> MutexGuard<'_, UnderlyingNexusAttribute<T, C>> {
+        self.0.lock().expect("Lock exists")
+    }
+
+    pub(crate) fn clone_inner(&self) -> SmartPointer<UnderlyingNexusAttribute<T, C>> {
+        self.0.clone()
+    }
+}
+
+pub(crate) type NexusAttributeFixed<T> = NexusAttribute<T, traits::tags::Constant>;
 
 /// Class Implementation
 impl<T: H5Type> traits::Class<T, Dataset, Attribute> for () {

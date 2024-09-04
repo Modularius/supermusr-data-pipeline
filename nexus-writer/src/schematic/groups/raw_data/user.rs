@@ -4,7 +4,7 @@ use crate::schematic::{
     elements::{
         attribute::NexusAttribute,
         dataset::{AttributeRegister, NexusDataset, NxDataset},
-        group::{GroupContentRegister, NxGroup, NxPushMessage},
+        group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage},
         traits::Buildable,
     },
     nexus_class, H5String,

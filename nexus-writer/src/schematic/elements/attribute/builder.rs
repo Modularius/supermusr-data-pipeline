@@ -59,14 +59,12 @@ where
         self,
         parent_content_register: &AttributeRegister,
     ) -> NexusAttribute<T, C0> {
-        let rc = Rc::new(Mutex::new(UnderlyingNexusAttribute {
+        let rc = NexusAttribute::new(UnderlyingNexusAttribute {
             name: self.name,
             class: self.class,
             attribute: None,
-        }));
-        parent_content_register
-            .lock()
-            .push(rc.clone());
+        });
+        parent_content_register.lock().push(rc.clone_inner());
         rc
     }
 }
