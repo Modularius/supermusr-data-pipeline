@@ -1,4 +1,4 @@
-use crate::schematic::elements::group::{NxPushMessage, NxPushMessageMut};
+use crate::schematic::{elements::group::{NxPushMessage, NxPushMessageMut}, Nexus};
 
 use super::{Run, RunParameters};
 use chrono::{DateTime, Duration, Utc};
@@ -21,7 +21,7 @@ pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    nexus_settings: NexusSettings,
+    nexus_settings: NexusSettings
 }
 
 impl NexusEngine {
@@ -144,7 +144,7 @@ impl NexusEngine {
                 new_filename.push(data.run_name().unwrap());
                 new_filename.set_extension("nxs");
 
-                let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
+                let mut run_file = crate::schematic::Nexus::new(&new_filename, self.nexus_settings.use_swmr).expect("");
                 run_file.create().expect("");
                 run_file.get_root_mut().push_message(&data).expect("");
                 run_file.close().expect("");
@@ -173,7 +173,7 @@ impl NexusEngine {
                 new_filename.push(&last_run.parameters().run_name);
                 new_filename.set_extension("nxs");
 
-                let mut run_file = crate::schematic::Nexus::new(&new_filename).expect("");
+                let mut run_file = crate::schematic::Nexus::new(&new_filename, self.nexus_settings.use_swmr).expect("");
                 run_file.open().expect("");
                 run_file.get_root_mut().push_message(&data).expect("");
                 run_file.close_file().expect("");
@@ -418,10 +418,11 @@ pub(crate) struct NexusSettings {
     pub(crate) runloglist_chunk_size: usize,
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
+    pub(crate) use_swmr: bool,
 }
 
 impl NexusSettings {
-    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize) -> Self {
+    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize, use_swmr: bool) -> Self {
         Self {
             framelist_chunk_size,
             eventlist_chunk_size,
@@ -429,6 +430,7 @@ impl NexusSettings {
             runloglist_chunk_size: 64,
             seloglist_chunk_size: 1024,
             alarmlist_chunk_size: 32,
+            use_swmr
         }
     }
 }

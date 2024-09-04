@@ -1,6 +1,8 @@
+use std::{rc::Rc, sync::{Mutex, MutexGuard}};
+
 use hdf5::H5Type;
 
-use super::group::GroupContentRegister;
+use super::{group::GroupContentRegister, SmartPointer};
 
 pub(crate) trait Class<T, P, O>: Clone
 where

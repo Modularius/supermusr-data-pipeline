@@ -45,16 +45,16 @@ pub(crate) trait NxPushMessageMut<T> {
 
 pub(crate) struct NexusGroup<G: NxGroup>(SmartPointer<UnderlyingNexusGroup<G>>);
 
-impl<G: NxGroup> NexusGroup<G> {
+impl<G> NexusGroup<G> where
+    G : NxGroup
+{
     fn new(group: UnderlyingNexusGroup<G>) -> Self {
         NexusGroup(Rc::new(Mutex::new(group)))
     }
-
     pub(crate) fn apply_lock(&self) -> MutexGuard<'_, UnderlyingNexusGroup<G>> {
         self.0.lock().expect("Lock exists")
     }
-
-    pub(crate) fn clone_inner(&self) -> SmartPointer<UnderlyingNexusGroup<G>> {
+    fn clone_inner(&self) -> SmartPointer<UnderlyingNexusGroup<G>> {
         self.0.clone()
     }
 }

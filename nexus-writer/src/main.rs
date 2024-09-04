@@ -101,6 +101,10 @@ struct Cli {
     /// The HDF5 chunk size in bytes used when writing the frame list
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
+
+    /// Specifies whether to activate "Single Writer Multiple Reader" mode
+    #[clap(long, default_value = "true")]
+    use_hdf5_swmr: bool,
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -140,7 +144,7 @@ async fn main() -> anyhow::Result<()> {
         &topics_to_subscribe,
     );
 
-    let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size);
+    let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size, args.use_hdf5_swmr);
     let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
 
     let mut nexus_write_interval =
