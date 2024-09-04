@@ -36,7 +36,6 @@ where
             for attribute in self
                 .attributes_register
                 .lock()
-                .expect("Lock Exists")
                 .iter_mut()
             {
                 attribute.lock().expect("Lock Exists").create(&dataset)?;
@@ -56,7 +55,6 @@ where
                     for attribute in self
                         .attributes_register
                         .lock()
-                        .expect("Lock Exists")
                         .iter_mut()
                     {
                         attribute.lock().expect("Lock Exists").open(&dataset)?;
@@ -77,7 +75,6 @@ where
             for attribute in self
                 .attributes_register
                 .lock()
-                .expect("Lock Exists")
                 .iter_mut()
             {
                 attribute.lock().expect("Lock Exists").close()?;

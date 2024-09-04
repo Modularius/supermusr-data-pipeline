@@ -1,13 +1,26 @@
-use std::{rc::Rc, sync::Mutex};
+use std::{ops::Deref, rc::Rc, sync::{Mutex, MutexGuard}};
 
 use hdf5::{types::VarLenAscii, Group};
 use tracing::instrument;
 
-use super::{traits::GroupBuildable, NxLivesInGroup};
+use super::{traits::GroupBuildable, NxLivesInGroup, SmartPointer};
 #[cfg(test)]
 use super::traits::Examine;
 
-pub(crate) type GroupContentRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxLivesInGroup>>>>>;
+type GroupContentRegisterContentType = SmartPointer<dyn NxLivesInGroup>;
+
+#[derive(Clone)]
+pub(crate) struct GroupContentRegister(SmartPointer<Vec<GroupContentRegisterContentType>>);
+
+impl GroupContentRegister {
+    pub(crate) fn new(vec: Vec<GroupContentRegisterContentType>) -> Self {
+        GroupContentRegister(Rc::new(Mutex::new(vec)))
+    }
+
+    pub(crate) fn apply_lock(&self) -> MutexGuard<'_,Vec<GroupContentRegisterContentType>> {
+        self.0.lock().expect("Lock exists")
+    }
+}
 
 pub(crate) trait NxGroup: Sized {
     const CLASS_NAME: &'static str;
@@ -27,7 +40,7 @@ pub(crate) trait NxPushMessageMut<T> {
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
-pub(crate) type NexusGroup<G> = Rc<Mutex<UnderlyingNexusGroup<G>>>;
+pub(crate) type NexusGroup<G> = SmartPointer<UnderlyingNexusGroup<G>>;
 
 pub(crate) struct UnderlyingNexusGroup<G: NxGroup> {
     name: String,
@@ -59,7 +72,6 @@ impl<G: NxGroup + 'static> GroupBuildable for NexusGroup<G> {
         }));
         parent_content_register
             .lock()
-            .expect("Lock Exists")
             .push(rc.clone());
         rc
     }
@@ -101,7 +113,6 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
                     for content in self
                         .content_register
                         .lock()
-                        .expect("Lock Exists")
                         .iter_mut()
                     {
                         content.lock().expect("Lock Exists").create(&group)?;
@@ -119,21 +130,16 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
         if self.group.is_some() {
             Err(anyhow::anyhow!("{} group already open", self.name))
         } else {
-            match parent.group(&self.name) {
-                Ok(group) => {
-                    for content in self
-                        .content_register
-                        .lock()
-                        .expect("Lock Exists")
-                        .iter_mut()
-                    {
-                        content.lock().expect("Lock Exists").open(&group)?;
-                    }
-                    self.group = Some(group);
-                    Ok(())
-                }
-                Err(e) => panic!("{e}"),
+            let group = parent.group(&self.name)?;
+            for content in self
+                .content_register
+                .lock()
+                .iter_mut()
+            {
+                content.lock().expect("Lock Exists").open(&group)?;
             }
+            self.group = Some(group);
+            Ok(())
         }
     }
 
@@ -145,7 +151,6 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
             for content in self
                 .content_register
                 .lock()
-                .expect("Lock Exists")
                 .iter_mut()
             {
                 content.lock().expect("Lock Exists").close()?;

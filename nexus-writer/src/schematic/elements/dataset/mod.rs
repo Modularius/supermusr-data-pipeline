@@ -1,12 +1,12 @@
 use super::{
     attribute::{NexusUnits, NxAttribute},
-    traits::{Buildable, CanAppend, CanWriteScalar},
+    traits::{Buildable, CanAppend, CanWriteScalar}, SmartPointer,
 };
 use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
 use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
-use std::{rc::Rc, sync::Mutex};
+use std::{rc::Rc, sync::{Mutex, MutexGuard}};
 use tracing::instrument;
 use underlying::UnderlyingNexusDataset;
 #[cfg(test)]
@@ -76,8 +76,24 @@ where
 }
 
 /// Defining Types
-pub(crate) type NexusDataset<T, D = (), C = ()> = Rc<Mutex<UnderlyingNexusDataset<T, D, C>>>;
-pub(crate) type AttributeRegister = Rc<Mutex<Vec<Rc<Mutex<dyn NxAttribute>>>>>;
+pub(crate) type NexusDataset<T, D = (), C = ()> = SmartPointer<UnderlyingNexusDataset<T, D, C>>;
+
+
+type AttributeRegisterContentType = SmartPointer<dyn NxAttribute>;
+
+#[derive(Default, Clone)]
+pub(crate) struct AttributeRegister(SmartPointer<Vec<AttributeRegisterContentType>>);
+
+impl AttributeRegister {
+    pub(crate) fn new(vec: Vec<AttributeRegisterContentType>) -> Self {
+        AttributeRegister(Rc::new(Mutex::new(vec)))
+    }
+
+    pub(crate) fn lock(&self) -> MutexGuard<'_,Vec<AttributeRegisterContentType>> {
+        self.0.lock().expect("Lock exists")
+    }
+}
+//pub(crate) type AttributeRegister = SmartPointer<Vec<SmartPointer<dyn NxAttribute>>>;
 
 // Aliases to hide the class structrure
 pub(crate) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, traits::tags::Constant>;

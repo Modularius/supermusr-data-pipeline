@@ -66,7 +66,6 @@ where
         }));
         parent_content_register
             .lock()
-            .expect("Lock Exists")
             .push(rc.clone());
         rc
     }
