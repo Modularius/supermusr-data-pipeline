@@ -1,9 +1,8 @@
-use crate::integrated::{
-    simulation_elements::{utils::IntConstant, Interval},
-    simulation_engine::engine::SimulationEngineDigitiser,
-};
+use super::{utils::IntConstant, Interval};
+use crate::integrated::simulation_engine::engine::SimulationEngineDigitiser;
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
+use tracing::instrument;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -40,6 +39,7 @@ impl DigitiserConfig {
         }
     }
 
+    #[instrument(skip_all, target = "otel")]
     pub(crate) fn generate_digitisers(&self) -> Vec<SimulationEngineDigitiser> {
         match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => Default::default(),
