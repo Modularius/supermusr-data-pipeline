@@ -119,7 +119,6 @@ impl AttributeRegister {
         self.0.lock().expect("Lock exists")
     }
 }
-//pub(crate) type AttributeRegister = SmartPointer<Vec<SmartPointer<dyn NxAttribute>>>;
 
 // Aliases to hide the class structrure
 pub(crate) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, traits::tags::Constant>;
@@ -133,6 +132,7 @@ where
     C: traits::tags::Tag<T, Group, Dataset>,
 {
     type BuilderType = NexusDatasetBuilder<T, D, (), C>;
+
     fn begin(name: &str) -> NexusDatasetBuilder<T, D, (), C> {
         NexusDatasetBuilder::new(name)
     }
@@ -154,8 +154,7 @@ where
     }
 }
 
-impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable>
-where
+impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
     T: H5Type + Clone,
     D: NxDataset,
 {
@@ -178,22 +177,16 @@ where
 }
 
 #[cfg(test)]
-impl<T, D> Examine<Rc<Mutex<dyn NxAttribute>>, D> for NexusDataset<T, D>
+impl<T, D> Examine<SmartPointer<dyn NxAttribute>, D> for NexusDataset<T, D>
 where
     T: H5Type + Clone,
     D: NxDataset,
 {
-    fn examine<F, X>(&self, f: F) -> X
-    where
-        F: Fn(&D) -> X,
-    {
+    fn examine<F, X>(&self, f: F) -> X where F: Fn(&D) -> X {
         f(&self.lock_mutex().attributes)
     }
 
-    fn examine_children<F, X>(&self, f: F) -> X
-    where
-        F: Fn(&[Rc<Mutex<dyn NxAttribute>>]) -> X,
-    {
+    fn examine_children<F, X>(&self, f: F) -> X where F: Fn(&[SmartPointer<dyn NxAttribute>]) -> X {
         f(&self.lock_mutex().attributes_register.lock_mutex())
     }
 }
