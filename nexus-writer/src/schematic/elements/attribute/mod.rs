@@ -39,8 +39,6 @@ pub(crate) enum NexusUnits {
     Counts,
 }
 
-//pub(crate) type NexusAttribute<T, C = ()> = SmartPointer<UnderlyingNexusAttribute<T, C>>;
-
 #[derive(Clone)]
 pub(crate) struct NexusAttribute<T, C = ()>(SmartPointer<UnderlyingNexusAttribute<T, C>>)
 where
@@ -56,7 +54,7 @@ where
         NexusAttribute(Rc::new(Mutex::new(attribute)))
     }
 
-    pub(crate) fn apply_lock(&self) -> MutexGuard<'_, UnderlyingNexusAttribute<T, C>> {
+    pub(crate) fn lock_mutex(&self) -> MutexGuard<'_, UnderlyingNexusAttribute<T, C>> {
         self.0.lock().expect("Lock exists")
     }
 

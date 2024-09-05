@@ -4,7 +4,7 @@ use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::schematic::{
     elements::group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
-    elements::traits::GroupBuildable,
+    elements::traits::SubgroupBuildable,
     groups::log::Log,
     nexus_class,
 };

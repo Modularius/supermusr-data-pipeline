@@ -2,7 +2,7 @@ pub(crate) mod elements;
 mod groups;
 
 use std::path::Path;
-use elements::{group::NexusGroup, traits::GroupBuildable, NxLivesInGroup};
+use elements::{group::{NexusGroup, TopLevelNexusGroup}, traits::TopGroupBuildable, NxLivesInGroup};
 use groups::NXRoot;
 use hdf5::{types::VarLenUnicode, File, FileBuilder};
 
@@ -28,7 +28,7 @@ pub(crate) mod nexus_class {
 
 pub(crate) struct Nexus {
     file: Option<File>,
-    nx_root: NexusGroup<NXRoot>,
+    nx_root: TopLevelNexusGroup<NXRoot>,
 }
 
 impl Nexus {
@@ -61,11 +61,11 @@ impl Nexus {
         })
     }
 
-    pub(crate) fn get_root(&self) -> &NexusGroup<NXRoot> {
+    pub(crate) fn get_root(&self) -> &TopLevelNexusGroup<NXRoot> {
         &self.nx_root
     }
 
-    pub(crate) fn get_root_mut(&mut self) -> &mut NexusGroup<NXRoot> {
+    pub(crate) fn get_root_mut(&mut self) -> &mut TopLevelNexusGroup<NXRoot> {
         &mut self.nx_root
     }
 

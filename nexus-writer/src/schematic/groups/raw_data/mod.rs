@@ -17,7 +17,7 @@ use crate::schematic::{
         attribute::{NexusAttribute, NexusAttributeFixed, NexusUnits},
         dataset::{AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset},
         group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
-        traits::{Buildable, CanWriteScalar, GroupBuildable},
+        traits::{Buildable, CanWriteScalar, SubgroupBuildable},
     },
     nexus_class, H5String,
 };

@@ -5,7 +5,7 @@ use crate::schematic::{
         attribute::NexusAttribute,
         dataset::{AttributeRegister, NexusDataset, NxDataset},
         group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage},
-        traits::{Buildable, GroupBuildable},
+        traits::{Buildable, SubgroupBuildable},
     },
     groups::log::Log,
     nexus_class, H5String,

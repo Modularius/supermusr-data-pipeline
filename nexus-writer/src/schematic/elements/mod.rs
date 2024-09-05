@@ -17,8 +17,6 @@ pub(crate) trait NxLivesInGroup {
 
 #[cfg(test)]
 mod test {
-    use std::rc::Rc;
-    use std::sync::Mutex;
 
     use crate::schematic::*;
 
@@ -120,7 +118,7 @@ mod test {
 
     #[test]
     fn create() {
-        let root = NexusGroup::<TopGroup>::new_toplevel("root");
+        let root = TopLevelNexusGroup::<TopGroup>::new_toplevel("root");
         assert!(root.is_name("root"));
 
         assert_eq!(root.examine_children(|c| c.len()), 4);

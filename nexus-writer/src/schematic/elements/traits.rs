@@ -1,8 +1,5 @@
-use std::{rc::Rc, sync::{Mutex, MutexGuard}};
-
 use hdf5::H5Type;
-
-use super::{group::GroupContentRegister, SmartPointer};
+use super::group::GroupContentRegister;
 
 pub(crate) trait Class<T, P, O>: Clone
 where
@@ -57,10 +54,12 @@ pub(crate) trait CanAppend {
     fn append(&self, value: &[Self::Type]) -> Result<(), hdf5::Error>;
 }
 
-pub(crate) trait GroupBuildable {
-    fn new_toplevel(name: &str) -> Self;
+pub(crate) trait SubgroupBuildable {
     fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self;
-    fn is_name(&self, name: &str) -> bool;
+}
+
+pub(crate) trait TopGroupBuildable {
+    fn new_toplevel(name: &str) -> Self;
 }
 
 #[cfg(test)]

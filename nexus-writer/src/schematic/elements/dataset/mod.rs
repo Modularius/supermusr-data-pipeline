@@ -96,7 +96,7 @@ where
         NexusDataset(Rc::new(Mutex::new(dataset)))
     }
 
-    pub(crate) fn apply_lock(&self) -> MutexGuard<'_, UnderlyingNexusDataset<T, D, C>> {
+    pub(crate) fn lock_mutex(&self) -> MutexGuard<'_, UnderlyingNexusDataset<T, D, C>> {
         self.0.lock().expect("Lock exists")
     }
 
@@ -115,7 +115,7 @@ impl AttributeRegister {
         AttributeRegister(Rc::new(Mutex::new(vec)))
     }
 
-    pub(crate) fn lock(&self) -> MutexGuard<'_, Vec<AttributeRegisterContentType>> {
+    pub(crate) fn lock_mutex(&self) -> MutexGuard<'_, Vec<AttributeRegisterContentType>> {
         self.0.lock().expect("Lock exists")
     }
 }
@@ -146,7 +146,7 @@ where
     type Type = T;
 
     fn write_scalar(&self, value: T) -> Result<(), hdf5::Error> {
-        self.apply_lock()
+        self.lock_mutex()
             .dataset
             .as_ref()
             .map(|dataset| dataset.write_scalar(&value).unwrap())
@@ -163,7 +163,7 @@ where
 
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
     fn append(&self, values: &[T]) -> Result<(), hdf5::Error> {
-        self.apply_lock()
+        self.lock_mutex()
             .dataset
             .as_ref()
             .ok_or_else(|| hdf5::Error::Internal("No Dataset Present".to_owned()))
@@ -187,13 +187,13 @@ where
     where
         F: Fn(&D) -> X,
     {
-        f(&self.lock().unwrap().attributes)
+        f(&self.lock_mutex().attributes)
     }
 
     fn examine_children<F, X>(&self, f: F) -> X
     where
         F: Fn(&[Rc<Mutex<dyn NxAttribute>>]) -> X,
     {
-        f(&self.lock().unwrap().attributes_register.lock().unwrap())
+        f(&self.lock_mutex().attributes_register.lock_mutex())
     }
 }

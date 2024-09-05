@@ -4,7 +4,7 @@ use supermusr_streaming_types::{
 
 use crate::schematic::{
     elements::group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
-    elements::traits::GroupBuildable,
+    elements::traits::SubgroupBuildable,
     groups::log::ValueLog,
     nexus_class,
 };

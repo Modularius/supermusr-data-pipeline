@@ -1,6 +1,6 @@
 use crate::schematic::elements::traits::{self, Buildable};
 use hdf5::{types::VarLenAscii, Dataset, Group, H5Type};
-use std::{marker::PhantomData, rc::Rc, sync::Mutex};
+use std::marker::PhantomData;
 
 use super::{
     super::{attribute::NexusAttribute, group::GroupContentRegister},
@@ -98,7 +98,7 @@ where
             class: self.class,
             dataset: None,
         });
-        parent_content_register.apply_lock().push(rc.clone_inner());
+        parent_content_register.lock_mutex().push(rc.clone_inner());
         rc
     }
 }

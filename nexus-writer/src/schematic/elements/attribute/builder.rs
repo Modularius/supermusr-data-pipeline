@@ -1,7 +1,6 @@
-use std::{marker::PhantomData, rc::Rc, sync::Mutex};
+use std::marker::PhantomData;
 
 use hdf5::{Attribute, Dataset, H5Type};
-use tracing::instrument;
 
 use crate::schematic::elements::{dataset::AttributeRegister, traits};
 
@@ -64,7 +63,7 @@ where
             class: self.class,
             attribute: None,
         });
-        parent_content_register.lock().push(rc.clone_inner());
+        parent_content_register.lock_mutex().push(rc.clone_inner());
         rc
     }
 }

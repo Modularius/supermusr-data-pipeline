@@ -8,7 +8,7 @@ use tracing::instrument;
 
 #[cfg(test)]
 use super::traits::Examine;
-use super::{traits::GroupBuildable, NxLivesInGroup, SmartPointer};
+use super::{traits::{SubgroupBuildable, TopGroupBuildable}, NxLivesInGroup, SmartPointer};
 
 type GroupContentRegisterContentType = SmartPointer<dyn NxLivesInGroup>;
 
@@ -20,7 +20,7 @@ impl GroupContentRegister {
         GroupContentRegister(Rc::new(Mutex::new(vec)))
     }
 
-    pub(crate) fn apply_lock(&self) -> MutexGuard<'_, Vec<GroupContentRegisterContentType>> {
+    pub(crate) fn lock_mutex(&self) -> MutexGuard<'_, Vec<GroupContentRegisterContentType>> {
         self.0.lock().expect("Lock exists")
     }
 }
@@ -43,12 +43,13 @@ pub(crate) trait NxPushMessageMut<T> {
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
-pub(crate) struct NexusGroup<G: NxGroup>(SmartPointer<UnderlyingNexusGroup<G>>);
+pub(crate) type TopLevelNexusGroup<G: NxGroup> = NexusGroup<G,false>;
+pub(crate) struct NexusGroup<G: NxGroup, const IS_SUBGROUP : bool = true>(SmartPointer<UnderlyingNexusGroup<G>>);
 
-impl<G> NexusGroup<G> where
+impl<G, const IS_SUBGROUP : bool> NexusGroup<G, IS_SUBGROUP> where
     G : NxGroup
 {
-    fn new(group: UnderlyingNexusGroup<G>) -> Self {
+    fn new_internal(group: UnderlyingNexusGroup<G>) -> Self {
         NexusGroup(Rc::new(Mutex::new(group)))
     }
     pub(crate) fn apply_lock(&self) -> MutexGuard<'_, UnderlyingNexusGroup<G>> {
@@ -56,6 +57,9 @@ impl<G> NexusGroup<G> where
     }
     fn clone_inner(&self) -> SmartPointer<UnderlyingNexusGroup<G>> {
         self.0.clone()
+    }
+    pub(crate) fn is_name(&self, name: &str) -> bool {
+        self.apply_lock().name == name
     }
 }
 
@@ -66,50 +70,48 @@ pub(crate) struct UnderlyingNexusGroup<G: NxGroup> {
     content_register: GroupContentRegister,
 }
 
-impl<G: NxGroup + 'static> GroupBuildable for NexusGroup<G> {
+impl<G: NxGroup + 'static> SubgroupBuildable for NexusGroup<G, true> {
+    #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
+    fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self {
+        let content_register = GroupContentRegister::new(Vec::new());
+        let rc = NexusGroup::new_internal(UnderlyingNexusGroup {
+            name: name.to_owned(),
+            class: G::new(content_register.clone()),
+            group: None,
+            content_register,
+        });
+        parent_content_register.lock_mutex().push(rc.clone_inner());
+        rc
+    }
+}
+
+impl<G: NxGroup + 'static> TopGroupBuildable for NexusGroup<G, false> {
     #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
     fn new_toplevel(name: &str) -> Self {
         let content_register = GroupContentRegister::new(Vec::new());
-        NexusGroup::new(UnderlyingNexusGroup::<G> {
+        NexusGroup::new_internal(UnderlyingNexusGroup::<G> {
             name: name.to_owned(),
             class: G::new(content_register.clone()),
             group: None,
             content_register,
         })
     }
-
-    #[instrument(skip_all, level = "debug", fields(name = name, class = G::CLASS_NAME))]
-    fn new_subgroup(name: &str, parent_content_register: &GroupContentRegister) -> Self {
-        let content_register = GroupContentRegister::new(Vec::new());
-        let rc = NexusGroup::new(UnderlyingNexusGroup {
-            name: name.to_owned(),
-            class: G::new(content_register.clone()),
-            group: None,
-            content_register,
-        });
-        parent_content_register.apply_lock().push(rc.clone_inner());
-        rc
-    }
-
-    fn is_name(&self, name: &str) -> bool {
-        self.apply_lock().name == name
-    }
 }
 
 #[cfg(test)]
-impl<G: NxGroup> Examine<Rc<Mutex<dyn NxLivesInGroup>>, G> for NexusGroup<G> {
+impl<G: NxGroup, const IS_SUBGROUP : bool> Examine<Rc<Mutex<dyn NxLivesInGroup>>, G> for NexusGroup<G, IS_SUBGROUP> {
     fn examine<F, T>(&self, f: F) -> T
     where
         F: Fn(&G) -> T,
     {
-        f(&self.lock().unwrap().class)
+        f(&self.apply_lock().class)
     }
 
     fn examine_children<F, T>(&self, f: F) -> T
     where
         F: Fn(&[Rc<Mutex<dyn NxLivesInGroup>>]) -> T,
     {
-        f(&self.lock().unwrap().content_register.lock().unwrap())
+        f(&self.apply_lock().content_register.lock_mutex())
     }
 }
 
@@ -127,7 +129,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
                         .create("NXclass")
                         .expect("Can write");
 
-                    for content in self.content_register.apply_lock().iter_mut() {
+                    for content in self.content_register.lock_mutex().iter_mut() {
                         content.lock().expect("Lock Exists").create(&group)?;
                     }
                     self.group = Some(group);
@@ -144,7 +146,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
             Err(anyhow::anyhow!("{} group already open", self.name))
         } else {
             let group = parent.group(&self.name)?;
-            for content in self.content_register.apply_lock().iter_mut() {
+            for content in self.content_register.lock_mutex().iter_mut() {
                 content.lock().expect("Lock Exists").open(&group)?;
             }
             self.group = Some(group);
@@ -157,7 +159,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
         if self.group.is_none() {
             Err(anyhow::anyhow!("{} group already closed", self.name))
         } else {
-            for content in self.content_register.apply_lock().iter_mut() {
+            for content in self.content_register.lock_mutex().iter_mut() {
                 content.lock().expect("Lock Exists").close()?;
             }
             self.group = None;
@@ -166,7 +168,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     }
 }
 
-impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T> for NexusGroup<G> {
+impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T, const IS_SUBGROUP : bool> NxPushMessage<T> for NexusGroup<G, IS_SUBGROUP> {
     type MessageType = T;
 
     fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
@@ -174,7 +176,7 @@ impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T> NxPushMessage<T> for Nex
     }
 }
 
-impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T> NxPushMessageMut<T> for NexusGroup<G> {
+impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T, const IS_SUBGROUP : bool> NxPushMessageMut<T> for NexusGroup<G, IS_SUBGROUP> {
     type MessageType = T;
 
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
