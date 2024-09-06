@@ -169,7 +169,7 @@ impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
             .and_then(|dataset| {
                 let size = dataset.size();
                 let next_values_slice = s![size..(size + values.len())];
-                dataset.resize(size + 1)?;
+                dataset.resize(size + values.len())?;
                 dataset.write_slice(values, next_values_slice)?;
                 Ok(())
             })
