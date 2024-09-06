@@ -30,7 +30,13 @@ impl Run {
         }*/
         let nexus = {
             if let Some(filename) = filename {
-                let mut nexus = Nexus::new(filename, nexus_settings)?;
+                let filename = {
+                    let mut filename = filename.to_owned();
+                    filename.push(&parameters.run_name);
+                    filename.set_extension("nxs");
+                    filename
+                };
+                let mut nexus = Nexus::new(&filename, nexus_settings)?;
                 nexus.create()?;
                 nexus.get_root().push_message(&run_start)?;
                 nexus.close()?;

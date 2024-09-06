@@ -43,7 +43,7 @@ pub(crate) trait NxPushMessageMut<T> {
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
-pub(crate) type TopLevelNexusGroup<G: NxGroup> = NexusGroup<G,false>;
+pub(crate) type TopLevelNexusGroup<G> = NexusGroup<G,false>;
 pub(crate) struct NexusGroup<G: NxGroup, const IS_SUBGROUP : bool = true>(SmartPointer<UnderlyingNexusGroup<G>>);
 
 impl<G, const IS_SUBGROUP : bool> NexusGroup<G, IS_SUBGROUP> where
