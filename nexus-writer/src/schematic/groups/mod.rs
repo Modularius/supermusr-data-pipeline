@@ -90,6 +90,7 @@ impl<'a> NxPushMessage<RunStart<'a>> for NXRoot {
         self.raw_data_1.push_message(message)
     }
 }
+
 impl<'a> NxPushMessage<RunStop<'a>> for NXRoot {
     type MessageType = RunStop<'a>;
 

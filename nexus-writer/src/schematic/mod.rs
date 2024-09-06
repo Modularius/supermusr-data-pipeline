@@ -6,6 +6,8 @@ use elements::{group::{NexusGroup, TopLevelNexusGroup}, traits::TopGroupBuildabl
 use groups::NXRoot;
 use hdf5::{types::VarLenUnicode, File, FileBuilder};
 
+use crate::nexus::NexusSettings;
+
 type H5String = VarLenUnicode;
 
 pub(crate) mod nexus_class {
@@ -27,12 +29,13 @@ pub(crate) mod nexus_class {
 }
 
 pub(crate) struct Nexus {
+    settings: NexusSettings,
     file: Option<File>,
     nx_root: TopLevelNexusGroup<NXRoot>,
 }
 
 impl Nexus {
-    pub(crate) fn new(filename: &Path, apply_swmr: bool) -> anyhow::Result<Self> {
+    pub(crate) fn new(filename: &Path, settings: &NexusSettings) -> anyhow::Result<Self> {
         let file = FileBuilder::new()
             .with_fapl(|fapl| {
                 fapl.libver_bounds(
@@ -42,7 +45,7 @@ impl Nexus {
             })
             .create(filename)?;
         {
-            if apply_swmr {
+            if settings.use_swmr {
                 let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
                 if err != 0 {
                     anyhow::bail!("H5Fstart_swmr_write returned error code {err} for {filename:?}");
@@ -58,6 +61,7 @@ impl Nexus {
                     .to_str()
                     .ok_or(anyhow::anyhow!("Conversion Error: {filename:?}"))?,
             ),
+            settings: settings.clone()
         })
     }
 

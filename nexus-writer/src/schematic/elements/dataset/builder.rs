@@ -1,11 +1,10 @@
-use crate::schematic::elements::traits::{self, Buildable};
+use crate::schematic::elements::{
+    attribute::NexusAttribute, group::GroupContentRegister,
+    dataset::{AttributeRegister, NexusDataset, NxDataset, UnderlyingNexusDataset},
+    traits::{self, Buildable}
+};
 use hdf5::{types::VarLenAscii, Dataset, Group, H5Type};
 use std::marker::PhantomData;
-
-use super::{
-    super::{attribute::NexusAttribute, group::GroupContentRegister},
-    AttributeRegister, NexusDataset, NxDataset, UnderlyingNexusDataset,
-};
 
 #[derive(Clone)]
 pub(crate) struct NexusDatasetBuilder<T, D, C0, C>
