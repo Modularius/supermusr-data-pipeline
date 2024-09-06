@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use chrono::{DateTime, Duration, Utc};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::schematic::{
@@ -5,7 +8,7 @@ use crate::schematic::{
         attribute::{NexusAttribute, NexusUnits},
         dataset::{AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset},
         group::{GroupContentRegister, NxGroup, NxPushMessage},
-        traits::{Buildable, CanAppend},
+        traits::{Buildable, CanAppend, CanWriteScalar},
     },
     nexus_class, H5String,
 };
@@ -38,7 +41,7 @@ impl NxDataset for EventTimeZeroAttributes {
 
 pub(super) struct Data {
     event_id: NexusDatasetResize<u32>,
-    event_index: NexusDatasetResize<u32>,
+    event_index: NexusDatasetResize<usize>,
     event_time_offset: NexusDatasetResize<u32, EventTimeOffsetAttributes>,
     event_time_zero: NexusDatasetResize<u64, EventTimeZeroAttributes>,
     event_period_number: NexusDatasetResize<u64>,
@@ -77,9 +80,33 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
 
     fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
         // Here is where we extend the datasets
-        self.event_id
-            .append(&message.channel().expect("").iter().collect::<Vec<_>>())?;
-        //TODO
+        let current_index = self.event_id
+            .append(&message.channel().ok_or_else(||anyhow::anyhow!("Channels not found"))?.iter().collect::<Vec<_>>())?;
+        self.event_time_offset.append(&message.time().ok_or_else(||anyhow::anyhow!("Times not found"))?.iter().collect::<Vec<_>>())?;
+        self.event_pulse_height.append(&message.voltage().ok_or_else(||anyhow::anyhow!("Intensities not found"))?.iter().map(From::from).collect::<Vec<_>>())?;
+        
+        self.event_index.append(&[current_index])?;
+        self.event_period_number.append(&[message.metadata().period_number()])?;
+        let timestamp: DateTime<Utc> = (*message
+            .metadata()
+            .timestamp()
+            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
+        .try_into()?;
+
+        let time_zero = {
+            if current_index == 0 {
+                let offset = DateTime::<Utc>::from_str(self.event_time_zero.attributes(|attributes|Ok(attributes.offset.read_scalar()?))?.as_str())?;
+                timestamp - offset
+            } else {
+                self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;
+                Duration::zero()
+            }
+        }
+        .num_nanoseconds()
+        .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
+            as u64;
+
+        self.event_time_zero.append(&[time_zero])?;
         Ok(())
     }
 }

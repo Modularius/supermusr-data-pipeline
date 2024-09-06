@@ -11,7 +11,7 @@ mod builder;
 mod underlying;
 
 use super::{
-    traits::{self, Buildable},
+    traits::{self, Buildable, CanWriteScalar},
     SmartPointer,
 };
 
@@ -101,5 +101,28 @@ where
 
     fn begin(name: &str) -> NexusAttributeBuilder<T, (), C> {
         NexusAttributeBuilder::new(name)
+    }
+}
+
+impl<T> CanWriteScalar for NexusAttribute<T, ()>
+where
+    T: H5Type + Clone
+{
+    type Type = T;
+
+    fn write_scalar(&self, value: T) -> Result<(), hdf5::Error> {
+        self.lock_mutex()
+            .attribute
+            .as_ref()
+            .map(|attribute| attribute.write_scalar(&value).unwrap())
+            .ok_or_else(|| hdf5::Error::Internal("No Attribute Present".to_owned()))
+    }
+
+    fn read_scalar(&self) -> Result<T, hdf5::Error> {
+        self.lock_mutex()
+            .attribute
+            .as_ref()
+            .map(|attribute| attribute.read_scalar().unwrap())
+            .ok_or_else(|| hdf5::Error::Internal("No Attribute Present".to_owned()))
     }
 }

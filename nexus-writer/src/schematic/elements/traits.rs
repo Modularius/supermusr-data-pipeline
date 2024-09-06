@@ -57,13 +57,15 @@ pub(crate) trait CanWriteScalar {
     type Type: H5Type;
 
     fn write_scalar(&self, value: Self::Type) -> Result<(), hdf5::Error>;
+    
+    fn read_scalar(&self) -> Result<Self::Type, hdf5::Error>;
 }
 
 /// Trait for NexusDataset instances which represent appendable array datasets.
 pub(crate) trait CanAppend {
     type Type: H5Type;
 
-    fn append(&self, value: &[Self::Type]) -> Result<(), hdf5::Error>;
+    fn append(&self, value: &[Self::Type]) -> Result<usize, hdf5::Error>;
 }
 
 /// Trait for NexusGroup instances which represent subgroups.

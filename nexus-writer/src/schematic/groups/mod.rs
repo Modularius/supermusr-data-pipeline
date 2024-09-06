@@ -5,10 +5,10 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 
-use crate::schematic::elements::{
+use crate::{nexus::Run, schematic::elements::{
     attribute::NexusAttribute,
     group::{NexusGroup, NxGroup},
-};
+}};
 
 use super::{
     elements::{

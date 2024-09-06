@@ -9,6 +9,7 @@ use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
 use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
+use supermusr_streaming_types::flatbuffers::size_prefixed_root_unchecked;
 use std::{
     rc::Rc,
     sync::{Mutex, MutexGuard},
@@ -103,6 +104,11 @@ where
     pub(crate) fn clone_inner(&self) -> SmartPointer<UnderlyingNexusDataset<T, D, C>> {
         self.0.clone()
     }
+
+    pub(crate) fn attributes<F,R>(&self, f : F) -> anyhow::Result<R> where F: Fn(&mut D)->anyhow::Result<R>
+    {
+        f(&mut self.lock_mutex().attributes)
+    }
 }
 
 type AttributeRegisterContentType = SmartPointer<dyn NxAttribute>;
@@ -152,6 +158,14 @@ where
             .map(|dataset| dataset.write_scalar(&value).unwrap())
             .ok_or_else(|| hdf5::Error::Internal("No Dataset Present".to_owned()))
     }
+    
+    fn read_scalar(&self) -> Result<Self::Type, hdf5::Error> {
+        self.lock_mutex()
+            .dataset
+            .as_ref()
+            .map(|dataset| dataset.read_scalar().unwrap())
+            .ok_or_else(|| hdf5::Error::Internal("No Dataset Present".to_owned()))
+    }
 }
 
 impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
@@ -161,7 +175,7 @@ impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
     type Type = T;
 
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn append(&self, values: &[T]) -> Result<(), hdf5::Error> {
+    fn append(&self, values: &[T]) -> Result<usize, hdf5::Error> {
         self.lock_mutex()
             .dataset
             .as_ref()
@@ -171,7 +185,7 @@ impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
                 let next_values_slice = s![size..(size + values.len())];
                 dataset.resize(size + values.len())?;
                 dataset.write_slice(values, next_values_slice)?;
-                Ok(())
+                Ok(size)
             })
     }
 }

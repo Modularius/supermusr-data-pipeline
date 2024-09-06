@@ -1,6 +1,6 @@
 use crate::schematic::{elements::group::{NxPushMessage, NxPushMessageMut}, Nexus};
 
-use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
+use super::{NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
