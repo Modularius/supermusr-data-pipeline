@@ -2,7 +2,7 @@ use hdf5::{Attribute, Dataset, H5Type};
 use tracing::instrument;
 
 use super::NxAttribute;
-use crate::schematic::elements::traits::{self, Class};
+use crate::schematic::elements::{error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{self, Class}};
 
 pub(crate) struct UnderlyingNexusAttribute<
     T: H5Type,
@@ -17,9 +17,9 @@ impl<T: H5Type + Clone, C: traits::tags::Tag<T, Dataset, Attribute>> NxAttribute
     for UnderlyingNexusAttribute<T, C>
 {
     #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
-    fn create(&mut self, dataset: &Dataset) -> anyhow::Result<()> {
+    fn create(&mut self, dataset: &Dataset) -> Result<(),CreationError> {
         if self.attribute.is_some() {
-            Err(anyhow::anyhow!("{} attribute already open", self.name))
+            Err(CreationError::AlreadyOpen)
         } else {
             let attribute = self.class.create(dataset, &self.name)?;
 
@@ -29,19 +29,19 @@ impl<T: H5Type + Clone, C: traits::tags::Tag<T, Dataset, Attribute>> NxAttribute
     }
 
     #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
-    fn open(&mut self, parent: &Dataset) -> anyhow::Result<()> {
+    fn open(&mut self, parent: &Dataset) -> Result<(),OpeningError> {
         if self.attribute.is_some() {
-            Err(anyhow::anyhow!("{} attribute already open", self.name))
+            Err(OpeningError::AlreadyOpen)
         } else {
-            self.attribute = Some(parent.attr(&self.name)?);
+            self.attribute = Some(parent.attr(&self.name).map_err(HDF5Error::General)?);
             Ok(())
         }
     }
 
     #[instrument(skip_all, level = "debug", fields(name = self.name), err(level = "error"))]
-    fn close(&mut self) -> anyhow::Result<()> {
+    fn close(&mut self) -> Result<(),ClosingError> {
         if self.attribute.is_none() {
-            Err(anyhow::anyhow!("{} attribute already closed", self.name))
+            Err(ClosingError::AlreadyClosed)
         } else {
             self.attribute = None;
             Ok(())

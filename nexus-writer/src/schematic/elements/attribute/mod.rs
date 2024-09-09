@@ -11,14 +11,13 @@ mod builder;
 mod underlying;
 
 use super::{
-    traits::{self, Buildable, CanWriteScalar},
-    SmartPointer,
+    error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{self, Buildable, CanWriteScalar}, SmartPointer
 };
 
 pub(crate) trait NxAttribute {
-    fn create(&mut self, dataset: &Dataset) -> anyhow::Result<()>;
-    fn open(&mut self, dataset: &Dataset) -> anyhow::Result<()>;
-    fn close(&mut self) -> anyhow::Result<()>;
+    fn create(&mut self, dataset: &Dataset) -> Result<(),CreationError>;
+    fn open(&mut self, dataset: &Dataset) -> Result<(),OpeningError>;
+    fn close(&mut self) -> Result<(),ClosingError>;
 }
 
 #[derive(strum::Display)]
@@ -67,17 +66,17 @@ pub(crate) type NexusAttributeFixed<T> = NexusAttribute<T, traits::tags::Constan
 
 /// Class Implementation
 impl<T: H5Type> traits::Class<T, Dataset, Attribute> for () {
-    fn create(&self, parent: &Dataset, name: &str) -> Result<Attribute, anyhow::Error> {
-        let attribute = parent.new_attr::<T>().create(name)?;
-        Ok(attribute)
+    fn create(&self, parent: &Dataset, name: &str) -> Result<Attribute, CreationError> {
+        Ok(parent.new_attr::<T>().create(name).map_err(HDF5Error::General)?)
+        
     }
 }
 impl<T: H5Type + Clone> traits::Class<T, Dataset, Attribute> for traits::Constant<T> {
-    fn create(&self, parent: &Dataset, name: &str) -> Result<Attribute, anyhow::Error> {
-        let attribute = parent.new_attr::<T>().create(name)?;
+    fn create(&self, parent: &Dataset, name: &str) -> Result<Attribute, CreationError> {
+        let attribute = parent.new_attr::<T>().create(name).map_err(HDF5Error::General)?;
         attribute
             .write_scalar(&self.0)
-            .expect("Attribute can be writen to");
+            .map_err(HDF5Error::General)?;
         Ok(attribute)
     }
 }

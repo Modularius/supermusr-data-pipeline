@@ -17,6 +17,7 @@ rdkafka.workspace = true
 strum.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 

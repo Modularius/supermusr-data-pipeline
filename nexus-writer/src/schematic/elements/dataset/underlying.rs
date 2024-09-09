@@ -1,4 +1,4 @@
-use crate::schematic::elements::{traits, traits::Class, NxLivesInGroup};
+use crate::schematic::elements::{error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{self, Class}, NxLivesInGroup};
 use hdf5::{Dataset, Group, H5Type};
 use tracing::instrument;
 
@@ -28,9 +28,9 @@ where
     C: traits::tags::Tag<T, Group, Dataset>,
 {
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn create(&mut self, parent: &Group) -> Result<(), anyhow::Error> {
+    fn create(&mut self, parent: &Group) -> Result<(),CreationError> {
         if self.dataset.is_some() {
-            Err(anyhow::anyhow!("{} dataset already open", self.name))
+            Err(CreationError::AlreadyOpen)
         } else {
             let dataset = self.class.create(parent, &self.name)?;
             for attribute in self.attributes_register.lock_mutex().iter_mut() {
@@ -42,27 +42,23 @@ where
     }
 
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn open(&mut self, parent: &Group) -> Result<(), anyhow::Error> {
+    fn open(&mut self, parent: &Group) -> Result<(), OpeningError> {
         if self.dataset.is_some() {
-            Err(anyhow::anyhow!("{} dataset already open", self.name))
+            Err(OpeningError::AlreadyOpen)
         } else {
-            match parent.dataset(&self.name) {
-                Ok(dataset) => {
-                    for attribute in self.attributes_register.lock_mutex().iter_mut() {
-                        attribute.lock().expect("Lock Exists").open(&dataset)?;
-                    }
-                    self.dataset = Some(dataset);
-                    Ok(())
-                }
-                Err(e) => Err(e.into()),
+            let dataset = parent.dataset(&self.name).map_err(HDF5Error::General)?;
+            for attribute in self.attributes_register.lock_mutex().iter_mut() {
+                attribute.lock().expect("Lock Exists").open(&dataset)?;
             }
+            self.dataset = Some(dataset);
+            Ok(())
         }
     }
 
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn close(&mut self) -> Result<(), anyhow::Error> {
+    fn close(&mut self) -> Result<(), ClosingError> {
         if self.dataset.is_none() {
-            Err(anyhow::anyhow!("{} dataset already closed", self.name))
+            Err(ClosingError::AlreadyClosed)
         } else {
             for attribute in self.attributes_register.lock_mutex().iter_mut() {
                 attribute.lock().expect("Lock Exists").close()?;

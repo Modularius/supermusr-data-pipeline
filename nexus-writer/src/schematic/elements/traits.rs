@@ -1,5 +1,5 @@
 use hdf5::H5Type;
-use super::group::GroupContentRegister;
+use super::{error::CreationError, group::GroupContentRegister};
 use thiserror::Error;
 
 /// Both NexusDataset and NexusAttribute own a field `class` whose type implements this trait.
@@ -11,7 +11,7 @@ use thiserror::Error;
 /// # Method
 /// - create: creates an instance of O as a child of `parent`, with given name.
 pub(crate) trait Class<T, P, O>: Clone where T: H5Type {
-    fn create(&self, parent: &P, name: &str) -> Result<O, anyhow::Error>;
+    fn create(&self, parent: &P, name: &str) -> Result<O, CreationError>;
 }
 
 /// Facilitates a Dataset or Attribute with a constant value of type T.

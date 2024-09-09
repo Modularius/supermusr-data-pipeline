@@ -1,9 +1,7 @@
 #[cfg(test)]
 use super::traits::Examine;
 use super::{
-    attribute::{NexusUnits, NxAttribute},
-    traits::{Buildable, CanAppend, CanWriteScalar},
-    SmartPointer,
+    attribute::{NexusUnits, NxAttribute}, error::{CreationError, HDF5Error}, traits::{Buildable, CanAppend, CanWriteScalar}, SmartPointer
 };
 use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
@@ -34,27 +32,26 @@ impl NxDataset for () {
 
 /// Class Implementation
 impl<T: H5Type> traits::Class<T, Group, Dataset> for () {
-    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
-        let dataset = parent.new_dataset::<T>().create(name)?;
-        Ok(dataset)
+    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
+        Ok(parent.new_dataset::<T>().create(name).map_err(HDF5Error::General)?)
     }
 }
 
 impl<T: H5Type + Clone> traits::Class<T, Group, Dataset> for traits::Constant<T> {
-    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
-        let dataset = parent.new_dataset::<T>().create(name)?;
-        dataset.write_scalar(&self.0).expect("");
+    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
+        let dataset = parent.new_dataset::<T>().create(name).map_err(HDF5Error::General)?;
+        dataset.write_scalar(&self.0).map_err(HDF5Error::General)?;
         Ok(dataset)
     }
 }
 
 impl<T: H5Type> traits::Class<T, Group, Dataset> for traits::Resizable {
-    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, anyhow::Error> {
+    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
         let dataset = parent
             .new_dataset::<T>()
             .shape(SimpleExtents::resizable(vec![self.initial_size]))
             .chunk(vec![self.chunk_size])
-            .create(name)?;
+            .create(name).map_err(HDF5Error::General)?;
         Ok(dataset)
     }
 }

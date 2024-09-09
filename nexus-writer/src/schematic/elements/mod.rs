@@ -1,18 +1,20 @@
 use std::{rc::Rc, sync::Mutex};
 
+use error::{ClosingError, CreationError, OpeningError};
 use hdf5::Group;
 
 pub(crate) mod attribute;
 pub(crate) mod dataset;
 pub(crate) mod group;
 pub(crate) mod traits;
+pub(crate) mod error;
 
 pub(crate) type SmartPointer<T> = Rc<Mutex<T>>;
 
 pub(crate) trait NxLivesInGroup {
-    fn create(&mut self, parent: &Group) -> anyhow::Result<()>;
-    fn open(&mut self, parent: &Group) -> anyhow::Result<()>;
-    fn close(&mut self) -> anyhow::Result<()>;
+    fn create(&mut self, parent: &Group) -> Result<(),CreationError>;
+    fn open(&mut self, parent: &Group) -> Result<(),OpeningError>;
+    fn close(&mut self) -> Result<(),ClosingError>;
 }
 
 #[cfg(test)]

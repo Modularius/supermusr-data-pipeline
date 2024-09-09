@@ -8,7 +8,7 @@ use tracing::instrument;
 
 #[cfg(test)]
 use super::traits::Examine;
-use super::{traits::{SubgroupBuildable, TopGroupBuildable}, NxLivesInGroup, SmartPointer};
+use super::{error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{SubgroupBuildable, TopGroupBuildable}, NxLivesInGroup, SmartPointer};
 
 type GroupContentRegisterContentType = SmartPointer<dyn NxLivesInGroup>;
 
@@ -117,35 +117,31 @@ impl<G: NxGroup, const IS_SUBGROUP : bool> Examine<Rc<Mutex<dyn NxLivesInGroup>>
 
 impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
-    fn create(&mut self, parent: &Group) -> anyhow::Result<()> {
+    fn create(&mut self, parent: &Group) -> Result<(), CreationError> {
         if self.group.is_some() {
-            Err(anyhow::anyhow!("{} group already open", self.name))
+            Err(CreationError::AlreadyOpen)
         } else {
-            match parent.create_group(&self.name) {
-                Ok(group) => {
-                    group
-                        .new_attr_builder()
-                        .with_data(&[VarLenAscii::from_ascii(G::CLASS_NAME).expect("")])
-                        .create("NXclass")
-                        .expect("Can write");
+            let group = parent.create_group(&self.name).map_err(HDF5Error::General)?;
 
-                    for content in self.content_register.lock_mutex().iter_mut() {
-                        content.lock().expect("Lock Exists").create(&group)?;
-                    }
-                    self.group = Some(group);
-                    Ok(())
-                }
-                Err(e) => Err(e.into()),
+            group.new_attr_builder()
+                .with_data(&[VarLenAscii::from_ascii(G::CLASS_NAME).map_err(HDF5Error::String)?])
+                .create("NXclass")
+                .expect("Can write");
+
+            for content in self.content_register.lock_mutex().iter_mut() {
+                content.lock().expect("Lock Exists").create(&group)?;
             }
+            self.group = Some(group);
+            Ok(())
         }
     }
 
     #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
-    fn open(&mut self, parent: &Group) -> anyhow::Result<()> {
+    fn open(&mut self, parent: &Group) -> Result<(),OpeningError> {
         if self.group.is_some() {
-            Err(anyhow::anyhow!("{} group already open", self.name))
+            Err(OpeningError::AlreadyOpen)
         } else {
-            let group = parent.group(&self.name)?;
+            let group = parent.group(&self.name).map_err(HDF5Error::General)?;
             for content in self.content_register.lock_mutex().iter_mut() {
                 content.lock().expect("Lock Exists").open(&group)?;
             }
@@ -155,9 +151,9 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     }
 
     #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
-    fn close(&mut self) -> anyhow::Result<()> {
+    fn close(&mut self) -> Result<(),ClosingError> {
         if self.group.is_none() {
-            Err(anyhow::anyhow!("{} group already closed", self.name))
+            Err(ClosingError::AlreadyClosed)
         } else {
             for content in self.content_register.lock_mutex().iter_mut() {
                 content.lock().expect("Lock Exists").close()?;
