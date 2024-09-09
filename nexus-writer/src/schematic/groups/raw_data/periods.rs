@@ -19,7 +19,9 @@ struct FramesRequestedAttributes {
 impl NxDataset for FramesRequestedAttributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            frame_type: NexusAttribute::begin("frame_type").finish(&attribute_register),
+            frame_type: NexusAttribute::begin("frame_type")
+                .default_value(Default::default())
+                .finish(&attribute_register),
         }
     }
 }
@@ -32,7 +34,9 @@ struct LabelsAttributes {
 impl NxDataset for LabelsAttributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            separator: NexusAttribute::begin("separator").finish(&attribute_register),
+            separator: NexusAttribute::begin("separator")
+                .default_value(Default::default())
+                .finish(&attribute_register),
         }
     }
 }
@@ -54,14 +58,30 @@ impl NxGroup for Periods {
 
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            number: NexusDataset::begin("number").finish(&dataset_register),
-            period_types: NexusDataset::begin("type").finish(&dataset_register),
-            frames_requested: NexusDataset::begin("frames_requested").finish(&dataset_register),
-            output: NexusDataset::begin("output").finish(&dataset_register),
-            labels: NexusDataset::begin("labels").finish(&dataset_register),
-            raw_frames: NexusDataset::begin("raw_frames").finish(&dataset_register),
-            good_frames: NexusDataset::begin("good_frames").finish(&dataset_register),
-            sequences: NexusDataset::begin("sequences").finish(&dataset_register),
+            number: NexusDataset::begin("number")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            period_types: NexusDataset::begin("type")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            frames_requested: NexusDataset::begin("frames_requested")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            output: NexusDataset::begin("output")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            labels: NexusDataset::begin("labels")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            raw_frames: NexusDataset::begin("raw_frames")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            good_frames: NexusDataset::begin("good_frames")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            sequences: NexusDataset::begin("sequences")
+                .default_value(Default::default())
+                .finish(&dataset_register),
             counts: NexusGroup::new_subgroup("counts", &dataset_register),
         }
     }

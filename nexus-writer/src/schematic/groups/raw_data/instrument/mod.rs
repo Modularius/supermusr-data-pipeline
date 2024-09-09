@@ -23,7 +23,9 @@ impl NxGroup for Instrument {
 
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish(&dataset_register),
+            name: NexusDataset::begin("name")
+                .default_value(Default::default())
+                .finish(&dataset_register),
             source: NexusGroup::new_subgroup("source", &dataset_register),
         }
     }

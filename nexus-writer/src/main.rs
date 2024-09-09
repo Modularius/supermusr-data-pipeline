@@ -144,7 +144,11 @@ async fn main() -> anyhow::Result<()> {
         &topics_to_subscribe,
     );
 
-    let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size, args.use_hdf5_swmr);
+    let nexus_settings = NexusSettings::new(
+        args.frame_list_chunk_size,
+        args.event_list_chunk_size,
+        args.use_hdf5_swmr,
+    );
     let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
 
     let mut nexus_write_interval =

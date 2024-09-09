@@ -1,69 +1,88 @@
 use crate::schematic::elements::{
-    attribute::NexusAttribute, group::GroupContentRegister,
+    attribute::NexusAttribute,
     dataset::{AttributeRegister, NexusDataset, NxDataset, UnderlyingNexusDataset},
-    traits::{self, Buildable}
+    group::GroupContentRegister,
+    traits::{self, Buildable},
 };
 use hdf5::{types::VarLenAscii, Dataset, Group, H5Type};
 use std::marker::PhantomData;
 
 #[derive(Clone)]
-pub(crate) struct NexusDatasetBuilder<T, D, C0, C>
+pub(crate) struct NexusDatasetBuilder<T, D, C, const finished: bool>
 where
     T: H5Type + Clone,
     D: NxDataset,
-    C0: traits::tags::Tag<T, Group, Dataset>,
     C: traits::tags::Tag<T, Group, Dataset>,
 {
     name: String,
-    class: C0::ClassType,
-    phantom: PhantomData<(T, D, C)>,
+    class: C::ClassType,
+    phantom: PhantomData<(T, D)>,
 }
 
-impl<T, D, C> NexusDatasetBuilder<T, D, (), C>
+impl<T, D, C> NexusDatasetBuilder<T, D, C, false>
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
     D: NxDataset,
     C: traits::tags::Tag<T, Group, Dataset>,
 {
     pub(super) fn new(name: &str) -> Self {
         Self {
             name: name.to_owned(),
-            class: (),
+            class: Default::default(),
             phantom: PhantomData,
         }
     }
 }
 
-impl<T, D> NexusDatasetBuilder<T, D, (), traits::tags::Constant>
+impl<T, D> NexusDatasetBuilder<T, D, traits::tags::Mutable, false>
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
+    D: NxDataset,
+{
+    pub(crate) fn default_value(
+        self,
+        default_value: T,
+    ) -> NexusDatasetBuilder<T, D, traits::tags::Mutable, true> {
+        NexusDatasetBuilder {
+            name: self.name,
+            class: traits::Mutable(default_value),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, D> NexusDatasetBuilder<T, D, traits::tags::Constant, false>
+where
+    T: H5Type + Clone + Default,
     D: NxDataset,
 {
     pub(crate) fn fixed_value(
         self,
-        value: T,
-    ) -> NexusDatasetBuilder<T, D, traits::tags::Constant, ()> {
+        fixed_value: T,
+    ) -> NexusDatasetBuilder<T, D, traits::tags::Constant, true> {
         NexusDatasetBuilder {
             name: self.name,
-            class: traits::Constant(value),
+            class: traits::Constant(fixed_value),
             phantom: PhantomData,
         }
     }
 }
 
-impl<T, D> NexusDatasetBuilder<T, D, (), traits::tags::Resizable>
+impl<T, D> NexusDatasetBuilder<T, D, traits::tags::Resizable, false>
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
     D: NxDataset,
 {
     pub(crate) fn resizable(
         self,
+        default_value: T,
         initial_size: usize,
         chunk_size: usize,
-    ) -> NexusDatasetBuilder<T, D, traits::tags::Resizable, ()> {
+    ) -> NexusDatasetBuilder<T, D, traits::tags::Resizable, true> {
         NexusDatasetBuilder {
             name: self.name,
             class: traits::Resizable {
+                default_value,
                 initial_size,
                 chunk_size,
             },
@@ -72,16 +91,16 @@ where
     }
 }
 
-impl<T, D, C0> NexusDatasetBuilder<T, D, C0, ()>
+impl<T, D, C> NexusDatasetBuilder<T, D, C, true>
 where
     T: H5Type + Clone,
     D: NxDataset + 'static,
-    C0: traits::tags::Tag<T, Group, Dataset> + 'static,
+    C: traits::tags::Tag<T, Group, Dataset> + 'static,
 {
     pub(crate) fn finish(
         self,
         parent_content_register: &GroupContentRegister,
-    ) -> NexusDataset<T, D, C0> {
+    ) -> NexusDataset<T, D, C> {
         let attributes_register = AttributeRegister::default();
 
         if let Some(units) = D::UNITS {

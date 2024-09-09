@@ -1,4 +1,7 @@
-use crate::schematic::{elements::group::{NxPushMessage, NxPushMessageMut}, Nexus};
+use crate::schematic::{
+    elements::group::{NxPushMessage, NxPushMessageMut},
+    Nexus,
+};
 
 use super::{Run, RunParameters};
 use chrono::{DateTime, Duration, Utc};
@@ -21,7 +24,7 @@ pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    nexus_settings: NexusSettings
+    nexus_settings: NexusSettings,
 }
 
 impl NexusEngine {
@@ -100,11 +103,7 @@ impl NexusEngine {
             .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = Run::new_run(
-                self.filename.as_deref(),
-                data,
-                &self.nexus_settings,
-            )?;
+            let run = Run::new_run(self.filename.as_deref(), data, &self.nexus_settings)?;
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().unwrap())
@@ -346,7 +345,11 @@ pub(crate) struct NexusSettings {
 }
 
 impl NexusSettings {
-    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize, use_swmr: bool) -> Self {
+    pub(crate) fn new(
+        framelist_chunk_size: usize,
+        eventlist_chunk_size: usize,
+        use_swmr: bool,
+    ) -> Self {
         Self {
             framelist_chunk_size,
             eventlist_chunk_size,
@@ -354,7 +357,7 @@ impl NexusSettings {
             runloglist_chunk_size: 64,
             seloglist_chunk_size: 1024,
             alarmlist_chunk_size: 32,
-            use_swmr
+            use_swmr,
         }
     }
 }

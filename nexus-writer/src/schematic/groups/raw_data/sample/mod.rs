@@ -45,14 +45,30 @@ impl NxGroup for Sample {
 
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish(&dataset_register),
-            chemical_formula: NexusDataset::begin("chemical_formula").finish(&dataset_register),
-            description: NexusDataset::begin("description").finish(&dataset_register),
-            sample_type: NexusDataset::begin("sample_type").finish(&dataset_register),
-            situation: NexusDataset::begin("situation").finish(&dataset_register),
-            shape: NexusDataset::begin("shape").finish(&dataset_register),
-            preparation_date: NexusDataset::begin("preparation_date").finish(&dataset_register),
-            sample_holder: NexusDataset::begin("sample_holder").finish(&dataset_register),
+            name: NexusDataset::begin("name")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            chemical_formula: NexusDataset::begin("chemical_formula")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            description: NexusDataset::begin("description")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            sample_type: NexusDataset::begin("sample_type")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            situation: NexusDataset::begin("situation")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            shape: NexusDataset::begin("shape")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            preparation_date: NexusDataset::begin("preparation_date")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            sample_holder: NexusDataset::begin("sample_holder")
+                .default_value(Default::default())
+                .finish(&dataset_register),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
             sample_component: NexusDataset::begin().finish("sample_component"),

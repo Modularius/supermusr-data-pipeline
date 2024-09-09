@@ -1,17 +1,22 @@
 pub(crate) mod elements;
 mod groups;
 
-use std::path::{Path, PathBuf};
-use elements::{error::{ClosingError, CreationError, HDF5Error, NexusError, OpeningError}, group::{NexusGroup, TopLevelNexusGroup}, traits::TopGroupBuildable, NxLivesInGroup};
+use elements::{
+    error::{ClosingError, CreationError, HDF5Error, NexusError, OpeningError},
+    group::{NexusGroup, TopLevelNexusGroup},
+    traits::TopGroupBuildable,
+    NxLivesInGroup,
+};
 use groups::NXRoot;
 use hdf5::{types::VarLenUnicode, File, FileBuilder};
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::nexus::NexusSettings;
 
 type H5String = VarLenUnicode;
 
-#[derive(Debug,Error)]
+#[derive(Debug, Error)]
 pub(crate) enum NexusRootError {
     #[error("HDF5 Error: {0}")]
     HDF5(#[from] HDF5Error),
@@ -28,7 +33,7 @@ pub(crate) enum NexusRootError {
     #[error("Cannot Close HDF5 File")]
     CloseFile,
     #[error("Nexus Error {0}")]
-    Nexus(#[from]NexusError),
+    Nexus(#[from] NexusError),
     #[error("Path Error {0}")]
     Path(PathBuf),
     #[error("Path Conversion Error {0}")]
@@ -70,7 +75,8 @@ impl Nexus {
                     hdf5::file::LibraryVersion::V110,
                 )
             })
-            .create(filename).map_err(HDF5Error::General)?;
+            .create(filename)
+            .map_err(HDF5Error::General)?;
         {
             if settings.use_swmr {
                 let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
@@ -88,7 +94,7 @@ impl Nexus {
                     .to_str()
                     .ok_or(NexusRootError::PathConversion(filename.to_owned()))?,
             ),
-            settings: settings.clone()
+            settings: settings.clone(),
         })
     }
 
@@ -100,7 +106,7 @@ impl Nexus {
         &mut self.nx_root
     }
 
-    pub(crate) fn create(&mut self) -> Result<(),NexusRootError> {
+    pub(crate) fn create(&mut self) -> Result<(), NexusRootError> {
         if let Some(file) = &mut self.file {
             Ok(self.nx_root.apply_lock().create(file)?)
         } else {
@@ -108,7 +114,7 @@ impl Nexus {
         }
     }
 
-    pub(crate) fn open(&mut self) -> Result<(),NexusRootError> {
+    pub(crate) fn open(&mut self) -> Result<(), NexusRootError> {
         if let Some(file) = &mut self.file {
             Ok(self.nx_root.apply_lock().open(file)?)
         } else {
@@ -116,7 +122,7 @@ impl Nexus {
         }
     }
 
-    pub(crate) fn close(&mut self) -> Result<(),NexusRootError> {
+    pub(crate) fn close(&mut self) -> Result<(), NexusRootError> {
         if self.file.is_some() {
             Ok(self.nx_root.apply_lock().close()?)
         } else {

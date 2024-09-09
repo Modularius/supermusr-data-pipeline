@@ -16,7 +16,9 @@ impl NxGroup for Geometry {
 
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish(&dataset_register),
+            name: NexusDataset::begin("name")
+                .default_value(Default::default())
+                .finish(&dataset_register),
         }
     }
 }

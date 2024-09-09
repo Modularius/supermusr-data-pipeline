@@ -27,19 +27,37 @@ impl NxGroup for Source {
 
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish(&dataset_register),
-            source_type: NexusDataset::begin("source_type").finish(&dataset_register),
-            probe: NexusDataset::begin("probe").finish(&dataset_register),
-            source_frequency: NexusDataset::begin("source_frequency").finish(&dataset_register),
-            source_frame_pattern: NexusDataset::begin("source_frame_pattern")
+            name: NexusDataset::begin("name")
+                .default_value(Default::default())
                 .finish(&dataset_register),
-            source_energy: NexusDataset::begin("source_energy").finish(&dataset_register),
+            source_type: NexusDataset::begin("source_type")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            probe: NexusDataset::begin("probe")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            source_frequency: NexusDataset::begin("source_frequency")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            source_frame_pattern: NexusDataset::begin("source_frame_pattern")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            source_energy: NexusDataset::begin("source_energy")
+                .default_value(Default::default())
+                .finish(&dataset_register),
             source_current: NexusDataset::begin("tarsource_currentget_thickness")
+                .default_value(Default::default())
                 .finish(&dataset_register),
             source_current_log: NexusGroup::new_subgroup("source_current_log", &dataset_register),
-            source_pulse_width: NexusDataset::begin("source_pulse_width").finish(&dataset_register),
-            target_material: NexusDataset::begin("target_material").finish(&dataset_register),
-            target_thickness: NexusDataset::begin("target_thickness").finish(&dataset_register),
+            source_pulse_width: NexusDataset::begin("source_pulse_width")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            target_material: NexusDataset::begin("target_material")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            target_thickness: NexusDataset::begin("target_thickness")
+                .default_value(Default::default())
+                .finish(&dataset_register),
         }
     }
 }

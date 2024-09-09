@@ -5,10 +5,13 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 
-use crate::{nexus::Run, schematic::elements::{
-    attribute::NexusAttribute,
-    group::{NexusGroup, NxGroup},
-}};
+use crate::{
+    nexus::Run,
+    schematic::elements::{
+        attribute::NexusAttribute,
+        group::{NexusGroup, NxGroup},
+    },
+};
 
 use super::{
     elements::{
@@ -37,8 +40,12 @@ struct RawData1Attributes {
 impl NxDataset for RawData1Attributes {
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            file_name: NexusAttribute::begin("file_name").finish(&attribute_register),
-            file_time: NexusAttribute::begin("file_time").finish(&attribute_register),
+            file_name: NexusAttribute::begin("file_name")
+                .default_value(Default::default())
+                .finish(&attribute_register),
+            file_time: NexusAttribute::begin("file_time")
+                .default_value(Default::default())
+                .finish(&attribute_register),
             initial_file_format: NexusAttribute::begin("initial_file_format")
                 .fixed_value("TODO".parse().expect(""))
                 .finish(&attribute_register),

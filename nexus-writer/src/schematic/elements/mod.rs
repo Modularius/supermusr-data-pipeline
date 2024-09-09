@@ -5,16 +5,16 @@ use hdf5::Group;
 
 pub(crate) mod attribute;
 pub(crate) mod dataset;
+pub(crate) mod error;
 pub(crate) mod group;
 pub(crate) mod traits;
-pub(crate) mod error;
 
 pub(crate) type SmartPointer<T> = Rc<Mutex<T>>;
 
 pub(crate) trait NxLivesInGroup {
-    fn create(&mut self, parent: &Group) -> Result<(),CreationError>;
-    fn open(&mut self, parent: &Group) -> Result<(),OpeningError>;
-    fn close(&mut self) -> Result<(),ClosingError>;
+    fn create(&mut self, parent: &Group) -> Result<(), CreationError>;
+    fn open(&mut self, parent: &Group) -> Result<(), OpeningError>;
+    fn close(&mut self) -> Result<(), ClosingError>;
 }
 
 #[cfg(test)]
@@ -35,7 +35,9 @@ mod test {
     impl NxDataset for CateDataset {
         fn new(attribute_register: AttributeRegister) -> Self {
             Self {
-                a1: NexusAttribute::begin("URL").finish(&attribute_register),
+                a1: NexusAttribute::begin("URL")
+                    .default_value("http://".parse().unwrap())
+                    .finish(&attribute_register),
                 a2: NexusAttribute::begin("Height")
                     .fixed_value(64.0)
                     .finish(&attribute_register),
@@ -57,9 +59,11 @@ mod test {
             Self {
                 g1: NexusGroup::new_subgroup("Alfred", &content_register),
                 g2: NexusGroup::new_subgroup("Alfred", &content_register),
-                d1: NexusDataset::begin("Beth").finish(&content_register),
+                d1: NexusDataset::begin("Beth")
+                    .default_value("".parse().unwrap())
+                    .finish(&content_register),
                 d2: NexusDataset::begin("Cate")
-                    .resizable(80, 800)
+                    .resizable(false, 80, 800)
                     .finish(&content_register),
             }
         }
@@ -73,7 +77,9 @@ mod test {
 
         fn new(attribute_register: AttributeRegister) -> Self {
             Self {
-                a1: NexusAttribute::begin("NHS Number").finish(&attribute_register),
+                a1: NexusAttribute::begin("NHS Number")
+                    .default_value("".parse().unwrap())
+                    .finish(&attribute_register),
             }
         }
     }
@@ -107,12 +113,14 @@ mod test {
 
         fn new(content_register: GroupContentRegister) -> Self {
             Self {
-                d1: NexusDataset::begin("Alfred").finish(&content_register),
+                d1: NexusDataset::begin("Alfred")
+                    .default_value("Alfie".parse().unwrap())
+                    .finish(&content_register),
                 d2: NexusDataset::begin("Beth")
                     .fixed_value(true)
                     .finish(&content_register),
                 d3: NexusDataset::begin("Callum")
-                    .resizable(84, 455)
+                    .resizable(0, 84, 455)
                     .finish(&content_register),
             }
         }

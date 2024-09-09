@@ -11,13 +11,15 @@ mod builder;
 mod underlying;
 
 use super::{
-    error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{self, Buildable, CanWriteScalar}, SmartPointer
+    error::{ClosingError, CreationError, HDF5Error, OpeningError},
+    traits::{self, Buildable, CanWriteScalar},
+    SmartPointer,
 };
 
 pub(crate) trait NxAttribute {
-    fn create(&mut self, dataset: &Dataset) -> Result<(),CreationError>;
-    fn open(&mut self, dataset: &Dataset) -> Result<(),OpeningError>;
-    fn close(&mut self) -> Result<(),ClosingError>;
+    fn create(&mut self, dataset: &Dataset) -> Result<(), CreationError>;
+    fn open(&mut self, dataset: &Dataset) -> Result<(), OpeningError>;
+    fn close(&mut self) -> Result<(), ClosingError>;
 }
 
 #[derive(strum::Display)]
@@ -39,7 +41,9 @@ pub(crate) enum NexusUnits {
 }
 
 #[derive(Clone)]
-pub(crate) struct NexusAttribute<T, C = ()>(SmartPointer<UnderlyingNexusAttribute<T, C>>)
+pub(crate) struct NexusAttribute<T, C = traits::tags::Mutable>(
+    SmartPointer<UnderlyingNexusAttribute<T, C>>,
+)
 where
     T: H5Type + Clone,
     C: traits::tags::Tag<T, Dataset, Attribute>;
@@ -65,15 +69,24 @@ where
 pub(crate) type NexusAttributeFixed<T> = NexusAttribute<T, traits::tags::Constant>;
 
 /// Class Implementation
-impl<T: H5Type> traits::Class<T, Dataset, Attribute> for () {
+impl<T: H5Type + Clone + Default> traits::Class<T, Dataset, Attribute> for traits::Mutable<T> {
     fn create(&self, parent: &Dataset, name: &str) -> Result<Attribute, CreationError> {
-        Ok(parent.new_attr::<T>().create(name).map_err(HDF5Error::General)?)
-        
+        let attribute = parent
+            .new_attr::<T>()
+            .create(name)
+            .map_err(HDF5Error::General)?;
+        attribute
+            .write_scalar(&self.0)
+            .map_err(HDF5Error::General)?;
+        Ok(attribute)
     }
 }
-impl<T: H5Type + Clone> traits::Class<T, Dataset, Attribute> for traits::Constant<T> {
+impl<T: H5Type + Clone + Default> traits::Class<T, Dataset, Attribute> for traits::Constant<T> {
     fn create(&self, parent: &Dataset, name: &str) -> Result<Attribute, CreationError> {
-        let attribute = parent.new_attr::<T>().create(name).map_err(HDF5Error::General)?;
+        let attribute = parent
+            .new_attr::<T>()
+            .create(name)
+            .map_err(HDF5Error::General)?;
         attribute
             .write_scalar(&self.0)
             .map_err(HDF5Error::General)?;
@@ -82,10 +95,14 @@ impl<T: H5Type + Clone> traits::Class<T, Dataset, Attribute> for traits::Constan
 }
 
 /// Class Tag Implementation
-impl<T: H5Type> traits::tags::Tag<T, Dataset, Attribute> for () {
-    type ClassType = ();
+impl<T: H5Type + Clone + Default> traits::tags::Tag<T, Dataset, Attribute>
+    for traits::tags::Mutable
+{
+    type ClassType = traits::Mutable<T>;
 }
-impl<T: H5Type + Clone> traits::tags::Tag<T, Dataset, Attribute> for traits::tags::Constant {
+impl<T: H5Type + Clone + Default> traits::tags::Tag<T, Dataset, Attribute>
+    for traits::tags::Constant
+{
     type ClassType = traits::Constant<T>;
 }
 
@@ -96,16 +113,16 @@ where
     T: H5Type + Clone,
     C: traits::tags::Tag<T, Dataset, Attribute>,
 {
-    type BuilderType = NexusAttributeBuilder<T, (), C>;
+    type BuilderType = NexusAttributeBuilder<T, C, false>;
 
-    fn begin(name: &str) -> NexusAttributeBuilder<T, (), C> {
+    fn begin(name: &str) -> NexusAttributeBuilder<T, C, false> {
         NexusAttributeBuilder::new(name)
     }
 }
 
-impl<T> CanWriteScalar for NexusAttribute<T, ()>
+impl<T> CanWriteScalar for NexusAttribute<T, traits::tags::Mutable>
 where
-    T: H5Type + Clone
+    T: H5Type + Clone + Default,
 {
     type Type = T;
 

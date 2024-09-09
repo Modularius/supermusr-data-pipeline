@@ -26,7 +26,9 @@ impl NxDataset for TimeAttributes {
 
     fn new(attribute_register: AttributeRegister) -> Self {
         Self {
-            offset: NexusAttribute::begin("offset").finish(&attribute_register),
+            offset: NexusAttribute::begin("offset")
+                .default_value(Default::default())
+                .finish(&attribute_register),
         }
     }
 }
@@ -42,10 +44,10 @@ impl NxGroup for Log {
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             time: NexusDataset::begin("time")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
             value: NexusDataset::begin("value")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
         }
     }
@@ -76,19 +78,19 @@ impl NxGroup for ValueLog {
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
             alarm_severity: NexusDataset::begin("alarm_severity")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
             alarm_status: NexusDataset::begin("alarm_status")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
             alarm_time: NexusDataset::begin("alarm_time")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
             time: NexusDataset::begin("time")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
             value: NexusDataset::begin("value")
-                .resizable(0, 128)
+                .resizable(Default::default(), 0, 128)
                 .finish(&dataset_register),
         }
     }

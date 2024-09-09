@@ -8,7 +8,11 @@ use tracing::instrument;
 
 #[cfg(test)]
 use super::traits::Examine;
-use super::{error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{SubgroupBuildable, TopGroupBuildable}, NxLivesInGroup, SmartPointer};
+use super::{
+    error::{ClosingError, CreationError, HDF5Error, OpeningError},
+    traits::{SubgroupBuildable, TopGroupBuildable},
+    NxLivesInGroup, SmartPointer,
+};
 
 type GroupContentRegisterContentType = SmartPointer<dyn NxLivesInGroup>;
 
@@ -43,11 +47,14 @@ pub(crate) trait NxPushMessageMut<T> {
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()>;
 }
 
-pub(crate) type TopLevelNexusGroup<G> = NexusGroup<G,false>;
-pub(crate) struct NexusGroup<G: NxGroup, const IS_SUBGROUP : bool = true>(SmartPointer<UnderlyingNexusGroup<G>>);
+pub(crate) type TopLevelNexusGroup<G> = NexusGroup<G, false>;
+pub(crate) struct NexusGroup<G: NxGroup, const IS_SUBGROUP: bool = true>(
+    SmartPointer<UnderlyingNexusGroup<G>>,
+);
 
-impl<G, const IS_SUBGROUP : bool> NexusGroup<G, IS_SUBGROUP> where
-    G : NxGroup
+impl<G, const IS_SUBGROUP: bool> NexusGroup<G, IS_SUBGROUP>
+where
+    G: NxGroup,
 {
     fn new_internal(group: UnderlyingNexusGroup<G>) -> Self {
         NexusGroup(Rc::new(Mutex::new(group)))
@@ -99,7 +106,9 @@ impl<G: NxGroup + 'static> TopGroupBuildable for NexusGroup<G, false> {
 }
 
 #[cfg(test)]
-impl<G: NxGroup, const IS_SUBGROUP : bool> Examine<Rc<Mutex<dyn NxLivesInGroup>>, G> for NexusGroup<G, IS_SUBGROUP> {
+impl<G: NxGroup, const IS_SUBGROUP: bool> Examine<Rc<Mutex<dyn NxLivesInGroup>>, G>
+    for NexusGroup<G, IS_SUBGROUP>
+{
     fn examine<F, T>(&self, f: F) -> T
     where
         F: Fn(&G) -> T,
@@ -121,9 +130,12 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
         if self.group.is_some() {
             Err(CreationError::AlreadyOpen)
         } else {
-            let group = parent.create_group(&self.name).map_err(HDF5Error::General)?;
+            let group = parent
+                .create_group(&self.name)
+                .map_err(HDF5Error::General)?;
 
-            group.new_attr_builder()
+            group
+                .new_attr_builder()
                 .with_data(&[VarLenAscii::from_ascii(G::CLASS_NAME).map_err(HDF5Error::String)?])
                 .create("NXclass")
                 .expect("Can write");
@@ -137,7 +149,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     }
 
     #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
-    fn open(&mut self, parent: &Group) -> Result<(),OpeningError> {
+    fn open(&mut self, parent: &Group) -> Result<(), OpeningError> {
         if self.group.is_some() {
             Err(OpeningError::AlreadyOpen)
         } else {
@@ -151,7 +163,7 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     }
 
     #[instrument(skip_all, level = "debug", fields(name = self.name, class = G::CLASS_NAME), err(level = "error"))]
-    fn close(&mut self) -> Result<(),ClosingError> {
+    fn close(&mut self) -> Result<(), ClosingError> {
         if self.group.is_none() {
             Err(ClosingError::AlreadyClosed)
         } else {
@@ -164,7 +176,9 @@ impl<G: NxGroup> NxLivesInGroup for UnderlyingNexusGroup<G> {
     }
 }
 
-impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T, const IS_SUBGROUP : bool> NxPushMessage<T> for NexusGroup<G, IS_SUBGROUP> {
+impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T, const IS_SUBGROUP: bool> NxPushMessage<T>
+    for NexusGroup<G, IS_SUBGROUP>
+{
     type MessageType = T;
 
     fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
@@ -172,7 +186,9 @@ impl<G: NxGroup + NxPushMessage<T, MessageType = T>, T, const IS_SUBGROUP : bool
     }
 }
 
-impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T, const IS_SUBGROUP : bool> NxPushMessageMut<T> for NexusGroup<G, IS_SUBGROUP> {
+impl<G: NxGroup + NxPushMessageMut<T, MessageType = T>, T, const IS_SUBGROUP: bool>
+    NxPushMessageMut<T> for NexusGroup<G, IS_SUBGROUP>
+{
     type MessageType = T;
 
     fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {

@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-
 #[derive(Debug, Error)]
 pub(crate) enum NexusError {
     #[error("HDF5 Error: {0}")]

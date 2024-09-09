@@ -1,4 +1,8 @@
-use crate::schematic::elements::{error::{ClosingError, CreationError, HDF5Error, OpeningError}, traits::{self, Class}, NxLivesInGroup};
+use crate::schematic::elements::{
+    error::{ClosingError, CreationError, HDF5Error, OpeningError},
+    traits::{self, Class},
+    NxLivesInGroup,
+};
 use hdf5::{Dataset, Group, H5Type};
 use tracing::instrument;
 
@@ -10,7 +14,7 @@ use super::{AttributeRegister, NxDataset};
 pub(crate) struct UnderlyingNexusDataset<
     T,
     D: NxDataset = (),
-    C: traits::tags::Tag<T, Group, Dataset> = (),
+    C: traits::tags::Tag<T, Group, Dataset> = traits::tags::Mutable,
 > where
     T: H5Type + Clone,
 {
@@ -28,7 +32,7 @@ where
     C: traits::tags::Tag<T, Group, Dataset>,
 {
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn create(&mut self, parent: &Group) -> Result<(),CreationError> {
+    fn create(&mut self, parent: &Group) -> Result<(), CreationError> {
         if self.dataset.is_some() {
             Err(CreationError::AlreadyOpen)
         } else {

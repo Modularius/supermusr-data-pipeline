@@ -1,7 +1,10 @@
 #[cfg(test)]
 use super::traits::Examine;
 use super::{
-    attribute::{NexusUnits, NxAttribute}, error::{CreationError, HDF5Error}, traits::{Buildable, CanAppend, CanWriteScalar}, SmartPointer
+    attribute::{NexusUnits, NxAttribute},
+    error::{CreationError, HDF5Error},
+    traits::{Buildable, CanAppend, CanWriteScalar},
+    SmartPointer,
 };
 use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
@@ -31,53 +34,70 @@ impl NxDataset for () {
 }
 
 /// Class Implementation
-impl<T: H5Type> traits::Class<T, Group, Dataset> for () {
+impl<T: H5Type + Clone + Default> traits::Class<T, Group, Dataset> for traits::Mutable<T> {
     fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
-        Ok(parent.new_dataset::<T>().create(name).map_err(HDF5Error::General)?)
-    }
-}
-
-impl<T: H5Type + Clone> traits::Class<T, Group, Dataset> for traits::Constant<T> {
-    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
-        let dataset = parent.new_dataset::<T>().create(name).map_err(HDF5Error::General)?;
+        let dataset = parent
+            .new_dataset::<T>()
+            .create(name)
+            .map_err(HDF5Error::General)?;
         dataset.write_scalar(&self.0).map_err(HDF5Error::General)?;
         Ok(dataset)
     }
 }
 
-impl<T: H5Type> traits::Class<T, Group, Dataset> for traits::Resizable {
+impl<T: H5Type + Clone + Default> traits::Class<T, Group, Dataset> for traits::Constant<T> {
+    fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
+        let dataset = parent
+            .new_dataset::<T>()
+            .create(name)
+            .map_err(HDF5Error::General)?;
+        dataset.write_scalar(&self.0).map_err(HDF5Error::General)?;
+        Ok(dataset)
+    }
+}
+
+impl<T: H5Type + Clone + Default> traits::Class<T, Group, Dataset> for traits::Resizable<T> {
     fn create(&self, parent: &Group, name: &str) -> Result<Dataset, CreationError> {
         let dataset = parent
             .new_dataset::<T>()
             .shape(SimpleExtents::resizable(vec![self.initial_size]))
             .chunk(vec![self.chunk_size])
-            .create(name).map_err(HDF5Error::General)?;
+            .create(name)
+            .map_err(HDF5Error::General)?;
+        dataset
+            .write_slice(
+                &vec![self.default_value.clone(); self.initial_size],
+                s![0..self.initial_size],
+            )
+            .map_err(HDF5Error::General)?;
         Ok(dataset)
     }
 }
 
 /// Class Tag Implementation
-impl<T: H5Type> traits::tags::Tag<T, Group, Dataset> for ()
+impl<T> traits::tags::Tag<T, Group, Dataset> for traits::tags::Mutable
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
 {
-    type ClassType = ();
+    type ClassType = traits::Mutable<T>;
 }
 impl<T> traits::tags::Tag<T, Group, Dataset> for traits::tags::Constant
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
 {
     type ClassType = traits::Constant<T>;
 }
 impl<T> traits::tags::Tag<T, Group, Dataset> for traits::tags::Resizable
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
 {
-    type ClassType = traits::Resizable;
+    type ClassType = traits::Resizable<T>;
 }
 
 /// Defining Types
-pub(crate) struct NexusDataset<T, D = (), C = ()>(SmartPointer<UnderlyingNexusDataset<T, D, C>>)
+pub(crate) struct NexusDataset<T, D = (), C = traits::tags::Mutable>(
+    SmartPointer<UnderlyingNexusDataset<T, D, C>>,
+)
 where
     T: H5Type + Clone,
     D: NxDataset,
@@ -101,7 +121,9 @@ where
         self.0.clone()
     }
 
-    pub(crate) fn attributes<F,R>(&self, f : F) -> anyhow::Result<R> where F: Fn(&mut D)->anyhow::Result<R>
+    pub(crate) fn attributes<F, R>(&self, f: F) -> anyhow::Result<R>
+    where
+        F: Fn(&mut D) -> anyhow::Result<R>,
     {
         f(&mut self.lock_mutex().attributes)
     }
@@ -129,20 +151,20 @@ pub(crate) type NexusDatasetResize<T, D = ()> = NexusDataset<T, D, traits::tags:
 // Dataset Implementations
 impl<T, D, C> Buildable<T> for NexusDataset<T, D, C>
 where
-    T: H5Type + Clone,
+    T: H5Type + Default + Clone,
     D: NxDataset,
     C: traits::tags::Tag<T, Group, Dataset>,
 {
-    type BuilderType = NexusDatasetBuilder<T, D, (), C>;
+    type BuilderType = NexusDatasetBuilder<T, D, C, false>;
 
-    fn begin(name: &str) -> NexusDatasetBuilder<T, D, (), C> {
+    fn begin(name: &str) -> NexusDatasetBuilder<T, D, C, false> {
         NexusDatasetBuilder::new(name)
     }
 }
 
-impl<T, D> CanWriteScalar for NexusDataset<T, D, ()>
+impl<T, D> CanWriteScalar for NexusDataset<T, D, traits::tags::Mutable>
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
     D: NxDataset,
 {
     type Type = T;
@@ -154,7 +176,7 @@ where
             .map(|dataset| dataset.write_scalar(&value).unwrap())
             .ok_or_else(|| hdf5::Error::Internal("No Dataset Present".to_owned()))
     }
-    
+
     fn read_scalar(&self) -> Result<Self::Type, hdf5::Error> {
         self.lock_mutex()
             .dataset
@@ -164,8 +186,9 @@ where
     }
 }
 
-impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
-    T: H5Type + Clone,
+impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable>
+where
+    T: H5Type + Clone + Default,
     D: NxDataset,
 {
     type Type = T;
@@ -189,14 +212,20 @@ impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
 #[cfg(test)]
 impl<T, D> Examine<SmartPointer<dyn NxAttribute>, D> for NexusDataset<T, D>
 where
-    T: H5Type + Clone,
+    T: H5Type + Clone + Default,
     D: NxDataset,
 {
-    fn examine<F, X>(&self, f: F) -> X where F: Fn(&D) -> X {
+    fn examine<F, X>(&self, f: F) -> X
+    where
+        F: Fn(&D) -> X,
+    {
         f(&self.lock_mutex().attributes)
     }
 
-    fn examine_children<F, X>(&self, f: F) -> X where F: Fn(&[SmartPointer<dyn NxAttribute>]) -> X {
+    fn examine_children<F, X>(&self, f: F) -> X
+    where
+        F: Fn(&[SmartPointer<dyn NxAttribute>]) -> X,
+    {
         f(&self.lock_mutex().attributes_register.lock_mutex())
     }
 }

@@ -1,11 +1,17 @@
-use crate::schematic::{elements::group::{NxPushMessage, NxPushMessageMut}, Nexus};
+use crate::schematic::{
+    elements::group::{NxPushMessage, NxPushMessageMut},
+    Nexus,
+};
 
 use super::{NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart, ecs_se00_data_generated::se00_SampleEnvironmentData
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
+    ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
+    ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
+    ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::{info_span, Span};
 
@@ -48,7 +54,7 @@ impl Run {
         Ok(Self {
             span: Default::default(),
             parameters,
-            nexus
+            nexus,
         })
     }
     //#[cfg(test)]  Uncomment this at a later stage

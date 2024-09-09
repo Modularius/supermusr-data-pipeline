@@ -111,21 +111,48 @@ impl NxGroup for RawData {
             definition_local: NexusDataset::begin("definition_local")
                 .fixed_value("muonTD".parse().expect(""))
                 .finish(&dataset_register),
-            program_name: NexusDataset::begin("program_name").finish(&dataset_register),
-            run_number: NexusDataset::begin("run_number").finish(&dataset_register),
-            title: NexusDataset::begin("title").finish(&dataset_register),
-            notes: NexusDataset::begin("notes").finish(&dataset_register),
-            start_time: NexusDataset::begin("start_time").finish(&dataset_register),
-            end_time: NexusDataset::begin("end_time").finish(&dataset_register),
-            duration: NexusDataset::begin("duration").finish(&dataset_register),
-            collection_time: NexusDataset::begin("collection_time").finish(&dataset_register),
-            total_counts: NexusDataset::begin("total_counts").finish(&dataset_register),
-            good_frames: NexusDataset::begin("good_frames").finish(&dataset_register),
-            raw_frames: NexusDataset::begin("raw_frames").finish(&dataset_register),
-            proton_charge: NexusDataset::begin("proton_charge").finish(&dataset_register),
-            experiment_identifier: NexusDataset::begin("experiment_identifier")
+            program_name: NexusDataset::begin("program_name")
+                .default_value(Default::default())
                 .finish(&dataset_register),
-            run_cycle: NexusDataset::begin("run_cycle").finish(&dataset_register),
+            run_number: NexusDataset::begin("run_number")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            title: NexusDataset::begin("title")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            notes: NexusDataset::begin("notes")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            start_time: NexusDataset::begin("start_time")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            end_time: NexusDataset::begin("end_time")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            duration: NexusDataset::begin("duration")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            collection_time: NexusDataset::begin("collection_time")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            total_counts: NexusDataset::begin("total_counts")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            good_frames: NexusDataset::begin("good_frames")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            raw_frames: NexusDataset::begin("raw_frames")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            proton_charge: NexusDataset::begin("proton_charge")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            experiment_identifier: NexusDataset::begin("experiment_identifier")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            run_cycle: NexusDataset::begin("run_cycle")
+                .default_value(Default::default())
+                .finish(&dataset_register),
             user_1: NexusGroup::new_subgroup("user_1", &dataset_register),
             run_log: NexusGroup::new_subgroup("run_log", &dataset_register),
             selog: NexusGroup::new_subgroup("selog", &dataset_register),

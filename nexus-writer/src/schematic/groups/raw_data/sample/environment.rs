@@ -22,11 +22,21 @@ impl NxGroup for Environment {
 
     fn new(dataset_register: GroupContentRegister) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish(&dataset_register),
-            short_name: NexusDataset::begin("short_name").finish(&dataset_register),
-            env_type: NexusDataset::begin("env_type").finish(&dataset_register),
-            description: NexusDataset::begin("description").finish(&dataset_register),
-            program: NexusDataset::begin("program").finish(&dataset_register),
+            name: NexusDataset::begin("name")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            short_name: NexusDataset::begin("short_name")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            env_type: NexusDataset::begin("env_type")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            description: NexusDataset::begin("description")
+                .default_value(Default::default())
+                .finish(&dataset_register),
+            program: NexusDataset::begin("program")
+                .default_value(Default::default())
+                .finish(&dataset_register),
             hardware_log: NexusGroup::new_subgroup("hardware_log", &dataset_register),
         }
     }
