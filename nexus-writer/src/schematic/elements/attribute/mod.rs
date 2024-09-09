@@ -114,15 +114,15 @@ where
         self.lock_mutex()
             .attribute
             .as_ref()
-            .map(|attribute| attribute.write_scalar(&value).unwrap())
             .ok_or_else(|| hdf5::Error::Internal("No Attribute Present".to_owned()))
+            .and_then(|attribute| attribute.write_scalar(&value))
     }
 
     fn read_scalar(&self) -> Result<T, hdf5::Error> {
         self.lock_mutex()
             .attribute
             .as_ref()
-            .map(|attribute| attribute.read_scalar().unwrap())
             .ok_or_else(|| hdf5::Error::Internal("No Attribute Present".to_owned()))
+            .and_then(|attribute| attribute.read_scalar())
     }
 }

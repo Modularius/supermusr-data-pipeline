@@ -103,7 +103,7 @@ struct Cli {
     frame_list_chunk_size: usize,
 
     /// Specifies whether to activate "Single Writer Multiple Reader" mode
-    #[clap(long, default_value = "true")]
+    #[clap(long)]
     use_hdf5_swmr: bool,
 }
 #[tokio::main]

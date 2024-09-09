@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use chrono::{DateTime, Duration, Utc};
-use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
+use supermusr_streaming_types::{aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, ecs_pl72_run_start_generated::RunStart};
 
 use crate::schematic::{
     elements::{
@@ -75,6 +75,16 @@ impl NxGroup for Data {
     }
 }
 
+impl<'a> NxPushMessage<RunStart<'a>> for Data {
+    type MessageType = RunStart<'a>;
+
+    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+        //let timestamp = DateTime::<Utc>::from_timestamp_millis(i64::try_from(message.start_time())?).ok_or(anyhow::anyhow!("Millisecond error"))?;
+        //self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;
+        Ok(())
+    }
+}
+
 impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
@@ -94,8 +104,9 @@ impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for Data {
         .try_into()?;
 
         let time_zero = {
-            if current_index == 0 {
-                let offset = DateTime::<Utc>::from_str(self.event_time_zero.attributes(|attributes|Ok(attributes.offset.read_scalar()?))?.as_str())?;
+            if current_index != 0 {
+                let offset_string = self.event_time_zero.attributes(|attributes|Ok(attributes.offset.read_scalar()?))?;
+                let offset = DateTime::<Utc>::from_str(offset_string.as_str())?;
                 timestamp - offset
             } else {
                 self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;

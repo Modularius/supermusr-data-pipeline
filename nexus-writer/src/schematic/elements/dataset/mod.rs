@@ -9,7 +9,6 @@ use crate::schematic::elements::traits;
 use builder::NexusDatasetBuilder;
 use hdf5::{Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
-use supermusr_streaming_types::flatbuffers::size_prefixed_root_unchecked;
 use std::{
     rc::Rc,
     sync::{Mutex, MutexGuard},
@@ -175,7 +174,7 @@ impl<T, D> CanAppend for NexusDataset<T, D, traits::tags::Resizable> where
     type Type = T;
 
     #[instrument(skip_all, level = "debug", fields(name = tracing::field::Empty), err(level = "error"))]
-    fn append(&self, values: &[T]) -> Result<usize, hdf5::Error> {
+    fn append(&self, values: &[T]) -> hdf5::Result<usize> {
         self.lock_mutex()
             .dataset
             .as_ref()

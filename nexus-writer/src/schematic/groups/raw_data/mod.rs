@@ -169,6 +169,7 @@ impl<'a> NxPushMessage<RunStart<'a>> for RawData {
         self.proton_charge.write_scalar(1.0)?;
         self.experiment_identifier.write_scalar("POAS35".parse()?)?;
         self.run_cycle.write_scalar("This".parse()?)?;
+        self.detector_1.push_message(message)?;
         Ok(())
     }
 }

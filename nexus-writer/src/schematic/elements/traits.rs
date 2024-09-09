@@ -1,5 +1,6 @@
 use hdf5::H5Type;
 use super::group::GroupContentRegister;
+use thiserror::Error;
 
 /// Both NexusDataset and NexusAttribute own a field `class` whose type implements this trait.
 /// They use it to create their respective hdf5 objects.
