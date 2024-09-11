@@ -5,7 +5,7 @@ use supermusr_streaming_types::{
 
 use crate::schematic::{
     elements::{
-        group::NexusGroup, NexusError, NexusGroupDef, NexusPushMessage, NexusPushMessageMut,
+        group::NexusGroup, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage
     },
     groups::log::ValueLog,
     nexus_class,
@@ -25,34 +25,34 @@ impl NexusGroupDef for Selog {
     }
 }
 
-impl<'a> NexusPushMessageMut<Group, se00_SampleEnvironmentData<'a>> for Selog {
-    fn push_message_mut(&mut self, message: &se00_SampleEnvironmentData<'a>, location: &Location) -> Result<(), NexusError> {
-        if let Some(selog) = self.selogs.iter().find(|log| log.get_name() == message.name()) {
-            let group = selog.create_hdf5(&location.as_group().expect("Location is Group"))?;
-            selog.push_message(message, &group.as_location().expect("Group is Location"))?;
+impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for Selog {
+    fn handle_message(&mut self, message: &se00_SampleEnvironmentData<'a>, location: &Group) -> Result<(), NexusError> {
+        if let Some(selog) = self.selogs.iter_mut().find(|log| log.get_name() == message.name()) {
+            let group = selog.create_hdf5(location)?;
+            selog.push_message(message, &group)?;
         } else {
-            let selog_block = NexusGroup::<SelogBlock>::new(message.name());
-            let group = selog_block.create_hdf5(&location.as_group().expect("Location is Group"))?;
-            selog_block.push_message(message, &group.as_location().expect("Group is Location"))?;
+            let mut selog_block = NexusGroup::<SelogBlock>::new(message.name());
+            let group = selog_block.create_hdf5(location)?;
+            selog_block.push_message(message, &group)?;
             self.selogs.push(selog_block);
         }
         Ok(())
     }
 }
 
-impl<'a> NexusPushMessageMut<Group, Alarm<'a>> for Selog {
-    fn push_message_mut(&mut self, message: &Alarm<'a>, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusHandleMessage<Alarm<'a>> for Selog {
+    fn handle_message(&mut self, message: &Alarm<'a>, location: &Group) -> Result<(), NexusError> {
         if let Some(selog) = self
             .selogs
-            .iter()
+            .iter_mut()
             .find(|selog| selog.get_name() == message.source_name().expect(""))
         {
-            let group = selog.create_hdf5(&location.as_group().expect("Location is Group"))?;
-            selog.push_message(message, &group.as_location().expect("Group is Location"))?;
+            let group = selog.create_hdf5(location)?;
+            selog.push_message(message, &group)?;
         } else {
-            let selog_block = NexusGroup::<SelogBlock>::new(message.source_name().expect(""));
-            let group = selog_block.create_hdf5(&location.as_group().expect("Location is Group"))?;
-            selog_block.push_message(message, &group.as_location().expect("Group is Location"))?;
+            let mut selog_block = NexusGroup::<SelogBlock>::new(message.source_name().expect(""));
+            let group = selog_block.create_hdf5(location)?;
+            selog_block.push_message(message, &group)?;
             self.selogs.push(selog_block);
         }
         Ok(())
@@ -73,16 +73,16 @@ impl NexusGroupDef for SelogBlock {
     }
 }
 
-impl<'a> NexusPushMessage<Group, se00_SampleEnvironmentData<'a>> for SelogBlock {
-    fn push_message(&self, message: &se00_SampleEnvironmentData<'a>, location: &Location) -> Result<(), NexusError> {
-        let group = self.value_log.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.value_log.push_message(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for SelogBlock {
+    fn handle_message(&mut self, message: &se00_SampleEnvironmentData<'a>, location: &Group) -> Result<(), NexusError> {
+        let group = self.value_log.create_hdf5(location)?;
+        self.value_log.push_message(message, &group)
     }
 }
 
-impl<'a> NexusPushMessage<Group, Alarm<'a>> for SelogBlock {
-    fn push_message(&self, message: &Alarm<'a>, location: &Location) -> Result<(), NexusError> {
-        let group = self.value_log.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.value_log.push_message(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusHandleMessage<Alarm<'a>> for SelogBlock {
+    fn handle_message(&mut self, message: &Alarm<'a>, location: &Group) -> Result<(), NexusError> {
+        let group = self.value_log.create_hdf5(location)?;
+        self.value_log.push_message(message, &group)
     }
 }

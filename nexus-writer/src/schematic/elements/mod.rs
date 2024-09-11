@@ -1,4 +1,4 @@
-use hdf5::{H5Type, Location};
+use hdf5::{Group, H5Type, Location, Object};
 use thiserror::Error;
 
 pub(crate) mod attribute;
@@ -10,6 +10,8 @@ pub(crate) mod group;
 pub(crate) enum NexusError {
     #[error("Error")]
     Unknown,
+    #[error("HDF5 Error")]
+    HDF5(#[from] hdf5::Error),
 }
 
 #[derive(strum::Display)]
@@ -62,7 +64,7 @@ pub(super) trait NexusDataHolder: NexusBuildable {
     type HDF5Type;
     type HDF5Container;
 
-    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError>;
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError>;
     fn close_hdf5(&mut self);
 }
 
@@ -105,11 +107,10 @@ impl NexusDatasetDef for () {
 }
 
 /// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages
-pub(crate) trait NexusPushMessage<P, M> {
-    fn push_message(&self, message: &M, parent: &P) -> Result<(), NexusError>;
+pub(crate) trait NexusPushMessage<M, P = Group> {
+    fn push_message(&mut self, message: &M, parent: &P) -> Result<(), NexusError>;
 }
 
-/// Implemented for structs in the `groups` folder which react mutably to `flatbuffer` messages
-pub(crate) trait NexusPushMessageMut<P, M> {
-    fn push_message_mut(&mut self, message: &M, parent: &P) -> Result<(), NexusError>;
+pub(super) trait NexusHandleMessage<M,P = Group> {
+    fn handle_message(&mut self, message: &M, own: &P) -> Result<(), NexusError>;
 }

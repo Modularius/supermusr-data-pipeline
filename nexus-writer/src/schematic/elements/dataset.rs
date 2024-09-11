@@ -1,11 +1,12 @@
-use hdf5::{Dataset, Group, H5Type, Location, SimpleExtents};
+use chrono::Local;
+use hdf5::{Dataset, Group, H5Type, Location, Object, SimpleExtents};
 use ndarray::s;
 use std::marker::PhantomData;
 
 use super::{
     attribute::NexusAttribute, builder::{
         NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable, NexusDataHolderResizable,
-    }, NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDataHolderClass, NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusPushMessage, NexusPushMessageMut
+    }, NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDataHolderClass, NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusHandleMessage, NexusPushMessage
 };
 
 impl<T, C, D> NexusBuilderFinished for NexusBuilder<C, NexusDataset<T, D, C>, true>
@@ -83,7 +84,7 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
         let dataset = parent.dataset(&self.name).or_else(|_| {
             let dataset = parent
                 .new_dataset::<T>()
@@ -92,10 +93,10 @@ where
             dataset
                 .write_scalar(&self.class.default_value)
                 .map_err(|_| NexusError::Unknown)?;
-            Ok(dataset)
+            Ok::<_,NexusError>(dataset)
         })?;
-        //self.dataset = Some(dataset);
-        Ok(())
+        self.dataset = Some(dataset.clone());
+        Ok(dataset)
     }
 
     fn close_hdf5(&mut self) {
@@ -112,7 +113,7 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
         let dataset = parent.dataset(&self.name).or_else(|_| {
             let dataset = parent
                 .new_dataset::<T>()
@@ -121,10 +122,10 @@ where
             dataset
                 .write_scalar(&self.class.fixed_value)
                 .map_err(|_| NexusError::Unknown)?;
-            Ok(dataset)
+            Ok::<_,NexusError>(dataset)
         })?;
-        //self.dataset = Some(dataset);
-        Ok(())
+        self.dataset = Some(dataset.clone());
+        Ok(dataset)
     }
 
     fn close_hdf5(&mut self) {
@@ -141,7 +142,7 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
         let dataset = parent
             .new_dataset::<T>()
             .shape(SimpleExtents::resizable(vec![self.class.default_size]))
@@ -154,8 +155,8 @@ where
                 s![0..self.class.default_size],
             )
             .map_err(|_| NexusError::Unknown)?;
-        //self.dataset = Some(dataset);
-        Ok(())
+        self.dataset = Some(dataset.clone());
+        Ok(dataset)
     }
 
     fn close_hdf5(&mut self) {
@@ -210,24 +211,17 @@ impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusDataHolderAppendable
     }
 }
 
-impl<T, D, C, M> NexusPushMessage<Dataset, M> for NexusDataset<T, D, C>
+impl<T, D, C, M> NexusPushMessage<M,Group> for NexusDataset<T, D, C>
 where
     T: H5Type + Clone + Default,
-    D: NexusDatasetDef + NexusPushMessage<Dataset, M>,
+    D: NexusDatasetDef + NexusHandleMessage<M,Dataset>,
     C: NexusDataHolderClass,
+    NexusDataset<T, D, C> : NexusDataHolder<HDF5Type = Dataset, HDF5Container = Group>,
 {
-    fn push_message(&self, message: &M, dataset: &Dataset) -> Result<(), NexusError> {
-        self.definition.push_message(message, dataset)
-    }
-}
-
-impl<T, D, C, M> NexusPushMessageMut<Group, M> for NexusDataset<T, D, C>
-where
-    T: H5Type + Clone + Default,
-    D: NexusDatasetDef + NexusPushMessageMut<Group, M>,
-    C: NexusDataHolderClass,
-{
-    fn push_message_mut(&mut self, message: &M, group: &Group) -> Result<(), NexusError> {
-        self.definition.push_message_mut(message, group)
+    fn push_message(&mut self, message: &M, parent: &Group) -> Result<(), NexusError> {
+        let dataset = self.create_hdf5(parent)?;
+        self.definition.handle_message(message, &dataset)?;
+        self.close_hdf5();
+        Ok(())
     }
 }

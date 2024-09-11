@@ -4,8 +4,7 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished, NexusError,
-        NexusGroupDef, NexusPushMessage,
+        dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -31,8 +30,8 @@ impl NexusGroupDef for Instrument {
     }
 }
 
-impl<'a> NexusPushMessage<Group, RunStart<'a>> for Instrument {
-    fn push_message(&self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
+impl<'a> NexusHandleMessage<RunStart<'a>> for Instrument {
+    fn handle_message(&mut self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
         Ok(())
     }
 }

@@ -1,5 +1,5 @@
 use crate::schematic::{
-    elements::{NexusPushMessage, NexusPushMessageMut},
+    elements::NexusPushMessage,
     Nexus,
 };
 
@@ -42,7 +42,7 @@ impl Run {
                     filename.set_extension("nxs");
                     filename
                 };
-                let nexus = Nexus::new(&filename, nexus_settings)?;
+                let mut nexus = Nexus::new(&filename, nexus_settings)?;
                 //nexus.create()?;
                 nexus.push_message(&run_start)?;
                 //nexus.close()?;
@@ -77,7 +77,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.open()?;
-            nexus.push_message_mut(logdata)?;
+            nexus.push_message(logdata)?;
             //nexus.close()?;
         };
 
@@ -99,7 +99,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.open()?;
-            nexus.push_message_mut(&alarm)?;
+            nexus.push_message(&alarm)?;
             //nexus.close()?;
         }
 
@@ -121,7 +121,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.open()?;
-            nexus.push_message_mut(&selogdata)?;
+            nexus.push_message(&selogdata)?;
             //nexus.close()?;
         }
 

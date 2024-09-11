@@ -3,7 +3,7 @@ use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::schematic::{
     elements::{
-        group::NexusGroup, NexusError, NexusGroupDef, NexusPushMessage, NexusPushMessageMut,
+        group::NexusGroup, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage
     },
     groups::log::Log,
     nexus_class,
@@ -23,19 +23,17 @@ impl NexusGroupDef for RunLog {
     }
 }
 
-impl<'a> NexusPushMessageMut<Group, f144_LogData<'a>> for RunLog {
-    fn push_message_mut(&mut self, message: &f144_LogData<'a>, location: &Group) -> Result<(), NexusError> {
+impl<'a> NexusHandleMessage<f144_LogData<'a>> for RunLog {
+    fn handle_message(&mut self, message: &f144_LogData<'a>, location: &Group) -> Result<(), NexusError> {
         if let Some(log) = self
             .logs
-            .iter()
+            .iter_mut()
             .find(|log| log.get_name() == message.source_name())
         {
-            let group = log.create_hdf5(&location.as_group().expect("Location is Group"))?;
-            log.push_message(message, &group.as_location().expect("Group is Location"))?;
+            log.push_message(message, location)?;
         } else {
-            let log = NexusGroup::<Log>::new(message.source_name());
-            let group = log.create_hdf5(&location.as_group().expect("Location is Group"))?;
-            log.push_message(message, &group.as_location().expect("Group is Location"))?;
+            let mut log = NexusGroup::<Log>::new(message.source_name());
+            log.push_message(message, location)?;
             self.logs.push(log);
         }
         Ok(())
