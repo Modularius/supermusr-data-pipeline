@@ -1,7 +1,6 @@
-use std::marker::PhantomData;
-
-use hdf5::{Dataset, Group, H5Type, SimpleExtents};
+use hdf5::{Dataset, Group, H5Type, Location, SimpleExtents};
 use ndarray::s;
+use std::marker::PhantomData;
 
 use super::{
     attribute::NexusAttribute, builder::{
@@ -16,7 +15,7 @@ where
     D: NexusDatasetDef,
     NexusDataset<T, D, C>: NexusDataHolder,
 {
-    type BuiltType = NexusDataset<T, D, C>;
+    type BuildType = NexusDataset<T, D, C>;
 
     fn finish(self) -> NexusDataset<T, D, C> {
         NexusDataset {
@@ -29,7 +28,7 @@ where
     }
 }
 
-pub(crate) struct NexusDataset<
+pub(in crate::schematic) struct NexusDataset<
     T: H5Type + Clone + Default,
     D: NexusDatasetDef = (),
     C: NexusDataHolderClass = NexusDataHolderMutable<T>,
@@ -55,9 +54,9 @@ C: NexusDataHolderClass {
     }
 }
 
-pub(crate) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, NexusDataHolderConstant<T>>;
+pub(in crate::schematic) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, NexusDataHolderConstant<T>>;
 
-pub(crate) type NexusDatasetResize<T, D = ()> = NexusDataset<T, D, NexusDataHolderResizable<T>>;
+pub(in crate::schematic) type NexusDatasetResize<T, D = ()> = NexusDataset<T, D, NexusDataHolderResizable<T>>;
 
 impl<T, D, C> NexusBuildable for NexusDataset<T, D, C>
 where
@@ -84,7 +83,7 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
         let dataset = parent.dataset(&self.name).or_else(|_| {
             let dataset = parent
                 .new_dataset::<T>()
@@ -95,7 +94,7 @@ where
                 .map_err(|_| NexusError::Unknown)?;
             Ok(dataset)
         })?;
-        self.dataset = Some(dataset);
+        //self.dataset = Some(dataset);
         Ok(())
     }
 
@@ -113,7 +112,7 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
         let dataset = parent.dataset(&self.name).or_else(|_| {
             let dataset = parent
                 .new_dataset::<T>()
@@ -124,7 +123,7 @@ where
                 .map_err(|_| NexusError::Unknown)?;
             Ok(dataset)
         })?;
-        self.dataset = Some(dataset);
+        //self.dataset = Some(dataset);
         Ok(())
     }
 
@@ -142,7 +141,7 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
         let dataset = parent
             .new_dataset::<T>()
             .shape(SimpleExtents::resizable(vec![self.class.default_size]))
@@ -155,7 +154,7 @@ where
                 s![0..self.class.default_size],
             )
             .map_err(|_| NexusError::Unknown)?;
-        self.dataset = Some(dataset);
+        //self.dataset = Some(dataset);
         Ok(())
     }
 
@@ -219,8 +218,8 @@ where
 {
     type MessageType = M;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
-        self.definition.push_message(message)
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+        self.definition.push_message(message, location)
     }
 }
 
@@ -232,7 +231,7 @@ where
 {
     type MessageType = M;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
-        self.definition.push_message_mut(message)
+    fn push_message_mut(&mut self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+        self.definition.push_message_mut(message, location)
     }
 }

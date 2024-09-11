@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use chrono::{DateTime, Duration, Utc};
+use hdf5::{Dataset, Group, Location};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_pl72_run_start_generated::RunStart,
@@ -48,7 +49,7 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
 impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for EventTimeZeroAttributes {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         let timestamp: DateTime<Utc> =
             (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
                 .try_into()
@@ -101,7 +102,7 @@ impl NexusGroupDef for Data {
 impl<'a> NexusPushMessage<RunStart<'a>> for Data {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         //let timestamp = DateTime::<Utc>::from_timestamp_millis(i64::try_from(message.start_time())?).ok_or(anyhow::anyhow!("Millisecond error"))?;
         //self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;
         Ok(())
@@ -111,7 +112,7 @@ impl<'a> NexusPushMessage<RunStart<'a>> for Data {
 impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         // Here is where we extend the datasets
         let current_index = self.event_id.get_size()?;
         self.event_id.append(
@@ -155,7 +156,7 @@ impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
                     .map_err(|_| NexusError::Unknown)?;
                 timestamp - offset
             } else {
-                self.event_time_zero.push_message(message)?;
+                self.event_time_zero.push_message(message, location)?;
                 Duration::zero()
             }
         }

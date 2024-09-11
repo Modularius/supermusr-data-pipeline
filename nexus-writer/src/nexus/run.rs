@@ -42,9 +42,9 @@ impl Run {
                     filename.set_extension("nxs");
                     filename
                 };
-                let mut nexus = Nexus::new(&filename, nexus_settings)?;
+                let nexus = Nexus::new(&filename, nexus_settings)?;
                 //nexus.create()?;
-                nexus.get_root().push_message(&run_start)?;
+                nexus.push_message(&run_start)?;
                 //nexus.close()?;
                 Some(nexus)
             } else {
@@ -77,7 +77,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.open()?;
-            nexus.get_root_mut().push_message_mut(logdata)?;
+            nexus.push_message_mut(logdata)?;
             //nexus.close()?;
         };
 
@@ -99,7 +99,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.open()?;
-            nexus.get_root_mut().push_message_mut(&alarm)?;
+            nexus.push_message_mut(&alarm)?;
             //nexus.close()?;
         }
 
@@ -121,7 +121,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.open()?;
-            nexus.get_root_mut().push_message_mut(&selogdata)?;
+            nexus.push_message_mut(&selogdata)?;
             //nexus.close()?;
         }
 
@@ -142,7 +142,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //.open()?;
-            nexus.get_root().push_message(message)?;
+            nexus.push_message(message)?;
             //nexus.close()?;
         }
 
@@ -168,7 +168,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //nexus.get_root().open()?;
-            nexus.get_root().push_message(&run_stop)?;
+            nexus.push_message(&run_stop)?;
             //nexus.close()?;
         }
 

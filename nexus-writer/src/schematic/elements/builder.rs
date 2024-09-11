@@ -27,7 +27,7 @@ pub(crate) struct NexusDataHolderResizable<T: H5Type + Default + Clone> {
 
 impl<T: H5Type + Default + Clone> NexusDataHolderClass for NexusDataHolderResizable<T> {}
 
-pub(crate) struct NexusBuilder<C: NexusDataHolderClass, H: NexusDataHolder, const FINISHED: bool> {
+pub(in crate::schematic) struct NexusBuilder<C: NexusDataHolderClass, H: NexusDataHolder, const FINISHED: bool> {
     pub(super) name: String,
     pub(super) class: C,
     pub(super) phantom: PhantomData<H>,

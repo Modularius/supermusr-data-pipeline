@@ -13,7 +13,7 @@ impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuilderFinished
 where
     NexusAttribute<T, C>: NexusDataHolder,
 {
-    type BuiltType = NexusAttribute<T, C>;
+    type BuildType = NexusAttribute<T, C>;
 
     fn finish(self) -> NexusAttribute<T, C> {
         NexusAttribute {
@@ -26,7 +26,7 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct NexusAttribute<
+pub(in crate::schematic) struct NexusAttribute<
     T: H5Type + Clone + Default,
     C: NexusDataHolderClass = NexusDataHolderMutable<T>,
 > {
@@ -35,7 +35,7 @@ pub(crate) struct NexusAttribute<
     attribute: Option<Attribute>,
     phantom: PhantomData<T>,
 }
-pub(crate) type NexusAttributeFixed<T> = NexusAttribute<T, NexusDataHolderConstant<T>>;
+pub(in crate::schematic) type NexusAttributeFixed<T> = NexusAttribute<T, NexusDataHolderConstant<T>>;
 
 impl<T, C> NexusBuildable for NexusAttribute<T, C>
 where
@@ -58,7 +58,7 @@ where
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
         let attribute = parent.attr(&self.name).or_else(|_| {
             let attribute = parent
                 .new_attr::<T>()
@@ -69,7 +69,7 @@ where
                 .map_err(|_| NexusError::Unknown)?;
             Ok(attribute)
         })?;
-        self.attribute = Some(attribute);
+        //self.attribute = Some(attribute);
         Ok(())
     }
     fn close_hdf5(&mut self) {
@@ -85,7 +85,7 @@ where
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
         let attribute = parent.attr(&self.name).or_else(|_| {
             let attribute = parent
                 .new_attr::<T>()
@@ -96,7 +96,7 @@ where
                 .map_err(|_| NexusError::Unknown)?;
             Ok(attribute)
         })?;
-        self.attribute = Some(attribute);
+        //self.attribute = Some(attribute);
         Ok(())
     }
     fn close_hdf5(&mut self) {

@@ -1,3 +1,4 @@
+use hdf5::{Group, Location};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
@@ -88,7 +89,7 @@ impl NexusGroupDef for Periods {
 impl<'a> NexusPushMessage<RunStart<'a>> for Periods {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         Ok(())
     }
 }

@@ -1,3 +1,4 @@
+use hdf5::{Group, Location};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
@@ -56,7 +57,7 @@ impl NexusGroupDef for Log {
 impl<'a> NexusPushMessage<f144_LogData<'a>> for Log {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         self.time.append(&[message.timestamp()])?;
         self.value
             .append(&[message.value_as_uint().unwrap().value()])?;
@@ -99,7 +100,7 @@ impl NexusGroupDef for ValueLog {
 impl<'a> NexusPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         self.time
             .append(&message.timestamps().unwrap().iter().collect::<Vec<_>>())?;
         self.value.append(
@@ -117,7 +118,7 @@ impl<'a> NexusPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
 impl<'a> NexusPushMessage<Alarm<'a>> for ValueLog {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
+    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
         self.alarm_severity.append(&[message
             .severity()
             .variant_name()

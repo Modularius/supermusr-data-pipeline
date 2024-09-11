@@ -1,4 +1,4 @@
-use hdf5::H5Type;
+use hdf5::{H5Type, Location};
 use thiserror::Error;
 
 pub(crate) mod attribute;
@@ -10,52 +10,6 @@ pub(crate) mod group;
 pub(crate) enum NexusError {
     #[error("Error")]
     Unknown,
-}
-
-pub(crate) trait NexusBuildable: Sized {
-    type Builder: NexusBuilderBegun;
-
-    fn begin(name: &str) -> Self::Builder;
-}
-
-pub(crate) trait NexusBuilderBegun {
-    type FinshedBuilder: NexusBuilderFinished;
-    
-    fn new(name: &str) -> Self;
-}
-
-pub(crate) trait NexusBuilderFinished {
-    type BuiltType: NexusBuildable;
-
-    fn finish(self) -> Self::BuiltType;
-}
-
-pub(crate) trait NexusDataHolder: NexusBuildable {
-    type DataType: H5Type + Default + Clone;
-
-    type HDF5Type;
-    type HDF5Container;
-
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError>;
-    fn close_hdf5(&mut self);
-}
-
-pub(crate) trait NexusDataHolderScalarMutable: NexusDataHolder {
-    fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError>;
-    fn read_scalar(&self) -> Result<Self::DataType, NexusError>;
-}
-
-pub(crate) trait NexusDataHolderAppendable: NexusDataHolder {
-    fn append(&self, values: &[Self::DataType]) -> Result<(), NexusError>;
-    fn get_size(&self) -> Result<usize, NexusError>;
-}
-
-pub(crate) trait NexusDataHolderClass: Default + Clone {}
-
-pub(crate) trait NexusGroupDef: Sized {
-    const CLASS_NAME: &'static str;
-
-    fn new() -> Self;
 }
 
 #[derive(strum::Display)]
@@ -76,7 +30,69 @@ pub(crate) enum NexusUnits {
     Counts,
 }
 
-pub(crate) trait NexusDatasetDef: Sized {
+/// Implemented for objects who are constructed by a builder
+/// i.e. NexusDataset and NexusAttribute instances
+pub(super) trait NexusBuildable: Sized {
+    type Builder: NexusBuilderBegun;
+
+    fn begin(name: &str) -> Self::Builder;
+}
+
+/// Implemented for builders which require input
+/// i.e. NexusBuilder with FINISHED = false
+pub(super) trait NexusBuilderBegun {
+    type FinshedBuilder: NexusBuilderFinished;
+    
+    fn new(name: &str) -> Self;
+}
+
+/// Implemented for builders which are ready to complete
+/// i.e. NexusBuilder with FINISHED = true
+pub(super) trait NexusBuilderFinished {
+    type BuildType: NexusBuildable;
+
+    fn finish(self) -> Self::BuildType;
+}
+
+/// Implemented for objects which can hold data
+/// i.e. NexusBuilder with FINISHED = true
+pub(super) trait NexusDataHolder: NexusBuildable {
+    type DataType: H5Type + Default + Clone;
+
+    type HDF5Type;
+    type HDF5Container;
+
+    fn create_hdf5(&self, parent: &Self::HDF5Container) -> Result<(), NexusError>;
+    fn close_hdf5(&mut self);
+}
+
+/// Implemented for `NexusDataHolder` objects have mutable scalar data
+/// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
+pub(super) trait NexusDataHolderScalarMutable: NexusDataHolder {
+    fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError>;
+    fn read_scalar(&self) -> Result<Self::DataType, NexusError>;
+}
+
+/// Implemented for `NexusDataHolder` objects have extendable vector data
+/// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
+pub(super) trait NexusDataHolderAppendable: NexusDataHolder {
+    fn append(&self, values: &[Self::DataType]) -> Result<(), NexusError>;
+    fn get_size(&self) -> Result<usize, NexusError>;
+}
+
+/// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects
+/// i.e. `NexusDataMutable`, `NexusDataHolderConstant` and `NexusDataHolderResizable`
+pub(super) trait NexusDataHolderClass: Default + Clone {}
+
+/// Implemented for structs in the `groups` folder which define the HDF5 group structure
+pub(super) trait NexusGroupDef: Sized {
+    const CLASS_NAME: &'static str;
+
+    fn new() -> Self;
+}
+
+/// Implemented for structs in the `groups` folder which define the HDF5 dataset structure
+pub(super) trait NexusDatasetDef: Sized {
     const UNITS: Option<NexusUnits> = None;
 
     fn new() -> Self;
@@ -88,14 +104,16 @@ impl NexusDatasetDef for () {
     }
 }
 
+/// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages
 pub(crate) trait NexusPushMessage<T> {
     type MessageType;
 
-    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError>;
+    fn push_message(&self, message: &Self::MessageType, parent: &Location) -> Result<(), NexusError>;
 }
 
+/// Implemented for structs in the `groups` folder which react mutably to `flatbuffer` messages
 pub(crate) trait NexusPushMessageMut<T> {
     type MessageType;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError>;
+    fn push_message_mut(&mut self, message: &Self::MessageType, parent: &Location) -> Result<(), NexusError>;
 }
