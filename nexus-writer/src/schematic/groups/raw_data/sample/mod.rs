@@ -4,9 +4,8 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset,
-        group::{GroupContentRegister, NxGroup, NxPushMessage},
-        traits::Buildable,
+        dataset::NexusDataset, NexusBuildable, NexusBuilderFinished, NexusError, NexusGroupDef,
+        NexusPushMessage,
     },
     nexus_class, H5String,
 };
@@ -40,35 +39,35 @@ pub(super) struct Sample {
     magnetic_field__log: NexusGroup<Log>,*/
 }
 
-impl NxGroup for Sample {
+impl NexusGroupDef for Sample {
     const CLASS_NAME: &'static str = nexus_class::SAMPLE;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             chemical_formula: NexusDataset::begin("chemical_formula")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             description: NexusDataset::begin("description")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             sample_type: NexusDataset::begin("sample_type")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             situation: NexusDataset::begin("situation")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             shape: NexusDataset::begin("shape")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             preparation_date: NexusDataset::begin("preparation_date")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             sample_holder: NexusDataset::begin("sample_holder")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
             sample_component: NexusDataset::begin().finish("sample_component"),
@@ -88,10 +87,10 @@ impl NxGroup for Sample {
     }
 }
 
-impl<'a> NxPushMessage<RunStart<'a>> for Sample {
+impl<'a> NexusPushMessage<RunStart<'a>> for Sample {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         Ok(())
     }
 }

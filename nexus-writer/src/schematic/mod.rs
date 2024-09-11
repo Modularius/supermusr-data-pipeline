@@ -1,12 +1,7 @@
 pub(crate) mod elements;
 mod groups;
 
-use elements::{
-    error::{ClosingError, CreationError, HDF5Error, NexusError, OpeningError},
-    group::{NexusGroup, TopLevelNexusGroup},
-    traits::TopGroupBuildable,
-    NxLivesInGroup,
-};
+use elements::{group::NexusGroup, NexusError};
 use groups::NXRoot;
 use hdf5::{types::VarLenUnicode, File, FileBuilder};
 use std::path::{Path, PathBuf};
@@ -16,7 +11,7 @@ use crate::nexus::NexusSettings;
 
 type H5String = VarLenUnicode;
 
-#[derive(Debug, Error)]
+/*#[derive(Debug, Error)]
 pub(crate) enum NexusRootError {
     #[error("HDF5 Error: {0}")]
     HDF5(#[from] HDF5Error),
@@ -40,7 +35,7 @@ pub(crate) enum NexusRootError {
     PathConversion(PathBuf),
     #[error("SWMR Error {0} with file {1}")]
     Swmr(i32, PathBuf),
-}
+}*/
 
 pub(crate) mod nexus_class {
     pub(crate) const DETECTOR: &str = "NXdetector";
@@ -63,11 +58,11 @@ pub(crate) mod nexus_class {
 pub(crate) struct Nexus {
     settings: NexusSettings,
     file: Option<File>,
-    nx_root: TopLevelNexusGroup<NXRoot>,
+    nx_root: NexusGroup<NXRoot>,
 }
 
 impl Nexus {
-    pub(crate) fn new(filename: &Path, settings: &NexusSettings) -> Result<Self, NexusRootError> {
+    pub(crate) fn new(filename: &Path, settings: &NexusSettings) -> Result<Self, NexusError> {
         let file = FileBuilder::new()
             .with_fapl(|fapl| {
                 fapl.libver_bounds(
@@ -76,65 +71,65 @@ impl Nexus {
                 )
             })
             .create(filename)
-            .map_err(HDF5Error::General)?;
+            .map_err(|_| NexusError::Unknown)?;
         {
             if settings.use_swmr {
                 let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
                 if err != 0 {
-                    return Err(NexusRootError::Swmr(err, filename.to_owned()));
+                    return Err(NexusError::Unknown);
                 }
             }
         }
         Ok(Self {
             file: Some(file),
-            nx_root: NexusGroup::new_toplevel(
+            nx_root: NexusGroup::new(
                 filename
                     .file_name()
-                    .ok_or(NexusRootError::Path(filename.to_owned()))?
+                    .ok_or(NexusError::Unknown)?
                     .to_str()
-                    .ok_or(NexusRootError::PathConversion(filename.to_owned()))?,
+                    .ok_or(NexusError::Unknown)?,
             ),
             settings: settings.clone(),
         })
     }
 
-    pub(crate) fn get_root(&self) -> &TopLevelNexusGroup<NXRoot> {
+    pub(crate) fn get_root(&self) -> &NexusGroup<NXRoot> {
         &self.nx_root
     }
 
-    pub(crate) fn get_root_mut(&mut self) -> &mut TopLevelNexusGroup<NXRoot> {
+    pub(crate) fn get_root_mut(&mut self) -> &mut NexusGroup<NXRoot> {
         &mut self.nx_root
     }
-
-    pub(crate) fn create(&mut self) -> Result<(), NexusRootError> {
+/*
+    pub(crate) fn create(&mut self) -> Result<(), NexusError> {
         if let Some(file) = &mut self.file {
-            Ok(self.nx_root.apply_lock().create(file)?)
+            Ok(self.nx_root.create(file)?)
         } else {
-            Err(NexusRootError::CreateFile)
+            Err(NexusError::Unknown)
         }
     }
 
-    pub(crate) fn open(&mut self) -> Result<(), NexusRootError> {
+    pub(crate) fn open(&mut self) -> Result<(), NexusError> {
         if let Some(file) = &mut self.file {
             Ok(self.nx_root.apply_lock().open(file)?)
         } else {
-            Err(NexusRootError::OpenFile)
+            Err(NexusError::Unknown)
         }
     }
 
-    pub(crate) fn close(&mut self) -> Result<(), NexusRootError> {
+    pub(crate) fn close(&mut self) -> Result<(), NexusError> {
         if self.file.is_some() {
             Ok(self.nx_root.apply_lock().close()?)
         } else {
-            Err(NexusRootError::CloseFile)
+            Err(NexusError)
         }
     }
-
-    pub(crate) fn close_file(&mut self) -> anyhow::Result<()> {
+*/
+    pub(crate) fn close_file(&mut self) -> Result<(), NexusError> {
         if let Some(file) = self.file.take() {
-            Ok(file.close()?)
+            Ok(file.close().map_err(|_|NexusError::Unknown)?)
         } else {
-            Err(anyhow::anyhow!("No File"))
+            Err(NexusError::Unknown)
         }
     }
 }

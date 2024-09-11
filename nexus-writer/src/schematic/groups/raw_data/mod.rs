@@ -14,10 +14,11 @@ use user::User;
 
 use crate::schematic::{
     elements::{
-        attribute::{NexusAttribute, NexusAttributeFixed, NexusUnits},
-        dataset::{AttributeRegister, NexusDataset, NexusDatasetFixed, NxDataset},
-        group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage, NxPushMessageMut},
-        traits::{Buildable, CanWriteScalar, SubgroupBuildable},
+        attribute::{NexusAttribute, NexusAttributeFixed},
+        dataset::{NexusDataset, NexusDatasetFixed},
+        group::NexusGroup,
+        NexusBuildable, NexusBuilderFinished, NexusDataHolderScalarMutable, NexusDatasetDef,
+        NexusError, NexusGroupDef, NexusPushMessage, NexusPushMessageMut, NexusUnits,
     },
     nexus_class, H5String,
 };
@@ -36,25 +37,25 @@ struct DefinitionAttributes {
     url: NexusAttributeFixed<H5String>,
 }
 
-impl NxDataset for DefinitionAttributes {
-    fn new(attribute_register: AttributeRegister) -> Self {
+impl NexusDatasetDef for DefinitionAttributes {
+    fn new() -> Self {
         Self {
             version: NexusAttribute::begin("version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
             url: NexusAttribute::begin("URL")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
         }
     }
 }
 
 #[derive(Clone)]
 struct DurationAttributes;
-impl NxDataset for DurationAttributes {
+impl NexusDatasetDef for DurationAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Seconds);
 
-    fn new(_attribute_register: AttributeRegister) -> Self {
+    fn new() -> Self {
         Self
     }
 }
@@ -62,10 +63,10 @@ impl NxDataset for DurationAttributes {
 #[derive(Clone)]
 struct ProtonChargeAttributes;
 
-impl NxDataset for ProtonChargeAttributes {
+impl NexusDatasetDef for ProtonChargeAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::MicroAmpHours);
 
-    fn new(_attribute_register: AttributeRegister) -> Self {
+    fn new() -> Self {
         Self
     }
 }
@@ -97,138 +98,147 @@ pub(super) struct RawData {
     detector_1: NexusGroup<Data>,
 }
 
-impl NxGroup for RawData {
+impl NexusGroupDef for RawData {
     const CLASS_NAME: &'static str = nexus_class::ENTRY;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
-            idf_version: NexusDataset::begin("idf_version")
-                .fixed_value(2)
-                .finish(&dataset_register),
+            idf_version: NexusDataset::begin("idf_version").fixed_value(2).finish(),
             definition: NexusDataset::begin("definition")
                 .fixed_value("muonTD".parse().expect(""))
-                .finish(&dataset_register),
+                .finish(),
             definition_local: NexusDataset::begin("definition_local")
                 .fixed_value("muonTD".parse().expect(""))
-                .finish(&dataset_register),
+                .finish(),
             program_name: NexusDataset::begin("program_name")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             run_number: NexusDataset::begin("run_number")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             title: NexusDataset::begin("title")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             notes: NexusDataset::begin("notes")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             start_time: NexusDataset::begin("start_time")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             end_time: NexusDataset::begin("end_time")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             duration: NexusDataset::begin("duration")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             collection_time: NexusDataset::begin("collection_time")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             total_counts: NexusDataset::begin("total_counts")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             good_frames: NexusDataset::begin("good_frames")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             raw_frames: NexusDataset::begin("raw_frames")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             proton_charge: NexusDataset::begin("proton_charge")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             experiment_identifier: NexusDataset::begin("experiment_identifier")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             run_cycle: NexusDataset::begin("run_cycle")
                 .default_value(Default::default())
-                .finish(&dataset_register),
-            user_1: NexusGroup::new_subgroup("user_1", &dataset_register),
-            run_log: NexusGroup::new_subgroup("run_log", &dataset_register),
-            selog: NexusGroup::new_subgroup("selog", &dataset_register),
-            periods: NexusGroup::new_subgroup("periods", &dataset_register),
-            sample: NexusGroup::new_subgroup("sample", &dataset_register),
-            instrument: NexusGroup::new_subgroup("instrument", &dataset_register),
-            detector_1: NexusGroup::new_subgroup("detector_1", &dataset_register),
+                .finish(),
+            user_1: NexusGroup::new("user_1"),
+            run_log: NexusGroup::new("run_log"),
+            selog: NexusGroup::new("selog"),
+            periods: NexusGroup::new("periods"),
+            sample: NexusGroup::new("sample"),
+            instrument: NexusGroup::new("instrument"),
+            detector_1: NexusGroup::new("detector_1"),
         }
     }
 }
 
-impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for RawData {
+impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for RawData {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.detector_1.push_message(message)
     }
 }
 
-impl<'a> NxPushMessage<RunStart<'a>> for RawData {
+impl<'a> NexusPushMessage<RunStart<'a>> for RawData {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.user_1.push_message(message)?;
         self.periods.push_message(message)?;
         self.sample.push_message(message)?;
         self.instrument.push_message(message)?;
 
-        self.program_name.write_scalar("The Program".parse()?)?;
+        self.program_name
+            .write_scalar("The Program".parse().map_err(|_| NexusError::Unknown)?)?;
         self.run_number.write_scalar(0)?;
-        self.title.write_scalar("The Title".parse()?)?;
-        self.notes
-            .write_scalar(message.metadata().unwrap_or_default().parse()?)?;
-        self.start_time.write_scalar("Now".parse()?)?;
-        self.end_time.write_scalar("Then".parse()?)?;
+        self.title
+            .write_scalar("The Title".parse().map_err(|_| NexusError::Unknown)?)?;
+        self.notes.write_scalar(
+            message
+                .metadata()
+                .unwrap_or_default()
+                .parse()
+                .map_err(|_| NexusError::Unknown)?,
+        )?;
+        self.start_time
+            .write_scalar("Now".parse().map_err(|_| NexusError::Unknown)?)?;
+        self.end_time
+            .write_scalar("Then".parse().map_err(|_| NexusError::Unknown)?)?;
         self.duration.write_scalar(1)?;
         self.collection_time.write_scalar(1000.0)?;
         self.total_counts.write_scalar(1)?;
         self.good_frames.write_scalar(1)?;
         self.raw_frames.write_scalar(1)?;
         self.proton_charge.write_scalar(1.0)?;
-        self.experiment_identifier.write_scalar("POAS35".parse()?)?;
-        self.run_cycle.write_scalar("This".parse()?)?;
+        self.experiment_identifier
+            .write_scalar("POAS35".parse().map_err(|_| NexusError::Unknown)?)?;
+        self.run_cycle
+            .write_scalar("This".parse().map_err(|_| NexusError::Unknown)?)?;
         self.detector_1.push_message(message)?;
         Ok(())
     }
 }
-impl<'a> NxPushMessage<RunStop<'a>> for RawData {
+impl<'a> NexusPushMessage<RunStop<'a>> for RawData {
     type MessageType = RunStop<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         //self.raw_data_1.push_message(message)
         Ok(())
     }
 }
 
-impl<'a> NxPushMessageMut<Alarm<'a>> for RawData {
+impl<'a> NexusPushMessageMut<Alarm<'a>> for RawData {
     type MessageType = Alarm<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.selog.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for RawData {
+impl<'a> NexusPushMessageMut<se00_SampleEnvironmentData<'a>> for RawData {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.selog.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessageMut<f144_LogData<'a>> for RawData {
+impl<'a> NexusPushMessageMut<f144_LogData<'a>> for RawData {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.run_log.push_message_mut(message)
     }
 }

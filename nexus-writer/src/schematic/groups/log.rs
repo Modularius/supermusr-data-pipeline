@@ -7,10 +7,10 @@ use crate::{
     nexus::nexus_class,
     schematic::{
         elements::{
-            attribute::{NexusAttribute, NexusUnits},
-            dataset::{AttributeRegister, NexusDataset, NexusDatasetResize, NxDataset},
-            group::{GroupContentRegister, NxGroup, NxPushMessage},
-            traits::{Buildable, CanAppend},
+            attribute::NexusAttribute,
+            dataset::{NexusDataset, NexusDatasetResize},
+            NexusBuildable, NexusBuilderFinished, NexusDataHolderAppendable, NexusDatasetDef,
+            NexusError, NexusGroupDef, NexusPushMessage, NexusUnits,
         },
         H5String,
     },
@@ -21,14 +21,14 @@ struct TimeAttributes {
     offset: NexusAttribute<H5String>,
 }
 
-impl NxDataset for TimeAttributes {
+impl NexusDatasetDef for TimeAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
 
-    fn new(attribute_register: AttributeRegister) -> Self {
+    fn new() -> Self {
         Self {
             offset: NexusAttribute::begin("offset")
                 .default_value(Default::default())
-                .finish(&attribute_register),
+                .finish(),
         }
     }
 }
@@ -38,25 +38,25 @@ pub(super) struct Log {
     value: NexusDatasetResize<u32>,
 }
 
-impl NxGroup for Log {
+impl NexusGroupDef for Log {
     const CLASS_NAME: &'static str = nexus_class::LOG;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             time: NexusDataset::begin("time")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
             value: NexusDataset::begin("value")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
         }
     }
 }
 
-impl<'a> NxPushMessage<f144_LogData<'a>> for Log {
+impl<'a> NexusPushMessage<f144_LogData<'a>> for Log {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.time.append(&[message.timestamp()])?;
         self.value
             .append(&[message.value_as_uint().unwrap().value()])?;
@@ -72,34 +72,34 @@ pub(super) struct ValueLog {
     value: NexusDatasetResize<u32>,
 }
 
-impl NxGroup for ValueLog {
+impl NexusGroupDef for ValueLog {
     const CLASS_NAME: &'static str = nexus_class::LOG;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             alarm_severity: NexusDataset::begin("alarm_severity")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
             alarm_status: NexusDataset::begin("alarm_status")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
             alarm_time: NexusDataset::begin("alarm_time")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
             time: NexusDataset::begin("time")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
             value: NexusDataset::begin("value")
                 .resizable(Default::default(), 0, 128)
-                .finish(&dataset_register),
+                .finish(),
         }
     }
 }
 
-impl<'a> NxPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
+impl<'a> NexusPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.time
             .append(&message.timestamps().unwrap().iter().collect::<Vec<_>>())?;
         self.value.append(
@@ -114,10 +114,10 @@ impl<'a> NxPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
     }
 }
 
-impl<'a> NxPushMessage<Alarm<'a>> for ValueLog {
+impl<'a> NexusPushMessage<Alarm<'a>> for ValueLog {
     type MessageType = Alarm<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.alarm_severity.append(&[message
             .severity()
             .variant_name()

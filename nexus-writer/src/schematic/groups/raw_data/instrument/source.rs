@@ -1,8 +1,7 @@
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset,
-        group::{GroupContentRegister, NexusGroup, NxGroup},
-        traits::{Buildable, SubgroupBuildable},
+        dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
+        NexusGroupDef,
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -22,42 +21,42 @@ pub(super) struct Source {
     target_thickness: NexusDataset<H5String>,
 }
 
-impl NxGroup for Source {
+impl NexusGroupDef for Source {
     const CLASS_NAME: &'static str = nexus_class::SOURCE;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             source_type: NexusDataset::begin("source_type")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             probe: NexusDataset::begin("probe")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             source_frequency: NexusDataset::begin("source_frequency")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             source_frame_pattern: NexusDataset::begin("source_frame_pattern")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             source_energy: NexusDataset::begin("source_energy")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             source_current: NexusDataset::begin("tarsource_currentget_thickness")
                 .default_value(Default::default())
-                .finish(&dataset_register),
-            source_current_log: NexusGroup::new_subgroup("source_current_log", &dataset_register),
+                .finish(),
+            source_current_log: NexusGroup::new("source_current_log"),
             source_pulse_width: NexusDataset::begin("source_pulse_width")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             target_material: NexusDataset::begin("target_material")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             target_thickness: NexusDataset::begin("target_thickness")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
         }
     }
 }

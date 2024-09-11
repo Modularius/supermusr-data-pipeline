@@ -1,5 +1,5 @@
 use crate::schematic::{
-    elements::group::{NxPushMessage, NxPushMessageMut},
+    elements::{NexusPushMessage, NexusPushMessageMut},
     Nexus,
 };
 
@@ -43,9 +43,9 @@ impl Run {
                     filename
                 };
                 let mut nexus = Nexus::new(&filename, nexus_settings)?;
-                nexus.create()?;
+                //nexus.create()?;
                 nexus.get_root().push_message(&run_start)?;
-                nexus.close()?;
+                //nexus.close()?;
                 Some(nexus)
             } else {
                 None
@@ -76,9 +76,9 @@ impl Run {
         }*/
 
         if let Some(ref mut nexus) = self.nexus {
-            nexus.open()?;
+            //nexus.open()?;
             nexus.get_root_mut().push_message_mut(logdata)?;
-            nexus.close()?;
+            //nexus.close()?;
         };
 
         self.parameters.update_last_modified();
@@ -98,9 +98,9 @@ impl Run {
         }*/
 
         if let Some(ref mut nexus) = self.nexus {
-            nexus.open()?;
+            //nexus.open()?;
             nexus.get_root_mut().push_message_mut(&alarm)?;
-            nexus.close()?;
+            //nexus.close()?;
         }
 
         self.parameters.update_last_modified();
@@ -120,9 +120,9 @@ impl Run {
         }*/
 
         if let Some(ref mut nexus) = self.nexus {
-            nexus.open()?;
+            //nexus.open()?;
             nexus.get_root_mut().push_message_mut(&selogdata)?;
-            nexus.close()?;
+            //nexus.close()?;
         }
 
         self.parameters.update_last_modified();
@@ -141,9 +141,9 @@ impl Run {
         }*/
 
         if let Some(ref mut nexus) = self.nexus {
-            nexus.open()?;
+            //.open()?;
             nexus.get_root().push_message(message)?;
-            nexus.close()?;
+            //nexus.close()?;
         }
 
         self.parameters.update_last_modified();
@@ -167,9 +167,9 @@ impl Run {
         self.parameters.set_stop_if_valid(run_stop)?;
 
         if let Some(ref mut nexus) = self.nexus {
-            nexus.open()?;
+            //nexus.get_root().open()?;
             nexus.get_root().push_message(&run_stop)?;
-            nexus.close()?;
+            //nexus.close()?;
         }
 
         /*if let Some(filename) = filename {

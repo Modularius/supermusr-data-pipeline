@@ -2,10 +2,8 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        attribute::NexusAttribute,
-        dataset::{AttributeRegister, NexusDataset, NxDataset},
-        group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage},
-        traits::{Buildable, SubgroupBuildable},
+        attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable,
+        NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusPushMessage,
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -16,12 +14,12 @@ struct FramesRequestedAttributes {
     frame_type: NexusAttribute<H5String>,
 }
 
-impl NxDataset for FramesRequestedAttributes {
-    fn new(attribute_register: AttributeRegister) -> Self {
+impl NexusDatasetDef for FramesRequestedAttributes {
+    fn new() -> Self {
         Self {
             frame_type: NexusAttribute::begin("frame_type")
                 .default_value(Default::default())
-                .finish(&attribute_register),
+                .finish(),
         }
     }
 }
@@ -31,12 +29,12 @@ struct LabelsAttributes {
     separator: NexusAttribute<H5String>,
 }
 
-impl NxDataset for LabelsAttributes {
-    fn new(attribute_register: AttributeRegister) -> Self {
+impl NexusDatasetDef for LabelsAttributes {
+    fn new() -> Self {
         Self {
             separator: NexusAttribute::begin("separator")
                 .default_value(Default::default())
-                .finish(&attribute_register),
+                .finish(),
         }
     }
 }
@@ -53,44 +51,44 @@ pub(super) struct Periods {
     counts: NexusGroup<Log>,
 }
 
-impl NxGroup for Periods {
+impl NexusGroupDef for Periods {
     const CLASS_NAME: &'static str = nexus_class::PERIOD;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             number: NexusDataset::begin("number")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             period_types: NexusDataset::begin("type")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             frames_requested: NexusDataset::begin("frames_requested")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             output: NexusDataset::begin("output")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             labels: NexusDataset::begin("labels")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             raw_frames: NexusDataset::begin("raw_frames")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             good_frames: NexusDataset::begin("good_frames")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             sequences: NexusDataset::begin("sequences")
                 .default_value(Default::default())
-                .finish(&dataset_register),
-            counts: NexusGroup::new_subgroup("counts", &dataset_register),
+                .finish(),
+            counts: NexusGroup::new("counts"),
         }
     }
 }
 
-impl<'a> NxPushMessage<RunStart<'a>> for Periods {
+impl<'a> NexusPushMessage<RunStart<'a>> for Periods {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         Ok(())
     }
 }

@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use hdf5::H5Type;
 
-use super::{NexusBuilderBegun, NexusDataHolder, NexusDataHolderClass};
+use super::{NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass};
 
 #[derive(Default, Clone)]
 pub(crate) struct NexusDataHolderMutable<T: H5Type + Default + Clone> {
@@ -27,17 +27,22 @@ pub(crate) struct NexusDataHolderResizable<T: H5Type + Default + Clone> {
 
 impl<T: H5Type + Default + Clone> NexusDataHolderClass for NexusDataHolderResizable<T> {}
 
-pub(super) struct NexusBuilder<C: NexusDataHolderClass, H: NexusDataHolder, const FINISHED: bool> {
+pub(crate) struct NexusBuilder<C: NexusDataHolderClass, H: NexusDataHolder, const FINISHED: bool> {
     pub(super) name: String,
     pub(super) class: C,
     pub(super) phantom: PhantomData<H>,
 }
 
-impl<H: NexusDataHolder> NexusBuilder<NexusDataHolderMutable<H::DataType>, H, false> {
+impl<H> NexusBuilder<NexusDataHolderMutable<H::DataType>, H, false>
+where
+    H: NexusDataHolder,
+    NexusBuilder<NexusDataHolderMutable<H::DataType>, H, true>: NexusBuilderFinished,
+    NexusDataHolderMutable<<H as NexusDataHolder>::DataType>: NexusDataHolderClass,
+{
     pub(crate) fn default_value(
         self,
         default_value: H::DataType,
-    ) -> <Self as NexusBuilderBegun<H>>::FinshedBuilder {
+    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderMutable { default_value },
@@ -46,11 +51,15 @@ impl<H: NexusDataHolder> NexusBuilder<NexusDataHolderMutable<H::DataType>, H, fa
     }
 }
 
-impl<D, H: NexusDataHolder> NexusBuilder<NexusDataHolderConstant<H::DataType>, H, false> {
+impl<H: NexusDataHolder> NexusBuilder<NexusDataHolderConstant<H::DataType>, H, false>
+where
+    H: NexusDataHolder,
+    NexusBuilder<NexusDataHolderConstant<H::DataType>, H, true>: NexusBuilderFinished,
+{
     pub(crate) fn fixed_value(
         self,
         fixed_value: H::DataType,
-    ) -> <Self as NexusBuilderBegun<H>>::FinshedBuilder {
+    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderConstant { fixed_value },
@@ -59,13 +68,17 @@ impl<D, H: NexusDataHolder> NexusBuilder<NexusDataHolderConstant<H::DataType>, H
     }
 }
 
-impl<H: NexusDataHolder> NexusBuilder<NexusDataHolderResizable<H::DataType>, H, false> {
+impl<H> NexusBuilder<NexusDataHolderResizable<H::DataType>, H, false>
+where
+    H: NexusDataHolder,
+    NexusBuilder<NexusDataHolderResizable<H::DataType>, H, true>: NexusBuilderFinished,
+{
     pub(crate) fn resizable(
         self,
         default_value: H::DataType,
         default_size: usize,
         chunk_size: usize,
-    ) -> <Self as NexusBuilderBegun<H>>::FinshedBuilder {
+    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderResizable {
@@ -78,8 +91,19 @@ impl<H: NexusDataHolder> NexusBuilder<NexusDataHolderResizable<H::DataType>, H, 
     }
 }
 
-impl<C: NexusDataHolderClass, H: NexusDataHolder> NexusBuilderBegun<H>
-    for NexusBuilder<C, H, false>
+impl<C, H> NexusBuilderBegun for NexusBuilder<C, H, false>
+where
+    NexusBuilder<C, H, true>: NexusBuilderFinished,
+    C: NexusDataHolderClass,
+    H: NexusDataHolder,
 {
     type FinshedBuilder = NexusBuilder<C, H, true>;
+
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            class: C::default(),
+            phantom: PhantomData,
+        }
+    }
 }

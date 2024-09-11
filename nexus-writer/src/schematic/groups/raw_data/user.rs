@@ -2,10 +2,8 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        attribute::NexusAttribute,
-        dataset::{AttributeRegister, NexusDataset, NxDataset},
-        group::{GroupContentRegister, NxGroup, NxPushMessage},
-        traits::Buildable,
+        attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusBuilderFinished,
+        NexusDatasetDef, NexusError, NexusGroupDef, NexusPushMessage,
     },
     nexus_class, H5String,
 };
@@ -15,12 +13,12 @@ struct NameAttributes {
     role: NexusAttribute<H5String>,
 }
 
-impl NxDataset for NameAttributes {
-    fn new(attribute_register: AttributeRegister) -> Self {
+impl NexusDatasetDef for NameAttributes {
+    fn new() -> Self {
         Self {
             role: NexusAttribute::begin("role")
                 .default_value(Default::default())
-                .finish(&attribute_register),
+                .finish(),
         }
     }
 }
@@ -35,40 +33,40 @@ pub(super) struct User {
     facility_user_id: NexusDataset<H5String>,
 }
 
-impl NxGroup for User {
+impl NexusGroupDef for User {
     const CLASS_NAME: &'static str = nexus_class::USER;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             affiliation: NexusDataset::begin("affiliation")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             address: NexusDataset::begin("address")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             telephone_number: NexusDataset::begin("telephone_number")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             fax_number: NexusDataset::begin("fax_number")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             email: NexusDataset::begin("email")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
             facility_user_id: NexusDataset::begin("facility_user_id")
                 .default_value(Default::default())
-                .finish(&dataset_register),
+                .finish(),
         }
     }
 }
 
-impl<'a> NxPushMessage<RunStart<'a>> for User {
+impl<'a> NexusPushMessage<RunStart<'a>> for User {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         Ok(())
     }
 }

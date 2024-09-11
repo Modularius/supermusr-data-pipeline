@@ -3,9 +3,8 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
     elements::{
-        dataset::NexusDataset,
-        group::{GroupContentRegister, NexusGroup, NxGroup, NxPushMessage},
-        traits::{Buildable, SubgroupBuildable},
+        dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished, NexusError,
+        NexusGroupDef, NexusPushMessage,
     },
     groups::log::Log,
     nexus_class, H5String,
@@ -18,23 +17,23 @@ pub(super) struct Instrument {
     source: NexusGroup<Source>,
 }
 
-impl NxGroup for Instrument {
+impl NexusGroupDef for Instrument {
     const CLASS_NAME: &'static str = nexus_class::INSTRUMENT;
 
-    fn new(dataset_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
-                .finish(&dataset_register),
-            source: NexusGroup::new_subgroup("source", &dataset_register),
+                .finish(),
+            source: NexusGroup::new("source"),
         }
     }
 }
 
-impl<'a> NxPushMessage<RunStart<'a>> for Instrument {
+impl<'a> NexusPushMessage<RunStart<'a>> for Instrument {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         Ok(())
     }
 }

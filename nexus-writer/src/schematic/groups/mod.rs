@@ -7,18 +7,13 @@ use supermusr_streaming_types::{
 
 use crate::{
     nexus::Run,
-    schematic::elements::{
-        attribute::NexusAttribute,
-        group::{NexusGroup, NxGroup},
-    },
+    schematic::elements::{attribute::NexusAttribute, group::NexusGroup},
 };
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed,
-        dataset::{AttributeRegister, NxDataset},
-        group::{GroupContentRegister, NxPushMessage, NxPushMessageMut},
-        traits::{Buildable, SubgroupBuildable},
+        attribute::NexusAttributeFixed, NexusBuildable, NexusBuilderFinished, NexusDatasetDef,
+        NexusError, NexusGroupDef, NexusPushMessage, NexusPushMessageMut,
     },
     nexus_class, H5String,
 };
@@ -37,33 +32,33 @@ struct RawData1Attributes {
     creator: NexusAttributeFixed<H5String>,
 }
 
-impl NxDataset for RawData1Attributes {
-    fn new(attribute_register: AttributeRegister) -> Self {
+impl NexusDatasetDef for RawData1Attributes {
+    fn new() -> Self {
         Self {
             file_name: NexusAttribute::begin("file_name")
                 .default_value(Default::default())
-                .finish(&attribute_register),
+                .finish(),
             file_time: NexusAttribute::begin("file_time")
                 .default_value(Default::default())
-                .finish(&attribute_register),
+                .finish(),
             initial_file_format: NexusAttribute::begin("initial_file_format")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
             nexus_version: NexusAttribute::begin("nexus_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
             hdf_version: NexusAttribute::begin("hdf_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
             hdf5_version: NexusAttribute::begin("hdf5_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
             xml_version: NexusAttribute::begin("xml_version")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
             creator: NexusAttribute::begin("creator")
                 .fixed_value("TODO".parse().expect(""))
-                .finish(&attribute_register),
+                .finish(),
         }
     }
 }
@@ -72,60 +67,60 @@ pub(crate) struct NXRoot {
     raw_data_1: NexusGroup<raw_data::RawData>,
 }
 
-impl NxGroup for NXRoot {
+impl NexusGroupDef for NXRoot {
     const CLASS_NAME: &'static str = nexus_class::ROOT;
 
-    fn new(database_register: GroupContentRegister) -> Self {
+    fn new() -> Self {
         Self {
-            raw_data_1: NexusGroup::new_subgroup("raw_data_1", &database_register),
+            raw_data_1: NexusGroup::new("raw_data_1"),
         }
     }
 }
 
-impl<'a> NxPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
+impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
     type MessageType = FrameAssembledEventListMessage<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.raw_data_1.push_message(message)
     }
 }
 
-impl<'a> NxPushMessage<RunStart<'a>> for NXRoot {
+impl<'a> NexusPushMessage<RunStart<'a>> for NXRoot {
     type MessageType = RunStart<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.raw_data_1.push_message(message)
     }
 }
 
-impl<'a> NxPushMessage<RunStop<'a>> for NXRoot {
+impl<'a> NexusPushMessage<RunStop<'a>> for NXRoot {
     type MessageType = RunStop<'a>;
 
-    fn push_message(&self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message(&self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.raw_data_1.push_message(message)
     }
 }
 
-impl<'a> NxPushMessageMut<Alarm<'a>> for NXRoot {
+impl<'a> NexusPushMessageMut<Alarm<'a>> for NXRoot {
     type MessageType = Alarm<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.raw_data_1.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessageMut<se00_SampleEnvironmentData<'a>> for NXRoot {
+impl<'a> NexusPushMessageMut<se00_SampleEnvironmentData<'a>> for NXRoot {
     type MessageType = se00_SampleEnvironmentData<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.raw_data_1.push_message_mut(message)
     }
 }
 
-impl<'a> NxPushMessageMut<f144_LogData<'a>> for NXRoot {
+impl<'a> NexusPushMessageMut<f144_LogData<'a>> for NXRoot {
     type MessageType = f144_LogData<'a>;
 
-    fn push_message_mut(&mut self, message: &Self::MessageType) -> anyhow::Result<()> {
+    fn push_message_mut(&mut self, message: &Self::MessageType) -> Result<(), NexusError> {
         self.raw_data_1.push_message_mut(message)
     }
 }

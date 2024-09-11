@@ -1,80 +1,126 @@
 use std::marker::PhantomData;
 
-use hdf5::{Attribute, Dataset, Group, H5Type};
+use hdf5::{Attribute, Dataset, H5Type};
 
 use super::{
-    builder::{NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable}, NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass, NexusDataHolderScalarMutable, NexusError
+    builder::{NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable},
+    NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass,
+    NexusDataHolderScalarMutable, NexusError,NexusBuilderBegun
 };
 
-impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuilderFinished<NexusAttribute<T, C>>
+impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuilderFinished
     for NexusBuilder<C, NexusAttribute<T, C>, true>
+where
+    NexusAttribute<T, C>: NexusDataHolder,
 {
-    fn finish(self) -> Result<NexusAttribute<T, C>, super::NexusError> {
-        Ok(NexusAttribute {
+    type BuiltType = NexusAttribute<T, C>;
+
+    fn finish(self) -> NexusAttribute<T, C> {
+        NexusAttribute {
             name: self.name,
             class: self.class,
             attribute: None,
-            phantom: PhantomData
-        })
-    }
-}
-
-pub(crate) struct NexusAttribute<T: H5Type + Clone + Default, C: NexusDataHolderClass = NexusDataHolderMutable<T>> {
-    name: String,
-    class: C,
-    attribute: Option<Attribute>,
-    phantom: PhantomData<T>
-}
-pub(crate) type NexusAttributeFixed<T> = NexusAttribute<T, NexusDataHolderConstant<T>>;
-
-impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuildable for NexusAttribute<T, C> {
-    type Builder = NexusBuilder<C, NexusAttribute<T, C>, false>;
-
-    fn begin(name: &str) -> Self::Builder {
-        NexusBuilder {
-            name: name.to_string(),
-            class: C::default(),
             phantom: PhantomData,
         }
     }
 }
 
-impl<T: H5Type + Clone + Default> NexusDataHolder
-    for NexusAttribute<T, NexusDataHolderMutable<T>>
+#[derive(Clone)]
+pub(crate) struct NexusAttribute<
+    T: H5Type + Clone + Default,
+    C: NexusDataHolderClass = NexusDataHolderMutable<T>,
+> {
+    name: String,
+    class: C,
+    attribute: Option<Attribute>,
+    phantom: PhantomData<T>,
+}
+pub(crate) type NexusAttributeFixed<T> = NexusAttribute<T, NexusDataHolderConstant<T>>;
+
+impl<T, C> NexusBuildable for NexusAttribute<T, C>
+where
+    T: H5Type + Clone + Default,
+    C: NexusDataHolderClass,
+    NexusAttribute<T, C>: NexusDataHolder,
+{
+    type Builder = NexusBuilder<C, NexusAttribute<T, C>, false>;
+
+    fn begin(name: &str) -> Self::Builder {
+        Self::Builder::new(name)
+    }
+}
+
+impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderMutable<T>>
+where
+    T: H5Type + Clone + Default,
 {
     type DataType = T;
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
 
-    fn create_hdf5(
-        &mut self,
-        parent: &Self::HDF5Container,
-    ) -> Result<Self::HDF5Type, NexusError> {
-        self.dataset = Some(
-            parent.dataset(&self.name).or_else(||{
-                let dataset = parent
-                    .new_dataset::<T>()
-                    .create(self.name)
-                    .map_err(|_|NexusError)?;
-                dataset.write_scalar(&self.class.default_value).map_err(|_|NexusError)?
-            })
-        );
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let attribute = parent.attr(&self.name).or_else(|_| {
+            let attribute = parent
+                .new_attr::<T>()
+                .create(self.name.as_str())
+                .map_err(|_| NexusError::Unknown)?;
+            attribute
+                .write_scalar(&self.class.default_value)
+                .map_err(|_| NexusError::Unknown)?;
+            Ok(attribute)
+        })?;
+        self.attribute = Some(attribute);
+        Ok(())
     }
     fn close_hdf5(&mut self) {
-        self.dataset = None;
+        self.attribute = None;
     }
 }
 
-impl<T: H5Type + Clone + Default> NexusDataHolderScalarMutable
-    for NexusAttribute<T, NexusDataHolderMutable<T>> {
+impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderConstant<T>>
+where
+    T: H5Type + Clone + Default,
+{
+    type DataType = T;
+    type HDF5Type = Attribute;
+    type HDF5Container = Dataset;
+
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let attribute = parent.attr(&self.name).or_else(|_| {
+            let attribute = parent
+                .new_attr::<T>()
+                .create(self.name.as_str())
+                .map_err(|_| NexusError::Unknown)?;
+            attribute
+                .write_scalar(&self.class.fixed_value)
+                .map_err(|_| NexusError::Unknown)?;
+            Ok(attribute)
+        })?;
+        self.attribute = Some(attribute);
+        Ok(())
+    }
+    fn close_hdf5(&mut self) {
+        self.attribute = None;
+    }
+}
+
+impl<T> NexusDataHolderScalarMutable for NexusAttribute<T, NexusDataHolderMutable<T>>
+where
+    T: H5Type + Clone + Default,
+    NexusDataHolderMutable<T>: NexusDataHolderClass,
+{
     fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError> {
-        if let Some(dataset) = self.dataset {
-            dataset.write_scalar(&value)?;
+        if let Some(attribute) = self.attribute.as_ref() {
+            attribute
+                .write_scalar(&value)
+                .map_err(|_| NexusError::Unknown)?;
         }
         Ok(())
     }
-    
+
     fn read_scalar(&self) -> Result<Self::DataType, NexusError> {
-        self.dataset.ok_or(NexusError).map(|dataset|dataset.read_scalar()?)
+        self.attribute.as_ref()
+            .ok_or(NexusError::Unknown)
+            .and_then(|dataset| dataset.read_scalar().map_err(|_| NexusError::Unknown))
     }
 }

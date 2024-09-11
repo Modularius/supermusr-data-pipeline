@@ -1,5 +1,4 @@
 use crate::schematic::{
-    elements::group::{NxPushMessage, NxPushMessageMut},
     Nexus,
 };
 
