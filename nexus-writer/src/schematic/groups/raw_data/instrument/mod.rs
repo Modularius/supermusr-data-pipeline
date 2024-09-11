@@ -1,4 +1,4 @@
-use hdf5::Location;
+use hdf5::{Group, Location};
 use source::Source;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
@@ -31,10 +31,8 @@ impl NexusGroupDef for Instrument {
     }
 }
 
-impl<'a> NexusPushMessage<RunStart<'a>> for Instrument {
-    type MessageType = RunStart<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, RunStart<'a>> for Instrument {
+    fn push_message(&self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
         Ok(())
     }
 }

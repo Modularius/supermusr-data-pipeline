@@ -1,4 +1,4 @@
-use hdf5::Location;
+use hdf5::{File, Group, Location};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -75,56 +75,44 @@ impl NexusGroupDef for NXRoot {
     }
 }
 
-impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
-    type MessageType = FrameAssembledEventListMessage<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        let group = self.raw_data_1.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.raw_data_1.push_message(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusPushMessage<File, FrameAssembledEventListMessage<'a>> for NXRoot {
+    fn push_message(&self, message: &FrameAssembledEventListMessage<'a>, parent: &File) -> Result<(), NexusError> {
+        let group = self.raw_data_1.create_hdf5(&parent)?;
+        self.raw_data_1.push_message(message, &group)
     }
 }
 
-impl<'a> NexusPushMessage<RunStart<'a>> for NXRoot {
-    type MessageType = RunStart<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        let group = self.raw_data_1.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.raw_data_1.push_message(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusPushMessage<File, RunStart<'a>> for NXRoot {
+    fn push_message(&self, message: &RunStart<'a>, parent: &File) -> Result<(), NexusError> {
+        let group = self.raw_data_1.create_hdf5(&parent)?;
+        self.raw_data_1.push_message(message, &group)
     }
 }
 
-impl<'a> NexusPushMessage<RunStop<'a>> for NXRoot {
-    type MessageType = RunStop<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        let group = self.raw_data_1.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.raw_data_1.push_message(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusPushMessage<File, RunStop<'a>> for NXRoot {
+    fn push_message(&self, message: &RunStop<'a>, parent: &File) -> Result<(), NexusError> {
+        let group = self.raw_data_1.create_hdf5(&parent)?;
+        self.raw_data_1.push_message(message, &group)
     }
 }
 
-impl<'a> NexusPushMessageMut<Alarm<'a>> for NXRoot {
-    type MessageType = Alarm<'a>;
-
-    fn push_message_mut(&mut self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        let group = self.raw_data_1.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.raw_data_1.push_message_mut(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusPushMessageMut<File, Alarm<'a>> for NXRoot {
+    fn push_message_mut(&mut self, message: &Alarm<'a>, parent: &File) -> Result<(), NexusError> {
+        let group = self.raw_data_1.create_hdf5(&parent)?;
+        self.raw_data_1.push_message_mut(message, &group)
     }
 }
 
-impl<'a> NexusPushMessageMut<se00_SampleEnvironmentData<'a>> for NXRoot {
-    type MessageType = se00_SampleEnvironmentData<'a>;
-
-    fn push_message_mut(&mut self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        let group = self.raw_data_1.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.raw_data_1.push_message_mut(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusPushMessageMut<File, se00_SampleEnvironmentData<'a>> for NXRoot {
+    fn push_message_mut(&mut self, message: &se00_SampleEnvironmentData<'a>, parent: &File) -> Result<(), NexusError> {
+        let group = self.raw_data_1.create_hdf5(&parent)?;
+        self.raw_data_1.push_message_mut(message, &group)
     }
 }
 
-impl<'a> NexusPushMessageMut<f144_LogData<'a>> for NXRoot {
-    type MessageType = f144_LogData<'a>;
-
-    fn push_message_mut(&mut self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        let group = self.raw_data_1.create_hdf5(&location.as_group().expect("Location is Group"))?;
-        self.raw_data_1.push_message_mut(message, &group.as_location().expect("Group is Location"))
+impl<'a> NexusPushMessageMut<File, f144_LogData<'a>> for NXRoot {
+    fn push_message_mut(&mut self, message: &f144_LogData<'a>, parent: &File) -> Result<(), NexusError> {
+        let group = self.raw_data_1.create_hdf5(&parent)?;
+        self.raw_data_1.push_message_mut(message, &group)
     }
 }

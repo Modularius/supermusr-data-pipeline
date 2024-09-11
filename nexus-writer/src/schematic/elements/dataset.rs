@@ -210,28 +210,24 @@ impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusDataHolderAppendable
     }
 }
 
-impl<T, D, C, M> NexusPushMessage<M> for NexusDataset<T, D, C>
+impl<T, D, C, M> NexusPushMessage<Dataset, M> for NexusDataset<T, D, C>
 where
     T: H5Type + Clone + Default,
-    D: NexusDatasetDef + NexusPushMessage<M, MessageType = M>,
+    D: NexusDatasetDef + NexusPushMessage<Dataset, M>,
     C: NexusDataHolderClass,
 {
-    type MessageType = M;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        self.definition.push_message(message, location)
+    fn push_message(&self, message: &M, dataset: &Dataset) -> Result<(), NexusError> {
+        self.definition.push_message(message, dataset)
     }
 }
 
-impl<T, D, C, M> NexusPushMessageMut<M> for NexusDataset<T, D, C>
+impl<T, D, C, M> NexusPushMessageMut<Group, M> for NexusDataset<T, D, C>
 where
     T: H5Type + Clone + Default,
-    D: NexusDatasetDef + NexusPushMessageMut<M, MessageType = M>,
+    D: NexusDatasetDef + NexusPushMessageMut<Group, M>,
     C: NexusDataHolderClass,
 {
-    type MessageType = M;
-
-    fn push_message_mut(&mut self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        self.definition.push_message_mut(message, location)
+    fn push_message_mut(&mut self, message: &M, group: &Group) -> Result<(), NexusError> {
+        self.definition.push_message_mut(message, group)
     }
 }

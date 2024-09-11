@@ -105,15 +105,11 @@ impl NexusDatasetDef for () {
 }
 
 /// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages
-pub(crate) trait NexusPushMessage<T> {
-    type MessageType;
-
-    fn push_message(&self, message: &Self::MessageType, parent: &Location) -> Result<(), NexusError>;
+pub(crate) trait NexusPushMessage<P, M> {
+    fn push_message(&self, message: &M, parent: &P) -> Result<(), NexusError>;
 }
 
 /// Implemented for structs in the `groups` folder which react mutably to `flatbuffer` messages
-pub(crate) trait NexusPushMessageMut<T> {
-    type MessageType;
-
-    fn push_message_mut(&mut self, message: &Self::MessageType, parent: &Location) -> Result<(), NexusError>;
+pub(crate) trait NexusPushMessageMut<P, M> {
+    fn push_message_mut(&mut self, message: &M, parent: &P) -> Result<(), NexusError>;
 }

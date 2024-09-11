@@ -8,10 +8,7 @@ use crate::{
     nexus::nexus_class,
     schematic::{
         elements::{
-            attribute::NexusAttribute,
-            dataset::{NexusDataset, NexusDatasetResize},
-            NexusBuildable, NexusBuilderFinished, NexusDataHolderAppendable, NexusDatasetDef,
-            NexusError, NexusGroupDef, NexusPushMessage, NexusUnits,
+            attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetResize}, NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDatasetDef, NexusError, NexusGroupDef, NexusPushMessage, NexusUnits
         },
         H5String,
     },
@@ -54,10 +51,8 @@ impl NexusGroupDef for Log {
     }
 }
 
-impl<'a> NexusPushMessage<f144_LogData<'a>> for Log {
-    type MessageType = f144_LogData<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, f144_LogData<'a>> for Log {
+    fn push_message(&self, message: &f144_LogData<'a>, parent: &Group) -> Result<(), NexusError> {
         self.time.append(&[message.timestamp()])?;
         self.value
             .append(&[message.value_as_uint().unwrap().value()])?;
@@ -97,10 +92,9 @@ impl NexusGroupDef for ValueLog {
     }
 }
 
-impl<'a> NexusPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
-    type MessageType = se00_SampleEnvironmentData<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, se00_SampleEnvironmentData<'a>> for ValueLog {
+    fn push_message(&self, message: &se00_SampleEnvironmentData<'a>, parent: &Group) -> Result<(), NexusError> {
+        self.time.create_hdf5(parent)?;
         self.time
             .append(&message.timestamps().unwrap().iter().collect::<Vec<_>>())?;
         self.value.append(
@@ -115,10 +109,8 @@ impl<'a> NexusPushMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
     }
 }
 
-impl<'a> NexusPushMessage<Alarm<'a>> for ValueLog {
-    type MessageType = Alarm<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, Alarm<'a>> for ValueLog {
+    fn push_message(&self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
         self.alarm_severity.append(&[message
             .severity()
             .variant_name()

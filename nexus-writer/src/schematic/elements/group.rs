@@ -46,24 +46,20 @@ impl<D: NexusGroupDef> NexusGroup<D> {
     }
 }
 
-impl<D, M> NexusPushMessage<M> for NexusGroup<D>
+impl<P, D, M> NexusPushMessage<P, M> for NexusGroup<D>
 where
-    D: NexusGroupDef + NexusPushMessage<M, MessageType = M>,
+    D: NexusGroupDef + NexusPushMessage<P, M>,
 {
-    type MessageType = M;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        self.definition.push_message(message, location)
+    fn push_message(&self, message: &M, parent: &P) -> Result<(), NexusError> {
+        self.definition.push_message(message, parent)
     }
 }
 
-impl<D, M> NexusPushMessageMut<M> for NexusGroup<D>
+impl<P, D, M> NexusPushMessageMut<P, M> for NexusGroup<D>
 where
-    D: NexusGroupDef + NexusPushMessageMut<M, MessageType = M>,
+    D: NexusGroupDef + NexusPushMessageMut<P, M>,
 {
-    type MessageType = M;
-
-    fn push_message_mut(&mut self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
-        self.definition.push_message_mut(message, location)
+    fn push_message_mut(&mut self, message: &M, parent: &P) -> Result<(), NexusError> {
+        self.definition.push_message_mut(message, parent)
     }
 }

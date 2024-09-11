@@ -9,11 +9,7 @@ use supermusr_streaming_types::{
 
 use crate::schematic::{
     elements::{
-        attribute::NexusAttribute,
-        dataset::{NexusDataset, NexusDatasetResize},
-        NexusBuildable, NexusBuilderFinished, NexusDataHolderAppendable,
-        NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef, NexusPushMessage,
-        NexusUnits,
+        attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetResize}, NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef, NexusPushMessage, NexusUnits
     },
     nexus_class, H5String,
 };
@@ -46,10 +42,8 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
     }
 }
 
-impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for EventTimeZeroAttributes {
-    type MessageType = FrameAssembledEventListMessage<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, FrameAssembledEventListMessage<'a>> for EventTimeZeroAttributes {
+    fn push_message(&self, message: &FrameAssembledEventListMessage<'a>, location: &Group) -> Result<(), NexusError> {
         let timestamp: DateTime<Utc> =
             (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
                 .try_into()
@@ -99,21 +93,18 @@ impl NexusGroupDef for Data {
     }
 }
 
-impl<'a> NexusPushMessage<RunStart<'a>> for Data {
-    type MessageType = RunStart<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, RunStart<'a>> for Data {
+    fn push_message(&self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
         //let timestamp = DateTime::<Utc>::from_timestamp_millis(i64::try_from(message.start_time())?).ok_or(anyhow::anyhow!("Millisecond error"))?;
         //self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;
         Ok(())
     }
 }
 
-impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
-    type MessageType = FrameAssembledEventListMessage<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, FrameAssembledEventListMessage<'a>> for Data {
+    fn push_message(&self, message: &FrameAssembledEventListMessage<'a>, parent: &Group) -> Result<(), NexusError> {
         // Here is where we extend the datasets
+        self.event_id.create_hdf5(parent)?;
         let current_index = self.event_id.get_size()?;
         self.event_id.append(
             &message
@@ -122,6 +113,9 @@ impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
+        self.event_id.close_hdf5();
+
+        self.event_time_offset.create_hdf5(parent)?;
         self.event_time_offset.append(
             &message
                 .time()
@@ -129,6 +123,9 @@ impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
+        self.event_time_offset.close_hdf5();
+
+        self.event_pulse_height.create_hdf5(parent)?;
         self.event_pulse_height.append(
             &message
                 .voltage()
@@ -137,11 +134,20 @@ impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
                 .map(From::from)
                 .collect::<Vec<_>>(),
         )?;
+        self.event_pulse_height.close_hdf5();
 
+        self.event_index.create_hdf5(parent)?;
         self.event_index.append(&[current_index])?;
+        self.event_index.close_hdf5();
+
+        self.event_period_number.create_hdf5(parent)?;
         self.event_period_number
             .append(&[message.metadata().period_number()])?;
+        self.event_period_number.close_hdf5();
 
+
+        self.event_time_zero.create_hdf5(parent)?;
+        self.event_time_zero.push_message(message, parent)?;
         let timestamp: DateTime<Utc> =
             (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
                 .try_into()
@@ -156,7 +162,6 @@ impl<'a> NexusPushMessage<FrameAssembledEventListMessage<'a>> for Data {
                     .map_err(|_| NexusError::Unknown)?;
                 timestamp - offset
             } else {
-                self.event_time_zero.push_message(message, location)?;
                 Duration::zero()
             }
         }

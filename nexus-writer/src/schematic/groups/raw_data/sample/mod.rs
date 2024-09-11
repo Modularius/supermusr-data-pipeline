@@ -88,10 +88,8 @@ impl NexusGroupDef for Sample {
     }
 }
 
-impl<'a> NexusPushMessage<RunStart<'a>> for Sample {
-    type MessageType = RunStart<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, RunStart<'a>> for Sample {
+    fn push_message(&self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
         Ok(())
     }
 }

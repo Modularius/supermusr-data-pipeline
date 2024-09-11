@@ -1,4 +1,4 @@
-use hdf5::Location;
+use hdf5::{Group, Location};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::schematic::{
@@ -64,10 +64,8 @@ impl NexusGroupDef for User {
     }
 }
 
-impl<'a> NexusPushMessage<RunStart<'a>> for User {
-    type MessageType = RunStart<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, RunStart<'a>> for User {
+    fn push_message(&self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
         Ok(())
     }
 }

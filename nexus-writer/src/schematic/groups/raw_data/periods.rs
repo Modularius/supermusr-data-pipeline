@@ -86,10 +86,8 @@ impl NexusGroupDef for Periods {
     }
 }
 
-impl<'a> NexusPushMessage<RunStart<'a>> for Periods {
-    type MessageType = RunStart<'a>;
-
-    fn push_message(&self, message: &Self::MessageType, location: &Location) -> Result<(), NexusError> {
+impl<'a> NexusPushMessage<Group, RunStart<'a>> for Periods {
+    fn push_message(&self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
         Ok(())
     }
 }

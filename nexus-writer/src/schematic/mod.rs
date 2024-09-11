@@ -3,7 +3,7 @@ pub mod groups;
 
 use elements::{group::NexusGroup, NexusError, NexusPushMessage, NexusPushMessageMut};
 use groups::NXRoot;
-use hdf5::{types::VarLenUnicode, File, FileBuilder};
+use hdf5::{types::VarLenUnicode, File, FileBuilder, Group};
 use std::path::Path;
 
 use crate::nexus::NexusSettings;
@@ -92,13 +92,13 @@ impl Nexus {
         })
     }
 
-    pub(crate) fn get_root(&self) -> &NexusGroup<NXRoot> {
+    /*pub(crate) fn get_root(&self) -> &NexusGroup<NXRoot> {
         &self.nx_root
     }
 
     pub(crate) fn get_root_mut(&mut self) -> &mut NexusGroup<NXRoot> {
         &mut self.nx_root
-    }
+    }*/
 /*
     pub(crate) fn create(&mut self) -> Result<(), NexusError> {
         if let Some(file) = &mut self.file {
@@ -136,16 +136,16 @@ impl Nexus {
 
 impl Nexus {
     pub(crate) fn push_message<M>(&self, message: &M) -> Result<(), NexusError>
-    where NXRoot: NexusPushMessage<M, MessageType = M>
+    where NXRoot: NexusPushMessage<M,Group>
     {
         self.file
             .as_ref()
             .ok_or(NexusError::Unknown)
-            .and_then(|file| self.nx_root.push_message(message, &file))
+            .and_then(|file| self.nx_root.push_message(message, file))
     }
 
     pub(crate) fn push_message_mut<M>(&mut self, message: &M) -> Result<(), NexusError>
-    where NXRoot: NexusPushMessageMut<M, MessageType = M>
+    where NXRoot: NexusPushMessageMut<Group, M>
     {
         self.file
             .as_mut()
