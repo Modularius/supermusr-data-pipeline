@@ -3069,6 +3069,7 @@ dependencies = [
  "serde_json",
  "supermusr-common",
  "supermusr-streaming-types",
+ "thiserror",
  "tokio",
  "tracing",
 ]
