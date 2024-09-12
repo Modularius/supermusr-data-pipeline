@@ -187,8 +187,8 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for R
 
 /* Here we handle the start/stop messages */
 
-impl<'a> NexusHandleMessage<RunStart<'a>> for RawData {
-    fn handle_message(&mut self, message: &RunStart<'a>, parent: &Group) -> Result<(), NexusError> {
+impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
+    fn handle_message(&mut self, message: &RunStart<'a>, parent: &Group) -> Result<RunParameters, NexusError> {
         self.user_1.push_message(message, parent)?;
         self.periods.push_message(message, parent)?;
         self.sample.push_message(message, parent)?;
@@ -227,7 +227,8 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for RawData {
             .write_scalar(parent, "This".parse().map_err(|_| NexusError::Unknown)?)?;
 
         self.detector_1.push_message(message, parent)?;
-        Ok(())
+        
+        Ok(RunParameters::new(message)?)
     }
 }
 

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -8,7 +8,7 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
-    nexus::{NexusSettings, Run, RunParameters},
+    nexus::{NexusSettings, RunParameters},
     schematic::{
         elements::{
             attribute::NexusAttribute,
@@ -54,31 +54,37 @@ impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Datase
 {
     fn handle_message(
         &mut self,
-        message: &(&FrameAssembledEventListMessage<'a>, usize),
+        (message, current_index): &(&FrameAssembledEventListMessage<'a>, usize),
         _dataset: &Dataset,
     ) -> Result<u64, NexusError> {
-        let (message, current_index) = message;
         let timestamp: DateTime<Utc> =
             (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
                 .try_into()
                 .map_err(|_| NexusError::Unknown)?;
 
-        Ok(if *current_index != 0 {
-            let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
-                .map_err(|_| NexusError::Unknown)?;
-            timestamp - offset
-        } else {
-            self.offset.write_scalar(
-                _dataset,
-                timestamp
-                    .to_rfc3339()
-                    .parse()
-                    .map_err(|_| NexusError::Unknown)?,
-            )?;
-            Duration::zero()
-        }
-        .num_nanoseconds()
-        .ok_or(NexusError::Unknown)? as u64)
+        let time_zero = {
+            if *current_index != 0 {
+                let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
+                    .map_err(|_| NexusError::Unknown)?;
+
+                (timestamp - offset)
+                    .num_nanoseconds()
+                    .ok_or(NexusError::Unknown)?
+                    .try_into()
+                    .map_err(|_|NexusError::Unknown)?
+            } else {
+                self.offset.write_scalar(
+                    _dataset,
+                    timestamp
+                        .to_rfc3339()
+                        .parse()
+                        .map_err(|_| NexusError::Unknown)?,
+                )?;
+
+                u64::default()
+            }
+        };
+        Ok(time_zero)
     }
 }
 

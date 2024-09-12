@@ -6,7 +6,7 @@ use elements::{
     NexusPushMessage, NexusPushMessageWithContext,
 };
 use groups::NXRoot;
-use hdf5::{types::VarLenUnicode, File, FileBuilder};
+use hdf5::{types::VarLenUnicode, File, FileBuilder, Group};
 use std::path::Path;
 
 use crate::nexus::NexusSettings;
@@ -58,7 +58,6 @@ pub(crate) mod nexus_class {
 }
 
 pub(crate) struct Nexus {
-    settings: NexusSettings,
     file: Option<File>,
     nx_root: NexusGroup<NXRoot>,
 }
@@ -82,6 +81,7 @@ impl Nexus {
                 }
             }
         }
+        
         Ok(Self {
             file: Some(file),
             nx_root: NexusGroup::new(
@@ -92,7 +92,6 @@ impl Nexus {
                     .ok_or(NexusError::Unknown)?,
                 settings,
             ),
-            settings: settings.clone(),
         })
     }
 
@@ -138,9 +137,9 @@ impl Nexus {
 }
 
 impl Nexus {
-    pub(crate) fn push_message<M>(&mut self, message: &M) -> Result<(), NexusError>
+    pub(crate) fn push_message<M, R>(&mut self, message: &M) -> Result<R, NexusError>
     where
-        NXRoot: NexusHandleMessage<M>,
+        NXRoot: NexusHandleMessage<M, Group, R>,
     {
         self.file
             .as_mut()
@@ -148,13 +147,13 @@ impl Nexus {
             .and_then(|file| self.nx_root.push_message(message, file))
     }
 
-    pub(crate) fn push_message_with_context<M, Ctxt>(
+    pub(crate) fn push_message_with_context<M, Ctxt, R>(
         &mut self,
         message: &M,
         context: &mut Ctxt,
-    ) -> Result<(), NexusError>
+    ) -> Result<R, NexusError>
     where
-        NXRoot: NexusHandleMessageWithContext<M, Context = Ctxt>,
+        NXRoot: NexusHandleMessageWithContext<M, Group, R, Context = Ctxt>,
     {
         self.file
             .as_mut()

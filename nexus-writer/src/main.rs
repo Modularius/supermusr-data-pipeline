@@ -361,9 +361,9 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
                     info_span!(target: "otel",
                         "Run Stop Command",
                         "Stop" = run.parameters()
-                            .run_stop_parameters
+                            .collect_until
                             .as_ref()
-                            .map(|s|s.collect_until.to_rfc3339())
+                            .map(|collect_until|collect_until.to_rfc3339())
                             .unwrap_or_default()
                     )
                 }) {

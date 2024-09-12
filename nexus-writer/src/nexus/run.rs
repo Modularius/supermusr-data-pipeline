@@ -15,7 +15,7 @@ use tracing::{info_span, Span};
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
-    nexus: Option<Nexus>,
+    nexus: Nexus,
     num_frames: usize,
 }
 
@@ -26,29 +26,20 @@ impl Run {
         run_start: RunStart<'_>,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Self> {
-        let parameters = RunParameters::new(run_start, 0)?;
         /*if let Some(filename) = filename {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
             hdf5.init(&parameters)?;
             hdf5.close()?;
         }*/
-        let nexus = {
-            if let Some(filename) = filename {
-                let filename = {
-                    let mut filename = filename.to_owned();
-                    filename.push(&parameters.run_name);
-                    filename.set_extension("nxs");
-                    filename
-                };
-                let mut nexus = Nexus::new(&filename, nexus_settings)?;
-                //nexus.create()?;
-                nexus.push_message(&run_start)?;
-                //nexus.close()?;
-                Some(nexus)
-            } else {
-                None
-            }
+        let filename = {
+            let mut filename = filename.expect("").to_owned();
+            filename.push(run_start.run_name().unwrap());
+            filename.set_extension("nxs");
+            filename
         };
+        let mut nexus = Nexus::new(&filename, nexus_settings)?;
+            //nexus.create()?;
+        let parameters = nexus.push_message(&run_start)?;
         Ok(Self {
             span: Default::default(),
             parameters,
@@ -73,10 +64,7 @@ impl Run {
             hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
             hdf5.close()?;
         }*/
-
-        if let Some(ref mut nexus) = self.nexus {
-            nexus.push_message(logdata)?;
-        };
+        self.nexus.push_message(logdata)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -94,11 +82,7 @@ impl Run {
             hdf5.close()?;
         }*/
 
-        if let Some(ref mut nexus) = self.nexus {
-            //nexus.open()?;
-            nexus.push_message(&alarm)?;
-            //nexus.close()?;
-        }
+        self.nexus.push_message(&alarm)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -117,11 +101,7 @@ impl Run {
             hdf5.close()?;
         }*/
 
-        if let Some(ref mut nexus) = self.nexus {
-            //nexus.open()?;
-            nexus.push_message(&selogdata)?;
-            //nexus.close()?;
-        }
+        self.nexus.push_message(&selogdata)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -133,17 +113,7 @@ impl Run {
         filename: Option<&Path>,
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
-        /*if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(&self.parameters, message)?;
-            hdf5.close()?;
-        }*/
-
-        if let Some(ref mut nexus) = self.nexus {
-            //.open()?;
-            nexus.push_message_with_context(message, &mut self.parameters)?;
-            //nexus.close()?;
-        }
+        self.nexus.push_message_with_context(message, &mut self.parameters)?;
 
         self.num_frames += 1;
         self.parameters.update_last_modified();
@@ -156,7 +126,7 @@ impl Run {
     }
 
     pub(crate) fn has_run_stop(&self) -> bool {
-        self.parameters.run_stop_parameters.is_some()
+        self.parameters.collect_until.is_some()
     }
 
     pub(crate) fn set_stop_if_valid(
@@ -166,11 +136,7 @@ impl Run {
     ) -> anyhow::Result<()> {
         self.parameters.set_stop_if_valid(run_stop)?;
 
-        if let Some(ref mut nexus) = self.nexus {
-            //nexus.get_root().open()?;
-            nexus.push_message(&run_stop)?;
-            //nexus.close()?;
-        }
+        self.nexus.push_message(&run_stop)?;
 
         /*if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
@@ -194,10 +160,8 @@ impl Run {
 
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
         self.parameters
-            .run_stop_parameters
-            .as_ref()
-            .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
-            .unwrap_or(false)
+            .collect_until
+            .is_some_and(|_| Utc::now() - self.parameters.last_modified > *delay)
     }
 }
 
@@ -218,7 +182,6 @@ impl SpannedAggregator for Run {
         let span = info_span!(target: "otel", parent: None,
             "Run",
             "run_name" = self.parameters.run_name.as_str(),
-            "instrument_name" = self.parameters.instrument_name.as_str(),
             "run_has_run_stop" = tracing::field::Empty
         );
         self.span_mut().init(span)

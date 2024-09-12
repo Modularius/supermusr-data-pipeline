@@ -271,7 +271,7 @@ mod test {
             .front()
             .unwrap()
             .parameters()
-            .run_stop_parameters
+            .collect_until
             .is_none());
 
         fbb.reset();
@@ -283,17 +283,12 @@ mod test {
         let run = nexus.cache_iter().next();
 
         assert!(run.is_some());
-        assert!(run.unwrap().parameters().run_stop_parameters.is_some());
+        assert!(run.unwrap().parameters().collect_until.is_some());
         assert_eq!(run.unwrap().get_name(), "Test1");
 
-        assert!(run.unwrap().parameters().run_stop_parameters.is_some());
+        assert!(run.unwrap().parameters().collect_until.is_some());
         assert_eq!(
-            run.unwrap()
-                .parameters()
-                .run_stop_parameters
-                .as_ref()
-                .unwrap()
-                .collect_until,
+            run.unwrap().parameters().collect_until.unwrap(),
             DateTime::<Utc>::from_timestamp_millis(17).unwrap()
         );
     }

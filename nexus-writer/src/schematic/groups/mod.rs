@@ -75,18 +75,18 @@ impl NexusGroupDef for NXRoot {
     }
 }
 
-impl<M> NexusHandleMessage<M, Group> for NXRoot
+impl<M, R> NexusHandleMessage<M, Group, R> for NXRoot
 where
-    RawData: NexusHandleMessage<M>,
+    RawData: NexusHandleMessage<M, Group, R>,
 {
-    fn handle_message(&mut self, message: &M, parent: &Group) -> Result<(), NexusError> {
+    fn handle_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusError> {
         self.raw_data_1.push_message(message, parent)
     }
 }
 
-impl<M, Ctxt> NexusHandleMessageWithContext<M, Group> for NXRoot
+impl<M, Ctxt, R> NexusHandleMessageWithContext<M, Group, R> for NXRoot
 where
-    RawData: NexusHandleMessageWithContext<M, Context = Ctxt>,
+    RawData: NexusHandleMessageWithContext<M, Group, R, Context = Ctxt>,
 {
     type Context = Ctxt;
 
@@ -95,7 +95,7 @@ where
         message: &M,
         parent: &Group,
         context: &mut Self::Context,
-    ) -> Result<(), NexusError> {
+    ) -> Result<R, NexusError> {
         self.raw_data_1
             .push_message_with_context(message, parent, context)
     }
