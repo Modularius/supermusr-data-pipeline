@@ -1,12 +1,17 @@
 use hdf5::{Group, Location};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
-use crate::schematic::{
-    elements::{
-        attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage
+use crate::{
+    nexus::NexusSettings,
+    schematic::{
+        elements::{
+            attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable,
+            NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
+            NexusPushMessage,
+        },
+        groups::log::Log,
+        nexus_class, H5String,
     },
-    groups::log::Log,
-    nexus_class, H5String,
 };
 
 #[derive(Clone)]
@@ -53,8 +58,9 @@ pub(super) struct Periods {
 
 impl NexusGroupDef for Periods {
     const CLASS_NAME: &'static str = nexus_class::PERIOD;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &NexusSettings) -> Self {
         Self {
             number: NexusDataset::begin("number")
                 .default_value(Default::default())
@@ -80,13 +86,17 @@ impl NexusGroupDef for Periods {
             sequences: NexusDataset::begin("sequences")
                 .default_value(Default::default())
                 .finish(),
-            counts: NexusGroup::new("counts"),
+            counts: NexusGroup::new("counts", settings),
         }
     }
 }
 
 impl<'a> NexusHandleMessage<RunStart<'a>> for Periods {
-    fn handle_message(&mut self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &RunStart<'a>,
+        location: &Group,
+    ) -> Result<(), NexusError> {
         Ok(())
     }
 }

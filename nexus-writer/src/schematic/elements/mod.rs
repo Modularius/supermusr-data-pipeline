@@ -44,7 +44,7 @@ pub(super) trait NexusBuildable: Sized {
 /// i.e. NexusBuilder with FINISHED = false
 pub(super) trait NexusBuilderBegun {
     type FinshedBuilder: NexusBuilderFinished;
-    
+
     fn new(name: &str) -> Self;
 }
 
@@ -89,8 +89,9 @@ pub(super) trait NexusDataHolderClass: Default + Clone {}
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure
 pub(super) trait NexusGroupDef: Sized {
     const CLASS_NAME: &'static str;
+    type Settings;
 
-    fn new() -> Self;
+    fn new(_settings: &Self::Settings) -> Self;
 }
 
 /// Implemented for structs in the `groups` folder which define the HDF5 dataset structure
@@ -107,10 +108,32 @@ impl NexusDatasetDef for () {
 }
 
 /// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages
-pub(crate) trait NexusPushMessage<M, P = Group> {
-    fn push_message(&mut self, message: &M, parent: &P) -> Result<(), NexusError>;
+pub(crate) trait NexusPushMessage<M, P = Group, R = ()> {
+    fn push_message(&mut self, message: &M, parent: &P) -> Result<R, NexusError>;
 }
 
-pub(super) trait NexusHandleMessage<M,P = Group> {
-    fn handle_message(&mut self, message: &M, own: &P) -> Result<(), NexusError>;
+pub(crate) trait NexusHandleMessage<M, P = Group, R = ()> {
+    fn handle_message(&mut self, message: &M, own: &P) -> Result<R, NexusError>;
+}
+
+pub(crate) trait NexusPushMessageWithContext<M, P = Group, R = ()> {
+    type Context;
+
+    fn push_message_with_context(
+        &mut self,
+        message: &M,
+        parent: &P,
+        context: &Self::Context,
+    ) -> Result<R, NexusError>;
+}
+
+pub(crate) trait NexusHandleMessageWithContext<M, P = Group, R = ()> {
+    type Context;
+
+    fn handle_message_with_context(
+        &mut self,
+        message: &M,
+        own: &P,
+        context: &Self::Context,
+    ) -> Result<R, NexusError>;
 }

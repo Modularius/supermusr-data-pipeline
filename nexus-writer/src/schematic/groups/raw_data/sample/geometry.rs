@@ -1,6 +1,9 @@
-use crate::schematic::{
-    elements::{dataset::NexusDataset, NexusBuildable, NexusBuilderFinished, NexusGroupDef},
-    nexus_class, H5String,
+use crate::{
+    nexus::NexusSettings,
+    schematic::{
+        elements::{dataset::NexusDataset, NexusBuildable, NexusBuilderFinished, NexusGroupDef},
+        nexus_class, H5String,
+    },
 };
 
 pub(super) struct Geometry {
@@ -9,8 +12,9 @@ pub(super) struct Geometry {
 
 impl NexusGroupDef for Geometry {
     const CLASS_NAME: &'static str = nexus_class::GEOMETRY;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(_settings: &NexusSettings) -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())

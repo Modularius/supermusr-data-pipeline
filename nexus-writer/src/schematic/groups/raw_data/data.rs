@@ -7,11 +7,19 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::RunStart,
 };
 
-use crate::schematic::{
-    elements::{
-        attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetResize}, NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage, NexusUnits
+use crate::{
+    nexus::{NexusSettings, Run, RunParameters},
+    schematic::{
+        elements::{
+            attribute::NexusAttribute,
+            dataset::{NexusDataset, NexusDatasetResize},
+            NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable,
+            NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef,
+            NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
+            NexusPushMessageWithContext, NexusUnits,
+        },
+        nexus_class, H5String,
     },
-    nexus_class, H5String,
 };
 
 #[derive(Clone)]
@@ -42,18 +50,37 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
     }
 }
 
-impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>, Dataset> for EventTimeZeroAttributes {
-    fn handle_message(&mut self, message: &FrameAssembledEventListMessage<'a>, location: &Dataset) -> Result<(), NexusError> {
+impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>, Dataset, u64>
+    for EventTimeZeroAttributes
+{
+    type Context = usize;
+
+    fn handle_message_with_context(
+        &mut self,
+        message: &FrameAssembledEventListMessage<'a>,
+        _dataset: &Dataset,
+        current_index: &usize,
+    ) -> Result<u64, NexusError> {
         let timestamp: DateTime<Utc> =
             (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
                 .try_into()
                 .map_err(|_| NexusError::Unknown)?;
-        self.offset.write_scalar(
-            timestamp
-                .to_rfc3339()
-                .parse()
-                .map_err(|_| NexusError::Unknown)?,
-        )
+
+        Ok(if *current_index != 0 {
+            let offset = DateTime::<Utc>::from_str(self.offset.read_scalar()?.as_str())
+                .map_err(|_| NexusError::Unknown)?;
+            timestamp - offset
+        } else {
+            self.offset.write_scalar(
+                timestamp
+                    .to_rfc3339()
+                    .parse()
+                    .map_err(|_| NexusError::Unknown)?,
+            )?;
+            Duration::zero()
+        }
+        .num_nanoseconds()
+        .ok_or(NexusError::Unknown)? as u64)
     }
 }
 
@@ -68,43 +95,52 @@ pub(super) struct Data {
 
 impl NexusGroupDef for Data {
     const CLASS_NAME: &'static str = nexus_class::EVENT_DATA;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &NexusSettings) -> Self {
         Self {
             event_id: NexusDataset::begin("event_id")
-                .resizable(0, 0, 128)
+                .resizable(0, 0, settings.eventlist_chunk_size)
                 .finish(),
             event_index: NexusDataset::begin("event_index")
-                .resizable(0, 0, 128)
+                .resizable(0, 0, settings.framelist_chunk_size)
                 .finish(),
             event_time_offset: NexusDataset::begin("event_time_offset")
-                .resizable(0, 0, 128)
+                .resizable(0, 0, settings.eventlist_chunk_size)
                 .finish(),
             event_time_zero: NexusDataset::begin("event_time_zero")
-                .resizable(0, 0, 128)
+                .resizable(0, 0, settings.framelist_chunk_size)
                 .finish(),
             event_period_number: NexusDataset::begin("event_period_number")
-                .resizable(0, 0, 128)
+                .resizable(0, 0, settings.framelist_chunk_size)
                 .finish(),
             event_pulse_height: NexusDataset::begin("event_pulse_height")
-                .resizable(0.0, 0, 128)
+                .resizable(0.0, 0, settings.eventlist_chunk_size)
                 .finish(),
         }
     }
 }
 
 impl<'a> NexusHandleMessage<RunStart<'a>> for Data {
-    fn handle_message(&mut self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
+    fn handle_message(&mut self, message: &RunStart<'a>, _group: &Group) -> Result<(), NexusError> {
         //let timestamp = DateTime::<Utc>::from_timestamp_millis(i64::try_from(message.start_time())?).ok_or(anyhow::anyhow!("Millisecond error"))?;
         //self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;
         Ok(())
     }
 }
 
-impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
-    fn handle_message(&mut self, message: &FrameAssembledEventListMessage<'a>, parent: &Group) -> Result<(), NexusError> {
-        let parent = parent.as_group().expect("Location Should be Group");
+impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for Data {
+    type Context = RunParameters;
+
+    fn handle_message_with_context(
+        &mut self,
+        message: &FrameAssembledEventListMessage<'a>,
+        parent: &Group,
+        _params: &RunParameters,
+    ) -> Result<(), NexusError> {
         // Here is where we extend the datasets
+
+        //  event_id
         self.event_id.create_hdf5(&parent)?;
         let current_index = self.event_id.get_size()?;
         self.event_id.append(
@@ -116,6 +152,7 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
         )?;
         self.event_id.close_hdf5();
 
+        //  event_time_offset
         self.event_time_offset.create_hdf5(&parent)?;
         self.event_time_offset.append(
             &message
@@ -126,6 +163,7 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
         )?;
         self.event_time_offset.close_hdf5();
 
+        //  event_pulse_height
         self.event_pulse_height.create_hdf5(&parent)?;
         self.event_pulse_height.append(
             &message
@@ -137,37 +175,21 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
         )?;
         self.event_pulse_height.close_hdf5();
 
+        //  event_index
         self.event_index.create_hdf5(&parent)?;
         self.event_index.append(&[current_index])?;
         self.event_index.close_hdf5();
 
+        //  event_period_number
         self.event_period_number.create_hdf5(&parent)?;
         self.event_period_number
             .append(&[message.metadata().period_number()])?;
         self.event_period_number.close_hdf5();
 
-
-        self.event_time_zero.create_hdf5(&parent)?;
-        self.event_time_zero.push_message(message, &parent)?;
-        let timestamp: DateTime<Utc> =
-            (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
-                .try_into()
-                .map_err(|_| NexusError::Unknown)?;
-
-        let time_zero = {
-            if current_index != 0 {
-                let offset_string = self
-                    .event_time_zero
-                    .attribute(|attributes| &attributes.offset).read_scalar()?;
-                let offset = DateTime::<Utc>::from_str(offset_string.as_str())
-                    .map_err(|_| NexusError::Unknown)?;
-                timestamp - offset
-            } else {
-                Duration::zero()
-            }
-        }
-        .num_nanoseconds()
-        .ok_or(NexusError::Unknown)? as u64;
+        //  event_time_zero
+        let time_zero =
+            self.event_time_zero
+                .push_message_with_context(message, &parent, &current_index)?;
 
         self.event_time_zero.append(&[time_zero])?;
         Ok(())

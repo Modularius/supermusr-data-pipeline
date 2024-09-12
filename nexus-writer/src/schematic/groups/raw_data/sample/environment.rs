@@ -1,10 +1,13 @@
-use crate::schematic::{
-    elements::{
-        dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
-        NexusGroupDef,
+use crate::{
+    nexus::NexusSettings,
+    schematic::{
+        elements::{
+            dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
+            NexusGroupDef,
+        },
+        groups::log::Log,
+        nexus_class, H5String,
     },
-    groups::log::Log,
-    nexus_class, H5String,
 };
 
 pub(super) struct Environment {
@@ -18,8 +21,9 @@ pub(super) struct Environment {
 
 impl NexusGroupDef for Environment {
     const CLASS_NAME: &'static str = nexus_class::ENVIRONMENT;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &NexusSettings) -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
@@ -36,7 +40,7 @@ impl NexusGroupDef for Environment {
             program: NexusDataset::begin("program")
                 .default_value(Default::default())
                 .finish(),
-            hardware_log: NexusGroup::new("hardware_log"),
+            hardware_log: NexusGroup::new("hardware_log", settings),
         }
     }
 }

@@ -1,6 +1,4 @@
-use crate::schematic::{
-    Nexus,
-};
+use crate::schematic::Nexus;
 
 use super::{Run, RunParameters};
 use chrono::{DateTime, Duration, Utc};

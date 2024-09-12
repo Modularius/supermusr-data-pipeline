@@ -1,18 +1,16 @@
-use chrono::Local;
-use hdf5::{File, Group, Location};
+use hdf5::Group;
 use raw_data::RawData;
-use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
-    ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
-    ecs_se00_data_generated::se00_SampleEnvironmentData,
-};
 
-use crate::schematic::elements::{attribute::NexusAttribute, group::NexusGroup};
+use crate::{
+    nexus::NexusSettings,
+    schematic::elements::{attribute::NexusAttribute, group::NexusGroup},
+};
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed, NexusBuildable, NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage
+        attribute::NexusAttributeFixed, NexusBuildable, NexusBuilderFinished, NexusDatasetDef,
+        NexusError, NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext,
+        NexusPushMessage, NexusPushMessageWithContext,
     },
     nexus_class, H5String,
 };
@@ -68,16 +66,37 @@ pub(crate) struct NXRoot {
 
 impl NexusGroupDef for NXRoot {
     const CLASS_NAME: &'static str = nexus_class::ROOT;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &NexusSettings) -> Self {
         Self {
-            raw_data_1: NexusGroup::new("raw_data_1"),
+            raw_data_1: NexusGroup::new("raw_data_1", settings),
         }
     }
 }
 
-impl<M> NexusHandleMessage<M,Group> for NXRoot where RawData : NexusHandleMessage<M> {
+impl<M> NexusHandleMessage<M, Group> for NXRoot
+where
+    RawData: NexusHandleMessage<M>,
+{
     fn handle_message(&mut self, message: &M, parent: &Group) -> Result<(), NexusError> {
         self.raw_data_1.push_message(message, parent)
+    }
+}
+
+impl<M, Ctxt> NexusHandleMessageWithContext<M, Group> for NXRoot
+where
+    RawData: NexusHandleMessageWithContext<M, Context = Ctxt>,
+{
+    type Context = Ctxt;
+
+    fn handle_message_with_context(
+        &mut self,
+        message: &M,
+        parent: &Group,
+        context: &Self::Context,
+    ) -> Result<(), NexusError> {
+        self.raw_data_1
+            .push_message_with_context(message, parent, context)
     }
 }

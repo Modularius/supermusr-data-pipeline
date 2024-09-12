@@ -1,7 +1,4 @@
-use crate::schematic::{
-    elements::NexusPushMessage,
-    Nexus,
-};
+use crate::schematic::{elements::NexusPushMessageWithContext, Nexus};
 
 use super::{NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
@@ -76,9 +73,7 @@ impl Run {
         }*/
 
         if let Some(ref mut nexus) = self.nexus {
-            //nexus.open()?;
             nexus.push_message(logdata)?;
-            //nexus.close()?;
         };
 
         self.parameters.update_last_modified();
@@ -142,7 +137,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //.open()?;
-            nexus.push_message(message)?;
+            nexus.push_message_with_context(message, &self.parameters)?;
             //nexus.close()?;
         }
 

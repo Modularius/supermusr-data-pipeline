@@ -1,8 +1,11 @@
-use std::str::FromStr;
+use std::{marker::PhantomData, str::FromStr};
 
-use hdf5::{types::VarLenUnicode, Group, Location, Object};
+use hdf5::{types::VarLenUnicode, Group};
 
-use super::{NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage};
+use super::{
+    NexusError, NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
+    NexusPushMessageWithContext,
+};
 
 pub(in crate::schematic) struct NexusGroup<D: NexusGroupDef> {
     name: String,
@@ -11,29 +14,35 @@ pub(in crate::schematic) struct NexusGroup<D: NexusGroupDef> {
 }
 
 impl<D: NexusGroupDef> NexusGroup<D> {
-    pub(crate) fn new(name: &str) -> Self {
+    pub(crate) fn new(name: &str, settings: &D::Settings) -> Self {
         Self {
             name: name.to_string(),
-            definition: D::new(),
+            definition: D::new(settings),
             group: None,
         }
     }
+}
 
+impl<D: NexusGroupDef> NexusGroup<D> {
     pub(crate) fn get_name(&self) -> &str {
         &self.name
     }
-    
-    pub(in crate::schematic) fn create_hdf5(&mut self, parent: &Group) -> Result<Group, NexusError> {
+
+    pub(in crate::schematic) fn create_hdf5(
+        &mut self,
+        parent: &Group,
+    ) -> Result<Group, NexusError> {
         let group = parent.group(&self.name).or_else(|_| {
-            let group = parent
-                .create_group(self.name.as_str())?;
-            
+            let group = parent.create_group(self.name.as_str())?;
+
             group
                 .new_attr_builder()
-                .with_data(&VarLenUnicode::from_str(D::CLASS_NAME).map_err(|_|NexusError::Unknown)?)
+                .with_data(
+                    &VarLenUnicode::from_str(D::CLASS_NAME).map_err(|_| NexusError::Unknown)?,
+                )
                 .create("NXclass")?;
 
-            Ok::<_,NexusError>(group)
+            Ok::<_, NexusError>(group)
         })?;
         self.group = Some(group.clone());
         Ok(group)
@@ -44,14 +53,35 @@ impl<D: NexusGroupDef> NexusGroup<D> {
     }
 }
 
-impl<D, M> NexusPushMessage<M,Group> for NexusGroup<D>
+impl<D, M, R> NexusPushMessage<M, Group, R> for NexusGroup<D>
 where
-    D: NexusGroupDef + NexusHandleMessage<M,Group>,
+    D: NexusGroupDef + NexusHandleMessage<M, Group, R>,
 {
-    fn push_message(&mut self, message: &M, parent: &Group) -> Result<(), NexusError> {
+    fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusError> {
         let parent = self.create_hdf5(parent)?;
-        self.definition.handle_message(message, &parent)?;
+        let ret = self.definition.handle_message(message, &parent)?;
         self.close_hdf5();
-        Ok(())
+        Ok(ret)
+    }
+}
+
+impl<D, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusGroup<D>
+where
+    D: NexusGroupDef + NexusHandleMessageWithContext<M, Group, R, Context = Ctxt>,
+{
+    type Context = Ctxt;
+
+    fn push_message_with_context(
+        &mut self,
+        message: &M,
+        parent: &Group,
+        context: &Self::Context,
+    ) -> Result<R, NexusError> {
+        let parent = self.create_hdf5(parent)?;
+        let ret = self
+            .definition
+            .handle_message_with_context(message, &parent, context)?;
+        self.close_hdf5();
+        Ok(ret)
     }
 }

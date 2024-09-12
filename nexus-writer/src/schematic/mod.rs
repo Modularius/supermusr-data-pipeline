@@ -1,9 +1,12 @@
 pub(crate) mod elements;
 pub mod groups;
 
-use elements::{group::NexusGroup, NexusError, NexusHandleMessage, NexusPushMessage};
+use elements::{
+    group::NexusGroup, NexusError, NexusHandleMessage, NexusHandleMessageWithContext,
+    NexusPushMessage, NexusPushMessageWithContext,
+};
 use groups::NXRoot;
-use hdf5::{types::VarLenUnicode, File, FileBuilder, Group};
+use hdf5::{types::VarLenUnicode, File, FileBuilder};
 use std::path::Path;
 
 use crate::nexus::NexusSettings;
@@ -87,6 +90,7 @@ impl Nexus {
                     .ok_or(NexusError::Unknown)?
                     .to_str()
                     .ok_or(NexusError::Unknown)?,
+                settings,
             ),
             settings: settings.clone(),
         })
@@ -99,48 +103,65 @@ impl Nexus {
     pub(crate) fn get_root_mut(&mut self) -> &mut NexusGroup<NXRoot> {
         &mut self.nx_root
     }*/
-/*
-    pub(crate) fn create(&mut self) -> Result<(), NexusError> {
-        if let Some(file) = &mut self.file {
-            Ok(self.nx_root.create(file)?)
-        } else {
-            Err(NexusError::Unknown)
+    /*
+        pub(crate) fn create(&mut self) -> Result<(), NexusError> {
+            if let Some(file) = &mut self.file {
+                Ok(self.nx_root.create(file)?)
+            } else {
+                Err(NexusError::Unknown)
+            }
         }
-    }
 
-    pub(crate) fn open(&mut self) -> Result<(), NexusError> {
-        if let Some(file) = &mut self.file {
-            Ok(self.nx_root.apply_lock().open(file)?)
-        } else {
-            Err(NexusError::Unknown)
+        pub(crate) fn open(&mut self) -> Result<(), NexusError> {
+            if let Some(file) = &mut self.file {
+                Ok(self.nx_root.apply_lock().open(file)?)
+            } else {
+                Err(NexusError::Unknown)
+            }
         }
-    }
 
-    pub(crate) fn close(&mut self) -> Result<(), NexusError> {
-        if self.file.is_some() {
-            Ok(self.nx_root.apply_lock().close()?)
-        } else {
-            Err(NexusError)
+        pub(crate) fn close(&mut self) -> Result<(), NexusError> {
+            if self.file.is_some() {
+                Ok(self.nx_root.apply_lock().close()?)
+            } else {
+                Err(NexusError)
+            }
         }
-    }
-*/
+    */
     pub(crate) fn close_file(&mut self) -> Result<(), NexusError> {
         if let Some(file) = self.file.take() {
-            Ok(file.close().map_err(|_|NexusError::Unknown)?)
+            Ok(file.close().map_err(|_| NexusError::Unknown)?)
         } else {
             Err(NexusError::Unknown)
         }
     }
 }
 
-
 impl Nexus {
     pub(crate) fn push_message<M>(&mut self, message: &M) -> Result<(), NexusError>
-    where NXRoot: NexusHandleMessage<M>
+    where
+        NXRoot: NexusHandleMessage<M>,
     {
         self.file
             .as_mut()
             .ok_or(NexusError::Unknown)
             .and_then(|file| self.nx_root.push_message(message, file))
+    }
+
+    pub(crate) fn push_message_with_context<M, Ctxt>(
+        &mut self,
+        message: &M,
+        context: &Ctxt,
+    ) -> Result<(), NexusError>
+    where
+        NXRoot: NexusHandleMessageWithContext<M, Context = Ctxt>,
+    {
+        self.file
+            .as_mut()
+            .ok_or(NexusError::Unknown)
+            .and_then(|file| {
+                self.nx_root
+                    .push_message_with_context(message, file, context)
+            })
     }
 }

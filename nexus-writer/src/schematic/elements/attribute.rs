@@ -4,8 +4,8 @@ use hdf5::{Attribute, Dataset, H5Type};
 
 use super::{
     builder::{NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable},
-    NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass,
-    NexusDataHolderScalarMutable, NexusError,NexusBuilderBegun
+    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass,
+    NexusDataHolderScalarMutable, NexusError,
 };
 
 impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuilderFinished
@@ -35,7 +35,8 @@ pub(in crate::schematic) struct NexusAttribute<
     attribute: Option<Attribute>,
     phantom: PhantomData<T>,
 }
-pub(in crate::schematic) type NexusAttributeFixed<T> = NexusAttribute<T, NexusDataHolderConstant<T>>;
+pub(in crate::schematic) type NexusAttributeFixed<T> =
+    NexusAttribute<T, NexusDataHolderConstant<T>>;
 
 impl<T, C> NexusBuildable for NexusAttribute<T, C>
 where
@@ -67,7 +68,7 @@ where
             attribute
                 .write_scalar(&self.class.default_value)
                 .map_err(|_| NexusError::Unknown)?;
-            Ok::<_,NexusError>(attribute)
+            Ok::<_, NexusError>(attribute)
         })?;
         self.attribute = Some(attribute.clone());
         Ok(attribute)
@@ -94,7 +95,7 @@ where
             attribute
                 .write_scalar(&self.class.fixed_value)
                 .map_err(|_| NexusError::Unknown)?;
-            Ok::<_,NexusError>(attribute)
+            Ok::<_, NexusError>(attribute)
         })?;
         self.attribute = Some(attribute.clone());
         Ok(attribute)
@@ -119,7 +120,8 @@ where
     }
 
     fn read_scalar(&self) -> Result<Self::DataType, NexusError> {
-        self.attribute.as_ref()
+        self.attribute
+            .as_ref()
             .ok_or(NexusError::Unknown)
             .and_then(|dataset| dataset.read_scalar().map_err(|_| NexusError::Unknown))
     }

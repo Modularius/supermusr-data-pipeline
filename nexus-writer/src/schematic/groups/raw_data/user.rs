@@ -1,11 +1,15 @@
 use hdf5::{Group, Location};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
-use crate::schematic::{
-    elements::{
-        attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage
+use crate::{
+    nexus::NexusSettings,
+    schematic::{
+        elements::{
+            attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusBuilderFinished,
+            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+        },
+        nexus_class, H5String,
     },
-    nexus_class, H5String,
 };
 
 #[derive(Clone)]
@@ -35,8 +39,9 @@ pub(super) struct User {
 
 impl NexusGroupDef for User {
     const CLASS_NAME: &'static str = nexus_class::USER;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(_settings: &NexusSettings) -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
@@ -64,7 +69,11 @@ impl NexusGroupDef for User {
 }
 
 impl<'a> NexusHandleMessage<RunStart<'a>> for User {
-    fn handle_message(&mut self, message: &RunStart<'a>, location: &Group) -> Result<(), NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &RunStart<'a>,
+        location: &Group,
+    ) -> Result<(), NexusError> {
         Ok(())
     }
 }

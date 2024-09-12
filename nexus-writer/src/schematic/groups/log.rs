@@ -5,10 +5,14 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
-    nexus::nexus_class,
+    nexus::{nexus_class, NexusSettings},
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetResize}, NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage, NexusUnits
+            attribute::NexusAttribute,
+            dataset::{NexusDataset, NexusDatasetResize},
+            NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable,
+            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            NexusUnits,
         },
         H5String,
     },
@@ -38,21 +42,26 @@ pub(super) struct Log {
 
 impl NexusGroupDef for Log {
     const CLASS_NAME: &'static str = nexus_class::LOG;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &Self::Settings) -> Self {
         Self {
             time: NexusDataset::begin("time")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.runloglist_chunk_size)
                 .finish(),
             value: NexusDataset::begin("value")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.runloglist_chunk_size)
                 .finish(),
         }
     }
 }
 
 impl<'a> NexusHandleMessage<f144_LogData<'a>> for Log {
-    fn handle_message(&mut self, message: &f144_LogData<'a>, parent: &Group) -> Result<(), NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &f144_LogData<'a>,
+        parent: &Group,
+    ) -> Result<(), NexusError> {
         self.time.append(&[message.timestamp()])?;
         self.value
             .append(&[message.value_as_uint().unwrap().value()])?;
@@ -70,33 +79,41 @@ pub(super) struct ValueLog {
 
 impl NexusGroupDef for ValueLog {
     const CLASS_NAME: &'static str = nexus_class::LOG;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &Self::Settings) -> Self {
         Self {
             alarm_severity: NexusDataset::begin("alarm_severity")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
                 .finish(),
             alarm_status: NexusDataset::begin("alarm_status")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
                 .finish(),
             alarm_time: NexusDataset::begin("alarm_time")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
                 .finish(),
             time: NexusDataset::begin("time")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
                 .finish(),
             value: NexusDataset::begin("value")
-                .resizable(Default::default(), 0, 128)
+                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
                 .finish(),
         }
     }
 }
 
 impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
-    fn handle_message(&mut self, message: &se00_SampleEnvironmentData<'a>, parent: &Group) -> Result<(), NexusError> {
-        self.time.create_hdf5(parent)?;
+    fn handle_message(
+        &mut self,
+        message: &se00_SampleEnvironmentData<'a>,
+        group: &Group,
+    ) -> Result<(), NexusError> {
+        self.time.create_hdf5(group)?;
         self.time
             .append(&message.timestamps().unwrap().iter().collect::<Vec<_>>())?;
+        self.time.close_hdf5();
+
+        self.time.create_hdf5(group)?;
         self.value.append(
             &message
                 .values_as_uint_32_array()
@@ -111,7 +128,7 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
 }
 
 impl<'a> NexusHandleMessage<Alarm<'a>> for ValueLog {
-    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
+    fn handle_message(&mut self, message: &Alarm<'a>, group: &Group) -> Result<(), NexusError> {
         self.alarm_severity.append(&[message
             .severity()
             .variant_name()

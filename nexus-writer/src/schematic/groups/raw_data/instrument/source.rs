@@ -1,10 +1,13 @@
-use crate::schematic::{
-    elements::{
-        dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
-        NexusGroupDef,
+use crate::{
+    nexus::NexusSettings,
+    schematic::{
+        elements::{
+            dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
+            NexusGroupDef,
+        },
+        groups::log::Log,
+        nexus_class, H5String,
     },
-    groups::log::Log,
-    nexus_class, H5String,
 };
 
 pub(super) struct Source {
@@ -23,8 +26,9 @@ pub(super) struct Source {
 
 impl NexusGroupDef for Source {
     const CLASS_NAME: &'static str = nexus_class::SOURCE;
+    type Settings = NexusSettings;
 
-    fn new() -> Self {
+    fn new(settings: &NexusSettings) -> Self {
         Self {
             name: NexusDataset::begin("name")
                 .default_value(Default::default())
@@ -47,7 +51,7 @@ impl NexusGroupDef for Source {
             source_current: NexusDataset::begin("tarsource_currentget_thickness")
                 .default_value(Default::default())
                 .finish(),
-            source_current_log: NexusGroup::new("source_current_log"),
+            source_current_log: NexusGroup::new("source_current_log", settings),
             source_pulse_width: NexusDataset::begin("source_pulse_width")
                 .default_value(Default::default())
                 .finish(),

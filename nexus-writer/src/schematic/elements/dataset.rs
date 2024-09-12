@@ -4,9 +4,14 @@ use ndarray::s;
 use std::marker::PhantomData;
 
 use super::{
-    attribute::NexusAttribute, builder::{
+    attribute::NexusAttribute,
+    builder::{
         NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable, NexusDataHolderResizable,
-    }, NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable, NexusDataHolderClass, NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusHandleMessage, NexusPushMessage
+    },
+    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder,
+    NexusDataHolderAppendable, NexusDataHolderClass, NexusDataHolderScalarMutable, NexusDatasetDef,
+    NexusError, NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
+    NexusPushMessageWithContext,
 };
 
 impl<T, C, D> NexusBuilderFinished for NexusBuilder<C, NexusDataset<T, D, C>, true>
@@ -41,23 +46,27 @@ pub(in crate::schematic) struct NexusDataset<
     phantom: PhantomData<T>,
 }
 
-impl<T,D,C> NexusDataset<T,D,C> where
-T: H5Type + Clone + Default,
-D: NexusDatasetDef,
-C: NexusDataHolderClass {
-    pub(crate) fn attribute<F, T2, C2>(&self, f : F) -> &NexusAttribute<T2, C2>
-    where 
-    F : Fn(&D) -> &NexusAttribute<T2, C2>,
-    T2: H5Type + Clone + Default,
-    C2: NexusDataHolderClass
+impl<T, D, C> NexusDataset<T, D, C>
+where
+    T: H5Type + Clone + Default,
+    D: NexusDatasetDef,
+    C: NexusDataHolderClass,
+{
+    pub(crate) fn attribute<F, T2, C2>(&self, f: F) -> &NexusAttribute<T2, C2>
+    where
+        F: Fn(&D) -> &NexusAttribute<T2, C2>,
+        T2: H5Type + Clone + Default,
+        C2: NexusDataHolderClass,
     {
         f(&self.definition)
     }
 }
 
-pub(in crate::schematic) type NexusDatasetFixed<T, D = ()> = NexusDataset<T, D, NexusDataHolderConstant<T>>;
+pub(in crate::schematic) type NexusDatasetFixed<T, D = ()> =
+    NexusDataset<T, D, NexusDataHolderConstant<T>>;
 
-pub(in crate::schematic) type NexusDatasetResize<T, D = ()> = NexusDataset<T, D, NexusDataHolderResizable<T>>;
+pub(in crate::schematic) type NexusDatasetResize<T, D = ()> =
+    NexusDataset<T, D, NexusDataHolderResizable<T>>;
 
 impl<T, D, C> NexusBuildable for NexusDataset<T, D, C>
 where
@@ -67,11 +76,10 @@ where
     NexusDataset<T, D, C>: NexusDataHolder,
 {
     type Builder = NexusBuilder<C, NexusDataset<T, D, C>, false>;
-    
+
     fn begin(name: &str) -> Self::Builder {
         Self::Builder::new(name)
     }
-
 }
 
 impl<T, D> NexusDataHolder for NexusDataset<T, D, NexusDataHolderMutable<T>>
@@ -93,7 +101,7 @@ where
             dataset
                 .write_scalar(&self.class.default_value)
                 .map_err(|_| NexusError::Unknown)?;
-            Ok::<_,NexusError>(dataset)
+            Ok::<_, NexusError>(dataset)
         })?;
         self.dataset = Some(dataset.clone());
         Ok(dataset)
@@ -122,7 +130,7 @@ where
             dataset
                 .write_scalar(&self.class.fixed_value)
                 .map_err(|_| NexusError::Unknown)?;
-            Ok::<_,NexusError>(dataset)
+            Ok::<_, NexusError>(dataset)
         })?;
         self.dataset = Some(dataset.clone());
         Ok(dataset)
@@ -171,15 +179,19 @@ where
     NexusDataHolderMutable<T>: NexusDataHolderClass,
 {
     fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError> {
-        self.dataset.as_ref().ok_or(NexusError::Unknown).and_then(|dataset| {
-            dataset
-                .write_scalar(&value)
-                .map_err(|_| NexusError::Unknown)
-        })
+        self.dataset
+            .as_ref()
+            .ok_or(NexusError::Unknown)
+            .and_then(|dataset| {
+                dataset
+                    .write_scalar(&value)
+                    .map_err(|_| NexusError::Unknown)
+            })
     }
 
     fn read_scalar(&self) -> Result<Self::DataType, NexusError> {
-        self.dataset.as_ref()
+        self.dataset
+            .as_ref()
             .ok_or(NexusError::Unknown)
             .and_then(|dataset| dataset.read_scalar().map_err(|_| NexusError::Unknown))
     }
@@ -205,23 +217,48 @@ impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusDataHolderAppendable
     }
 
     fn get_size(&self) -> Result<usize, NexusError> {
-        self.dataset.as_ref()
+        self.dataset
+            .as_ref()
             .ok_or(NexusError::Unknown)
             .map(|dataset| dataset.size())
     }
 }
 
-impl<T, D, C, M> NexusPushMessage<M,Group> for NexusDataset<T, D, C>
+impl<T, D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<T, D, C>
 where
     T: H5Type + Clone + Default,
-    D: NexusDatasetDef + NexusHandleMessage<M,Dataset>,
+    D: NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
     C: NexusDataHolderClass,
-    NexusDataset<T, D, C> : NexusDataHolder<HDF5Type = Dataset, HDF5Container = Group>,
+    NexusDataset<T, D, C>: NexusDataHolder<HDF5Type = Dataset, HDF5Container = Group>,
 {
-    fn push_message(&mut self, message: &M, parent: &Group) -> Result<(), NexusError> {
+    fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusError> {
         let dataset = self.create_hdf5(parent)?;
-        self.definition.handle_message(message, &dataset)?;
+        let ret = self.definition.handle_message(message, &dataset)?;
         self.close_hdf5();
-        Ok(())
+        Ok(ret)
+    }
+}
+
+impl<T, D, C, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusDataset<T, D, C>
+where
+    T: H5Type + Clone + Default,
+    D: NexusDatasetDef + NexusHandleMessageWithContext<M, Dataset, R, Context = Ctxt>,
+    C: NexusDataHolderClass,
+    NexusDataset<T, D, C>: NexusDataHolder<HDF5Type = Dataset, HDF5Container = Group>,
+{
+    type Context = Ctxt;
+
+    fn push_message_with_context(
+        &mut self,
+        message: &M,
+        parent: &Group,
+        context: &Self::Context,
+    ) -> Result<R, NexusError> {
+        let parent = self.create_hdf5(parent)?;
+        let ret = self
+            .definition
+            .handle_message_with_context(message, &parent, context)?;
+        self.close_hdf5();
+        Ok(ret)
     }
 }
