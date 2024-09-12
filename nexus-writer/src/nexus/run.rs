@@ -16,10 +16,11 @@ pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
     nexus: Option<Nexus>,
+    num_frames: usize,
 }
 
 impl Run {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
         filename: Option<&Path>,
         run_start: RunStart<'_>,
@@ -52,6 +53,7 @@ impl Run {
             span: Default::default(),
             parameters,
             nexus,
+            num_frames: usize::default(),
         })
     }
     //#[cfg(test)]  Uncomment this at a later stage
@@ -59,7 +61,7 @@ impl Run {
         &self.parameters
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
         filename: Option<&Path>,
@@ -80,7 +82,7 @@ impl Run {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm_to_run(
         &mut self,
         filename: Option<&Path>,
@@ -102,6 +104,7 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
         filename: Option<&Path>,
@@ -124,6 +127,7 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_message(
         &mut self,
         filename: Option<&Path>,
@@ -141,6 +145,7 @@ impl Run {
             //nexus.close()?;
         }
 
+        self.num_frames += 1;
         self.parameters.update_last_modified();
         Ok(())
     }
@@ -175,7 +180,7 @@ impl Run {
                     .parameters
                     .run_stop_parameters
                     .as_ref()
-                    .unwrap()
+                    .expect("RunStopParameters exists") // This never panics
                     .collect_until,
             )?;
             hdf5.close()?;
@@ -210,7 +215,12 @@ impl SpannedMut for Run {
 
 impl SpannedAggregator for Run {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
-        let span = info_span!(target: "otel", parent: None, "Run");
+        let span = info_span!(target: "otel", parent: None,
+            "Run",
+            "run_name" = self.parameters.run_name.as_str(),
+            "instrument_name" = self.parameters.instrument_name.as_str(),
+            "run_has_run_stop" = tracing::field::Empty
+        );
         self.span_mut().init(span)
     }
 
