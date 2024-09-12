@@ -1,4 +1,4 @@
-use hdf5::{Group, Location};
+use hdf5::Group;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
     schematic::{
         elements::{
             attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusBuilderFinished,
-            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
         },
         nexus_class, H5String,
     },

@@ -1,4 +1,4 @@
-use hdf5::{Group, Location};
+use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
@@ -11,8 +11,7 @@ use crate::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetResize},
             NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable,
-            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
-            NexusUnits,
+            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusUnits,
         },
         H5String,
     },
@@ -62,9 +61,11 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for Log {
         message: &f144_LogData<'a>,
         parent: &Group,
     ) -> Result<(), NexusError> {
-        self.time.append(&[message.timestamp()])?;
-        self.value
-            .append(&[message.value_as_uint().unwrap().value()])?;
+        self.time.append(parent, &[message.timestamp()])?;
+        self.value.append(
+            parent,
+            &[message.value_as_uint().ok_or(NexusError::Unknown)?.value()],
+        )?;
         Ok(())
     }
 }
@@ -106,38 +107,50 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
     fn handle_message(
         &mut self,
         message: &se00_SampleEnvironmentData<'a>,
-        group: &Group,
+        parent: &Group,
     ) -> Result<(), NexusError> {
-        self.time.create_hdf5(group)?;
-        self.time
-            .append(&message.timestamps().unwrap().iter().collect::<Vec<_>>())?;
-        self.time.close_hdf5();
-
-        self.time.create_hdf5(group)?;
-        self.value.append(
+        self.time.append(
+            parent,
             &message
-                .values_as_uint_32_array()
-                .unwrap()
-                .value()
+                .timestamps()
+                .ok_or(NexusError::Unknown)?
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
         self.time.close_hdf5();
+
+        self.value.append(
+            parent,
+            &message
+                .values_as_uint_32_array()
+                .ok_or(NexusError::Unknown)?
+                .value()
+                .iter()
+                .collect::<Vec<_>>(),
+        )?;
         Ok(())
     }
 }
 
 impl<'a> NexusHandleMessage<Alarm<'a>> for ValueLog {
-    fn handle_message(&mut self, message: &Alarm<'a>, group: &Group) -> Result<(), NexusError> {
-        self.alarm_severity.append(&[message
-            .severity()
-            .variant_name()
-            .unwrap()
-            .parse()
-            .unwrap()])?;
-        self.alarm_status
-            .append(&[message.message().unwrap().parse().unwrap()])?;
-        self.alarm_time.append(&[message.timestamp()])?;
+    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
+        self.alarm_severity.append(
+            parent,
+            &[message
+                .severity()
+                .variant_name()
+                .ok_or(NexusError::Unknown)?
+                .parse()?],
+        )?;
+        self.alarm_status.append(
+            parent,
+            &[message
+                .message()
+                .ok_or(NexusError::Unknown)?
+                .parse()
+                .unwrap()],
+        )?;
+        self.alarm_time.append(parent, &[message.timestamp()])?;
         Ok(())
     }
 }

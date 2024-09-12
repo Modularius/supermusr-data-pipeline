@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use chrono::{DateTime, Duration, Utc};
-use hdf5::{Dataset, Group, Location};
+use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_pl72_run_start_generated::RunStart,
@@ -15,8 +15,7 @@ use crate::{
             dataset::{NexusDataset, NexusDatasetResize},
             NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable,
             NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef,
-            NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
-            NexusPushMessageWithContext, NexusUnits,
+            NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage, NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -65,11 +64,12 @@ impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Datase
                 .map_err(|_| NexusError::Unknown)?;
 
         Ok(if *current_index != 0 {
-            let offset = DateTime::<Utc>::from_str(self.offset.read_scalar()?.as_str())
+            let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
                 .map_err(|_| NexusError::Unknown)?;
             timestamp - offset
         } else {
             self.offset.write_scalar(
+                _dataset,
                 timestamp
                     .to_rfc3339()
                     .parse()
@@ -139,20 +139,19 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
         // Here is where we extend the datasets
 
         //  event_id
-        self.event_id.create_hdf5(&parent)?;
-        let current_index = self.event_id.get_size()?;
+        let current_index = self.event_id.get_size(parent)?;
         self.event_id.append(
+            parent,
             &message
                 .channel()
                 .ok_or(NexusError::Unknown)?
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
-        self.event_id.close_hdf5();
 
         //  event_time_offset
-        self.event_time_offset.create_hdf5(&parent)?;
         self.event_time_offset.append(
+            parent,
             &message
                 .time()
                 .ok_or(NexusError::Unknown)?
@@ -162,8 +161,8 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
         self.event_time_offset.close_hdf5();
 
         //  event_pulse_height
-        self.event_pulse_height.create_hdf5(&parent)?;
         self.event_pulse_height.append(
+            parent,
             &message
                 .voltage()
                 .ok_or(NexusError::Unknown)?
@@ -171,25 +170,20 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
                 .map(From::from)
                 .collect::<Vec<_>>(),
         )?;
-        self.event_pulse_height.close_hdf5();
 
         //  event_index
-        self.event_index.create_hdf5(&parent)?;
-        self.event_index.append(&[current_index])?;
-        self.event_index.close_hdf5();
+        self.event_index.append(parent, &[current_index])?;
 
         //  event_period_number
-        self.event_period_number.create_hdf5(&parent)?;
         self.event_period_number
-            .append(&[message.metadata().period_number()])?;
-        self.event_period_number.close_hdf5();
+            .append(parent, &[message.metadata().period_number()])?;
 
         //  event_time_zero
-        let time_zero =
-            self.event_time_zero
-                .push_message(&(message,current_index), &parent)?;
+        let time_zero = self
+            .event_time_zero
+            .push_message(&(message, current_index), parent)?;
 
-        self.event_time_zero.append(&[time_zero])?;
+        self.event_time_zero.append(parent, &[time_zero])?;
         Ok(())
     }
 }

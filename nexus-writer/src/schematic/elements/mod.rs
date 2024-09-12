@@ -1,4 +1,6 @@
-use hdf5::{Group, H5Type, Location, Object};
+use std::{convert::Infallible, string::ParseError};
+
+use hdf5::{types::StringError, Group, H5Type, Location, Object};
 use thiserror::Error;
 
 pub(crate) mod attribute;
@@ -10,8 +12,10 @@ pub(crate) mod group;
 pub(crate) enum NexusError {
     #[error("Error")]
     Unknown,
-    #[error("HDF5 Error")]
+    #[error("HDF5 Error: {0}")]
     HDF5(#[from] hdf5::Error),
+    #[error("String Error: {0}")]
+    HDF5String(#[from] StringError),
 }
 
 #[derive(strum::Display)]
@@ -64,22 +68,34 @@ pub(super) trait NexusDataHolder: NexusBuildable {
     type HDF5Type;
     type HDF5Container;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError>;
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError>;
+    fn create_hdf5_instance(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::HDF5Type, NexusError>;
     fn close_hdf5(&mut self);
 }
 
 /// Implemented for `NexusDataHolder` objects have mutable scalar data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
 pub(super) trait NexusDataHolderScalarMutable: NexusDataHolder {
-    fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError>;
-    fn read_scalar(&self) -> Result<Self::DataType, NexusError>;
+    fn write_scalar(
+        &self,
+        parent: &Self::HDF5Container,
+        value: Self::DataType,
+    ) -> Result<(), NexusError>;
+    fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, NexusError>;
 }
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
 pub(super) trait NexusDataHolderAppendable: NexusDataHolder {
-    fn append(&self, values: &[Self::DataType]) -> Result<(), NexusError>;
-    fn get_size(&self) -> Result<usize, NexusError>;
+    fn append(
+        &self,
+        parent: &Self::HDF5Container,
+        values: &[Self::DataType],
+    ) -> Result<(), NexusError>;
+    fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, NexusError>;
 }
 
 /// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects

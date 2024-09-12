@@ -1,4 +1,4 @@
-use hdf5::{Group, Location};
+use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -38,13 +38,13 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for Selog {
         message: &se00_SampleEnvironmentData<'a>,
         location: &Group,
     ) -> Result<(), NexusError> {
-        if let Some(selog) = self
+        if let Some(selog_block) = self
             .selogs
             .iter_mut()
-            .find(|log| log.get_name() == message.name())
+            .find(|selog_block| selog_block.get_name() == message.name())
         {
-            let group = selog.create_hdf5(location)?;
-            selog.push_message(message, &group)?;
+            let group = selog_block.create_hdf5(location)?;
+            selog_block.push_message(message, &group)?;
         } else {
             let mut selog_block = NexusGroup::<SelogBlock>::new(message.name(), &self.settings);
             let group = selog_block.create_hdf5(location)?;
@@ -56,19 +56,19 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for Selog {
 }
 
 impl<'a> NexusHandleMessage<Alarm<'a>> for Selog {
-    fn handle_message(&mut self, message: &Alarm<'a>, location: &Group) -> Result<(), NexusError> {
+    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
         if let Some(selog) = self
             .selogs
             .iter_mut()
             .find(|selog| selog.get_name() == message.source_name().expect(""))
         {
-            let group = selog.create_hdf5(location)?;
-            selog.push_message(message, &group)?;
+            //let group = selog.create_hdf5(location)?;
+            selog.push_message(message, parent)?;
         } else {
             let mut selog_block =
                 NexusGroup::<SelogBlock>::new(message.source_name().expect(""), &self.settings);
-            let group = selog_block.create_hdf5(location)?;
-            selog_block.push_message(message, &group)?;
+            //let group = selog_block.create_hdf5(parent)?;
+            selog_block.push_message(message, parent)?;
             self.selogs.push(selog_block);
         }
         Ok(())
@@ -94,16 +94,16 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for SelogBlock {
     fn handle_message(
         &mut self,
         message: &se00_SampleEnvironmentData<'a>,
-        location: &Group,
+        parent: &Group,
     ) -> Result<(), NexusError> {
-        let group = self.value_log.create_hdf5(location)?;
-        self.value_log.push_message(message, &group)
+        //let group = self.value_log.create_hdf5(location)?;
+        self.value_log.push_message(message, &parent)
     }
 }
 
 impl<'a> NexusHandleMessage<Alarm<'a>> for SelogBlock {
-    fn handle_message(&mut self, message: &Alarm<'a>, location: &Group) -> Result<(), NexusError> {
-        let group = self.value_log.create_hdf5(location)?;
-        self.value_log.push_message(message, &group)
+    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
+        //let group = self.value_log.create_hdf5(location)?;
+        self.value_log.push_message(message, parent)
     }
 }

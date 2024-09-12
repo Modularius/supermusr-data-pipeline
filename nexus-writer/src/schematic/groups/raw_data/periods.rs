@@ -7,7 +7,6 @@ use crate::{
         elements::{
             attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable,
             NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
-            NexusPushMessage,
         },
         groups::log::Log,
         nexus_class, H5String,

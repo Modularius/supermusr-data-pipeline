@@ -59,20 +59,32 @@ where
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
-        let attribute = parent.attr(&self.name).or_else(|_| {
-            let attribute = parent
-                .new_attr::<T>()
-                .create(self.name.as_str())
-                .map_err(|_| NexusError::Unknown)?;
-            attribute
-                .write_scalar(&self.class.default_value)
-                .map_err(|_| NexusError::Unknown)?;
-            Ok::<_, NexusError>(attribute)
-        })?;
-        self.attribute = Some(attribute.clone());
-        Ok(attribute)
+    fn create_hdf5_instance(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::HDF5Type, NexusError> {
+        if let Some(ref attribute) = self.attribute {
+            Ok(attribute.clone())
+        } else {
+            parent.attr(&self.name).or_else(|_| {
+                let attribute = parent
+                    .new_attr::<T>()
+                    .create(self.name.as_str())
+                    .map_err(|_| NexusError::Unknown)?;
+                attribute
+                    .write_scalar(&self.class.default_value)
+                    .map_err(|_| NexusError::Unknown)?;
+                Ok::<_, NexusError>(attribute)
+            })
+        }
     }
+
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let attribute = self.create_hdf5_instance(parent)?;
+        self.attribute = Some(attribute.clone());
+        Ok(())
+    }
+
     fn close_hdf5(&mut self) {
         self.attribute = None;
     }
@@ -86,8 +98,11 @@ where
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
-        let attribute = parent.attr(&self.name).or_else(|_| {
+    fn create_hdf5_instance(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::HDF5Type, NexusError> {
+        parent.attr(&self.name).or_else(|_| {
             let attribute = parent
                 .new_attr::<T>()
                 .create(self.name.as_str())
@@ -96,10 +111,15 @@ where
                 .write_scalar(&self.class.fixed_value)
                 .map_err(|_| NexusError::Unknown)?;
             Ok::<_, NexusError>(attribute)
-        })?;
-        self.attribute = Some(attribute.clone());
-        Ok(attribute)
+        })
     }
+
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let attribute = self.create_hdf5_instance(parent)?;
+        self.attribute = Some(attribute.clone());
+        Ok(())
+    }
+
     fn close_hdf5(&mut self) {
         self.attribute = None;
     }
@@ -110,19 +130,19 @@ where
     T: H5Type + Clone + Default,
     NexusDataHolderMutable<T>: NexusDataHolderClass,
 {
-    fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError> {
-        if let Some(attribute) = self.attribute.as_ref() {
-            attribute
-                .write_scalar(&value)
-                .map_err(|_| NexusError::Unknown)?;
-        }
-        Ok(())
+    fn write_scalar(
+        &self,
+        parent: &Self::HDF5Container,
+        value: Self::DataType,
+    ) -> Result<(), NexusError> {
+        let attribute = self.create_hdf5_instance(parent)?;
+        attribute
+            .write_scalar(&value)
+            .map_err(|_| NexusError::Unknown)
     }
 
-    fn read_scalar(&self) -> Result<Self::DataType, NexusError> {
-        self.attribute
-            .as_ref()
-            .ok_or(NexusError::Unknown)
-            .and_then(|dataset| dataset.read_scalar().map_err(|_| NexusError::Unknown))
+    fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, NexusError> {
+        let attribute = self.create_hdf5_instance(parent)?;
+        attribute.read_scalar().map_err(|_| NexusError::Unknown)
     }
 }

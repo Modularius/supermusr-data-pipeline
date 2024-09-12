@@ -1,5 +1,5 @@
 use data::Data;
-use hdf5::{Group, Location};
+use hdf5::Group;
 use instrument::Instrument;
 use periods::Periods;
 use runlog::RunLog;
@@ -14,7 +14,7 @@ use supermusr_streaming_types::{
 use user::User;
 
 use crate::{
-    nexus::{NexusSettings, Run, RunParameters},
+    nexus::{NexusSettings, RunParameters},
     schematic::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeFixed},
@@ -169,6 +169,8 @@ impl NexusGroupDef for RawData {
     }
 }
 
+/* Here we handle the frame eventlist messages */
+
 impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for RawData {
     type Context = RunParameters;
 
@@ -183,23 +185,26 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for R
     }
 }
 
-impl<'a> NexusHandleMessage<RunStart<'a>> for RawData {
-    fn handle_message(
-        &mut self,
-        message: &RunStart<'a>,
-        location: &Group,
-    ) -> Result<(), NexusError> {
-        self.user_1.push_message(message, location)?;
-        self.periods.push_message(message, location)?;
-        self.sample.push_message(message, location)?;
-        self.instrument.push_message(message, location)?;
+/* Here we handle the start/stop messages */
 
-        self.program_name
-            .write_scalar("The Program".parse().map_err(|_| NexusError::Unknown)?)?;
-        self.run_number.write_scalar(0)?;
-        self.title
-            .write_scalar("The Title".parse().map_err(|_| NexusError::Unknown)?)?;
+impl<'a> NexusHandleMessage<RunStart<'a>> for RawData {
+    fn handle_message(&mut self, message: &RunStart<'a>, parent: &Group) -> Result<(), NexusError> {
+        self.user_1.push_message(message, parent)?;
+        self.periods.push_message(message, parent)?;
+        self.sample.push_message(message, parent)?;
+        self.instrument.push_message(message, parent)?;
+
+        self.program_name.write_scalar(
+            parent,
+            "The Program".parse().map_err(|_| NexusError::Unknown)?,
+        )?;
+        self.run_number.write_scalar(parent, 0)?;
+        self.title.write_scalar(
+            parent,
+            "The Title".parse().map_err(|_| NexusError::Unknown)?,
+        )?;
         self.notes.write_scalar(
+            parent,
             message
                 .metadata()
                 .unwrap_or_default()
@@ -207,22 +212,21 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for RawData {
                 .map_err(|_| NexusError::Unknown)?,
         )?;
         self.start_time
-            .write_scalar("Now".parse().map_err(|_| NexusError::Unknown)?)?;
+            .write_scalar(parent, "Now".parse().map_err(|_| NexusError::Unknown)?)?;
         self.end_time
-            .write_scalar("Then".parse().map_err(|_| NexusError::Unknown)?)?;
-        self.duration.write_scalar(1)?;
-        self.collection_time.write_scalar(1000.0)?;
-        self.total_counts.write_scalar(1)?;
-        self.good_frames.write_scalar(1)?;
-        self.raw_frames.write_scalar(1)?;
-        self.proton_charge.write_scalar(1.0)?;
+            .write_scalar(parent, "Then".parse().map_err(|_| NexusError::Unknown)?)?;
+        self.duration.write_scalar(parent, 1)?;
+        self.collection_time.write_scalar(parent, 1000.0)?;
+        self.total_counts.write_scalar(parent, 1)?;
+        self.good_frames.write_scalar(parent, 1)?;
+        self.raw_frames.write_scalar(parent, 1)?;
+        self.proton_charge.write_scalar(parent, 1.0)?;
         self.experiment_identifier
-            .write_scalar("POAS35".parse().map_err(|_| NexusError::Unknown)?)?;
+            .write_scalar(parent, "POAS35".parse().map_err(|_| NexusError::Unknown)?)?;
         self.run_cycle
-            .write_scalar("This".parse().map_err(|_| NexusError::Unknown)?)?;
+            .write_scalar(parent, "This".parse().map_err(|_| NexusError::Unknown)?)?;
 
-        let group = self.detector_1.create_hdf5(location)?;
-        self.detector_1.push_message(message, &group)?;
+        self.detector_1.push_message(message, parent)?;
         Ok(())
     }
 }
@@ -238,10 +242,11 @@ impl<'a> NexusHandleMessage<RunStop<'a>> for RawData {
     }
 }
 
+/* Here we handle the log messages */
+
 impl<'a> NexusHandleMessage<Alarm<'a>> for RawData {
-    fn handle_message(&mut self, message: &Alarm<'a>, location: &Group) -> Result<(), NexusError> {
-        let group = self.selog.create_hdf5(location)?;
-        self.selog.push_message(message, &group)
+    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
+        self.selog.push_message(message, parent)
     }
 }
 
@@ -249,10 +254,9 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for RawData {
     fn handle_message(
         &mut self,
         message: &se00_SampleEnvironmentData<'a>,
-        location: &Group,
+        parent: &Group,
     ) -> Result<(), NexusError> {
-        let group = self.selog.create_hdf5(location)?;
-        self.selog.push_message(message, &group)
+        self.selog.push_message(message, parent)
     }
 }
 
@@ -260,9 +264,8 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for RawData {
     fn handle_message(
         &mut self,
         message: &f144_LogData<'a>,
-        location: &Group,
+        parent: &Group,
     ) -> Result<(), NexusError> {
-        let group = self.run_log.create_hdf5(location)?;
-        self.run_log.push_message(message, &group)
+        self.run_log.push_message(message, parent)
     }
 }

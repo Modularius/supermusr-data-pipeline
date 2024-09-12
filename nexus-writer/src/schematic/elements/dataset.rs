@@ -92,8 +92,11 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
-        let dataset = parent.dataset(&self.name).or_else(|_| {
+    fn create_hdf5_instance(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::HDF5Type, NexusError> {
+        parent.dataset(&self.name).or_else(|_| {
             let dataset = parent
                 .new_dataset::<T>()
                 .create(self.name.as_str())
@@ -102,9 +105,13 @@ where
                 .write_scalar(&self.class.default_value)
                 .map_err(|_| NexusError::Unknown)?;
             Ok::<_, NexusError>(dataset)
-        })?;
+        })
+    }
+
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
         self.dataset = Some(dataset.clone());
-        Ok(dataset)
+        Ok(())
     }
 
     fn close_hdf5(&mut self) {
@@ -121,19 +128,30 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
-        let dataset = parent.dataset(&self.name).or_else(|_| {
-            let dataset = parent
-                .new_dataset::<T>()
-                .create(self.name.as_str())
-                .map_err(|_| NexusError::Unknown)?;
-            dataset
-                .write_scalar(&self.class.fixed_value)
-                .map_err(|_| NexusError::Unknown)?;
-            Ok::<_, NexusError>(dataset)
-        })?;
+    fn create_hdf5_instance(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::HDF5Type, NexusError> {
+        if let Some(ref dataset) = self.dataset {
+            Ok(dataset.clone())
+        } else {
+            parent.dataset(&self.name).or_else(|_| {
+                let dataset = parent
+                    .new_dataset::<T>()
+                    .create(self.name.as_str())
+                    .map_err(|_| NexusError::Unknown)?;
+                dataset
+                    .write_scalar(&self.class.fixed_value)
+                    .map_err(|_| NexusError::Unknown)?;
+                Ok::<_, NexusError>(dataset)
+            })
+        }
+    }
+
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
         self.dataset = Some(dataset.clone());
-        Ok(dataset)
+        Ok(())
     }
 
     fn close_hdf5(&mut self) {
@@ -150,21 +168,33 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<Self::HDF5Type, NexusError> {
-        let dataset = parent
-            .new_dataset::<T>()
-            .shape(SimpleExtents::resizable(vec![self.class.default_size]))
-            .chunk(vec![self.class.chunk_size])
-            .create(self.name.as_str())
-            .map_err(|_| NexusError::Unknown)?;
-        dataset
-            .write_slice(
-                &vec![self.class.default_value.clone(); self.class.default_size],
-                s![0..self.class.default_size],
-            )
-            .map_err(|_| NexusError::Unknown)?;
+    fn create_hdf5_instance(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::HDF5Type, NexusError> {
+        if let Some(ref dataset) = self.dataset {
+            Ok(dataset.clone())
+        } else {
+            let dataset = parent
+                .new_dataset::<T>()
+                .shape(SimpleExtents::resizable(vec![self.class.default_size]))
+                .chunk(vec![self.class.chunk_size])
+                .create(self.name.as_str())
+                .map_err(|_| NexusError::Unknown)?;
+            dataset
+                .write_slice(
+                    &vec![self.class.default_value.clone(); self.class.default_size],
+                    s![0..self.class.default_size],
+                )
+                .map_err(|_| NexusError::Unknown)?;
+            Ok(dataset)
+        }
+    }
+
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
         self.dataset = Some(dataset.clone());
-        Ok(dataset)
+        Ok(())
     }
 
     fn close_hdf5(&mut self) {
@@ -178,49 +208,45 @@ where
     D: NexusDatasetDef,
     NexusDataHolderMutable<T>: NexusDataHolderClass,
 {
-    fn write_scalar(&self, value: Self::DataType) -> Result<(), NexusError> {
-        self.dataset
-            .as_ref()
-            .ok_or(NexusError::Unknown)
-            .and_then(|dataset| {
-                dataset
-                    .write_scalar(&value)
-                    .map_err(|_| NexusError::Unknown)
-            })
+    fn write_scalar(
+        &self,
+        parent: &Self::HDF5Container,
+        value: Self::DataType,
+    ) -> Result<(), NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
+        dataset
+            .write_scalar(&value)
+            .map_err(|_| NexusError::Unknown)
     }
 
-    fn read_scalar(&self) -> Result<Self::DataType, NexusError> {
-        self.dataset
-            .as_ref()
-            .ok_or(NexusError::Unknown)
-            .and_then(|dataset| dataset.read_scalar().map_err(|_| NexusError::Unknown))
+    fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
+        dataset.read_scalar().map_err(|_| NexusError::Unknown)
     }
 }
 
 impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusDataHolderAppendable
     for NexusDataset<T, D, NexusDataHolderResizable<T>>
 {
-    fn append(&self, values: &[Self::DataType]) -> Result<(), NexusError> {
-        self.dataset
-            .as_ref()
-            .ok_or_else(|| NexusError::Unknown)
-            .and_then(|dataset| {
-                let size = dataset.size();
-                let next_values_slice = s![size..(size + values.len())];
-                dataset
-                    .resize(size + values.len())
-                    .map_err(|_| NexusError::Unknown)?;
-                dataset
-                    .write_slice(values, next_values_slice)
-                    .map_err(|_| NexusError::Unknown)
-            })
+    fn append(
+        &self,
+        parent: &Self::HDF5Container,
+        values: &[Self::DataType],
+    ) -> Result<(), NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
+        let size = dataset.size();
+        let next_values_slice = s![size..(size + values.len())];
+        dataset
+            .resize(size + values.len())
+            .map_err(|_| NexusError::Unknown)?;
+        dataset
+            .write_slice(values, next_values_slice)
+            .map_err(|_| NexusError::Unknown)
     }
 
-    fn get_size(&self) -> Result<usize, NexusError> {
-        self.dataset
-            .as_ref()
-            .ok_or(NexusError::Unknown)
-            .map(|dataset| dataset.size())
+    fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, NexusError> {
+        let dataset = self.create_hdf5_instance(parent)?;
+        Ok(dataset.size())
     }
 }
 
@@ -232,9 +258,8 @@ where
     NexusDataset<T, D, C>: NexusDataHolder<HDF5Type = Dataset, HDF5Container = Group>,
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusError> {
-        let dataset = self.create_hdf5(parent)?;
+        let dataset = self.create_hdf5_instance(parent)?;
         let ret = self.definition.handle_message(message, &dataset)?;
-        self.close_hdf5();
         Ok(ret)
     }
 }
@@ -254,11 +279,10 @@ where
         parent: &Group,
         context: &mut Self::Context,
     ) -> Result<R, NexusError> {
-        let parent = self.create_hdf5(parent)?;
+        let parent = self.create_hdf5_instance(parent)?;
         let ret = self
             .definition
             .handle_message_with_context(message, &parent, context)?;
-        self.close_hdf5();
         Ok(ret)
     }
 }
