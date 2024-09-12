@@ -151,7 +151,7 @@ impl Nexus {
     pub(crate) fn push_message_with_context<M, Ctxt>(
         &mut self,
         message: &M,
-        context: &Ctxt,
+        context: &mut Ctxt,
     ) -> Result<(), NexusError>
     where
         NXRoot: NexusHandleMessageWithContext<M, Context = Ctxt>,

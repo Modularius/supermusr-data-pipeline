@@ -176,7 +176,7 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for R
         &mut self,
         message: &FrameAssembledEventListMessage<'a>,
         location: &Group,
-        run: &RunParameters,
+        run: &mut RunParameters,
     ) -> Result<(), NexusError> {
         self.detector_1
             .push_message_with_context(message, location, run)

@@ -50,17 +50,15 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
     }
 }
 
-impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>, Dataset, u64>
+impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Dataset, u64>
     for EventTimeZeroAttributes
 {
-    type Context = usize;
-
-    fn handle_message_with_context(
+    fn handle_message(
         &mut self,
-        message: &FrameAssembledEventListMessage<'a>,
+        message: &(&FrameAssembledEventListMessage<'a>, usize),
         _dataset: &Dataset,
-        current_index: &usize,
     ) -> Result<u64, NexusError> {
+        let (message, current_index) = message;
         let timestamp: DateTime<Utc> =
             (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
                 .try_into()
@@ -136,7 +134,7 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
         &mut self,
         message: &FrameAssembledEventListMessage<'a>,
         parent: &Group,
-        _params: &RunParameters,
+        _params: &mut RunParameters,
     ) -> Result<(), NexusError> {
         // Here is where we extend the datasets
 
@@ -189,7 +187,7 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
         //  event_time_zero
         let time_zero =
             self.event_time_zero
-                .push_message_with_context(message, &parent, &current_index)?;
+                .push_message(&(message,current_index), &parent)?;
 
         self.event_time_zero.append(&[time_zero])?;
         Ok(())

@@ -94,7 +94,7 @@ where
         &mut self,
         message: &M,
         parent: &Group,
-        context: &Self::Context,
+        context: &mut Self::Context,
     ) -> Result<(), NexusError> {
         self.raw_data_1
             .push_message_with_context(message, parent, context)

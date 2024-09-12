@@ -137,7 +137,7 @@ impl Run {
 
         if let Some(ref mut nexus) = self.nexus {
             //.open()?;
-            nexus.push_message_with_context(message, &self.parameters)?;
+            nexus.push_message_with_context(message, &mut self.parameters)?;
             //nexus.close()?;
         }
 

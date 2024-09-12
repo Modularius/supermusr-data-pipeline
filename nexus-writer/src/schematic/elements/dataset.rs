@@ -252,7 +252,7 @@ where
         &mut self,
         message: &M,
         parent: &Group,
-        context: &Self::Context,
+        context: &mut Self::Context,
     ) -> Result<R, NexusError> {
         let parent = self.create_hdf5(parent)?;
         let ret = self

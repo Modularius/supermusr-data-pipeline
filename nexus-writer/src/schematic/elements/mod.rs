@@ -107,15 +107,19 @@ impl NexusDatasetDef for () {
     }
 }
 
-/// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages
+/// Implemented for NexusGroup and NexusDataset instances which react immutably to `flatbuffer` messages M
+/// R is an optional return value
 pub(crate) trait NexusPushMessage<M, P = Group, R = ()> {
     fn push_message(&mut self, message: &M, parent: &P) -> Result<R, NexusError>;
 }
 
+/// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages M
+/// R is an optional return value
 pub(crate) trait NexusHandleMessage<M, P = Group, R = ()> {
     fn handle_message(&mut self, message: &M, own: &P) -> Result<R, NexusError>;
 }
 
+/// Same as NexusPushMessage but allows additional mutable context to be added
 pub(crate) trait NexusPushMessageWithContext<M, P = Group, R = ()> {
     type Context;
 
@@ -123,10 +127,11 @@ pub(crate) trait NexusPushMessageWithContext<M, P = Group, R = ()> {
         &mut self,
         message: &M,
         parent: &P,
-        context: &Self::Context,
+        context: &mut Self::Context,
     ) -> Result<R, NexusError>;
 }
 
+/// Same as NexusHandleMessage but allows additional mutable context to be added
 pub(crate) trait NexusHandleMessageWithContext<M, P = Group, R = ()> {
     type Context;
 
@@ -134,6 +139,6 @@ pub(crate) trait NexusHandleMessageWithContext<M, P = Group, R = ()> {
         &mut self,
         message: &M,
         own: &P,
-        context: &Self::Context,
+        context: &mut Self::Context,
     ) -> Result<R, NexusError>;
 }
