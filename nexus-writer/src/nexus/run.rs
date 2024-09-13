@@ -1,7 +1,8 @@
-use crate::schematic::{elements::NexusPushMessageWithContext, Nexus};
+use crate::schematic::{elements::{group::NexusGroup, NexusError, NexusPushMessage, NexusPushMessageWithContext}, groups::NXRoot};
 
 use super::{NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
+use hdf5::{File, FileBuilder};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
@@ -15,8 +16,8 @@ use tracing::{info_span, Span};
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
-    nexus: Nexus,
-    num_frames: usize,
+    file: File,
+    nx_root: NexusGroup<NXRoot>,
 }
 
 impl Run {
@@ -25,28 +26,49 @@ impl Run {
         filename: Option<&Path>,
         run_start: RunStart<'_>,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<Self> {
-        /*if let Some(filename) = filename {
-            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
-            hdf5.init(&parameters)?;
-            hdf5.close()?;
-        }*/
+    ) -> Result<Self, NexusError> {
         let filename = {
             let mut filename = filename.expect("").to_owned();
             filename.push(run_start.run_name().unwrap());
             filename.set_extension("nxs");
             filename
         };
-        let mut nexus = Nexus::new(&filename, nexus_settings)?;
-            //nexus.create()?;
-        let parameters = nexus.push_message(&run_start)?;
+        
+
+        let file = FileBuilder::new()
+            .with_fapl(|fapl| {
+                fapl.libver_bounds(
+                    hdf5::file::LibraryVersion::V110,
+                    hdf5::file::LibraryVersion::V110,
+                )
+            })
+            .create(&filename)
+            .map_err(|_| NexusError::Unknown)?;
+        {
+            if nexus_settings.use_swmr {
+                let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
+                if err != 0 {
+                    return Err(NexusError::Unknown);
+                }
+            }
+        }
+        let mut nx_root = NexusGroup::new(
+            filename
+                .file_name()
+                .ok_or(NexusError::Unknown)?
+                .to_str()
+                .ok_or(NexusError::Unknown)?,
+            nexus_settings);
+
+        let parameters = nx_root.push_message(&run_start, &file)?;
         Ok(Self {
             span: Default::default(),
             parameters,
-            nexus,
-            num_frames: usize::default(),
+            file,
+            nx_root
         })
     }
+    
     //#[cfg(test)]  Uncomment this at a later stage
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
@@ -55,16 +77,9 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
-        filename: Option<&Path>,
         logdata: &f144_LogData,
-        nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        /*if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
-            hdf5.close()?;
-        }*/
-        self.nexus.push_message(logdata)?;
+        self.nx_root.push_message(logdata, &self.file)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -73,17 +88,9 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm_to_run(
         &mut self,
-        filename: Option<&Path>,
         alarm: Alarm,
     ) -> anyhow::Result<()> {
-        /*if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_alarm_to_runfile(alarm)?;
-            hdf5.close()?;
-        }*/
-
-        self.nexus.push_message(&alarm)?;
-
+        self.nx_root.push_message(&alarm, &self.file)?;
         self.parameters.update_last_modified();
         Ok(())
     }
@@ -91,17 +98,9 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
-        filename: Option<&Path>,
         selogdata: se00_SampleEnvironmentData,
-        nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        /*if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_selogdata(selogdata, nexus_settings)?;
-            hdf5.close()?;
-        }*/
-
-        self.nexus.push_message(&selogdata)?;
+        self.nx_root.push_message(&selogdata, &self.file)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -110,12 +109,10 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_message(
         &mut self,
-        filename: Option<&Path>,
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
-        self.nexus.push_message_with_context(message, &mut self.parameters)?;
+        self.nx_root.push_message_with_context(&message, &self.file, &mut self.parameters)?;
 
-        self.num_frames += 1;
         self.parameters.update_last_modified();
         Ok(())
     }
@@ -131,12 +128,11 @@ impl Run {
 
     pub(crate) fn set_stop_if_valid(
         &mut self,
-        filename: Option<&Path>,
         run_stop: RunStop<'_>,
     ) -> anyhow::Result<()> {
         self.parameters.set_stop_if_valid(run_stop)?;
 
-        self.nexus.push_message(&run_stop)?;
+        self.nx_root.push_message(&run_stop, &self.file)?;
 
         /*if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;

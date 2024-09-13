@@ -1,15 +1,7 @@
 pub(crate) mod elements;
-pub mod groups;
+pub(crate) mod groups;
 
-use elements::{
-    group::NexusGroup, NexusError, NexusHandleMessage, NexusHandleMessageWithContext,
-    NexusPushMessage, NexusPushMessageWithContext,
-};
-use groups::NXRoot;
-use hdf5::{types::VarLenUnicode, File, FileBuilder, Group};
-use std::path::Path;
-
-use crate::nexus::NexusSettings;
+use hdf5::types::VarLenUnicode;
 
 type H5String = VarLenUnicode;
 
@@ -56,7 +48,7 @@ pub(crate) mod nexus_class {
     pub(crate) const SOURCE: &str = "NXsource";
     pub(crate) const USER: &str = "NXuser";
 }
-
+/*
 pub(crate) struct Nexus {
     file: Option<File>,
     nx_root: NexusGroup<NXRoot>,
@@ -163,4 +155,4 @@ impl Nexus {
                     .push_message_with_context(message, file, context)
             })
     }
-}
+} */

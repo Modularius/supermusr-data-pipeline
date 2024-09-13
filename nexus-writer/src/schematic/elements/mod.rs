@@ -1,6 +1,4 @@
-use std::{convert::Infallible, string::ParseError};
-
-use hdf5::{types::StringError, Group, H5Type, Location, Object};
+use hdf5::{types::StringError, Group, H5Type};
 use thiserror::Error;
 
 pub(crate) mod attribute;
@@ -103,7 +101,7 @@ pub(super) trait NexusDataHolderAppendable: NexusDataHolder {
 pub(super) trait NexusDataHolderClass: Default + Clone {}
 
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure
-pub(super) trait NexusGroupDef: Sized {
+pub(crate) trait NexusGroupDef: Sized {
     const CLASS_NAME: &'static str;
     type Settings;
 

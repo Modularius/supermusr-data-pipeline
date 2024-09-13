@@ -169,7 +169,8 @@ impl NexusGroupDef for RawData {
     }
 }
 
-/* Here we handle the frame eventlist messages */
+/* Here we handle the frame eventlist messages
+    We also alter the RunParameters context*/
 
 impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for RawData {
     type Context = RunParameters;
@@ -178,10 +179,11 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for R
         &mut self,
         message: &FrameAssembledEventListMessage<'a>,
         location: &Group,
-        run: &mut RunParameters,
+        run_parameters: &mut RunParameters,
     ) -> Result<(), NexusError> {
+        run_parameters.num_frames += 1;
         self.detector_1
-            .push_message_with_context(message, location, run)
+            .push_message_with_context(message, location, run_parameters)
     }
 }
 

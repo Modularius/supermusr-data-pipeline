@@ -1,6 +1,4 @@
-use crate::schematic::Nexus;
-
-use super::{Run, RunParameters};
+use super::Run;
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
 use std::collections::vec_deque;
@@ -20,7 +18,6 @@ use tracing::warn;
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
-    run_number: u32,
     nexus_settings: NexusSettings,
 }
 
@@ -30,7 +27,6 @@ impl NexusEngine {
         Self {
             filename: filename.map(ToOwned::to_owned),
             run_cache: Default::default(),
-            run_number: 0,
             nexus_settings,
         }
     }
@@ -55,7 +51,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
+            run.push_selogdata(data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message with timestamp: {timestamp}");
@@ -71,7 +67,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
+            run.push_logdata_to_run(data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message with timestamp: {timestamp}");
@@ -87,7 +83,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_alarm_to_run(self.filename.as_deref(), data)?;
+            run.push_alarm_to_run(data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for alarm message with timestamp: {timestamp}");
@@ -118,7 +114,7 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
+            last_run.set_stop_if_valid(data)?;
 
             Ok(last_run)
         } else {
@@ -152,7 +148,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_message(self.filename.as_deref(), message)?;
+            run.push_message(message)?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");

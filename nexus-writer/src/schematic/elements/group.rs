@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, str::FromStr};
+use std::str::FromStr;
 
 use hdf5::{types::VarLenUnicode, Group};
 
@@ -7,7 +7,7 @@ use super::{
     NexusPushMessageWithContext,
 };
 
-pub(in crate::schematic) struct NexusGroup<D: NexusGroupDef> {
+pub(crate) struct NexusGroup<D: NexusGroupDef> {
     name: String,
     definition: D,
     group: Option<Group>,

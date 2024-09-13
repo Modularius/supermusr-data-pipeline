@@ -1,12 +1,11 @@
-use hdf5::{Group, Location};
+use hdf5::Group;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable,
-            NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
+            attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -22,7 +21,7 @@ impl NexusDatasetDef for FramesRequestedAttributes {
     fn new() -> Self {
         Self {
             frame_type: NexusAttribute::begin("frame_type")
-                .default_value(Default::default())
+                .auto_default()
                 .finish(),
         }
     }
@@ -37,7 +36,7 @@ impl NexusDatasetDef for LabelsAttributes {
     fn new() -> Self {
         Self {
             separator: NexusAttribute::begin("separator")
-                .default_value(Default::default())
+                .auto_default()
                 .finish(),
         }
     }

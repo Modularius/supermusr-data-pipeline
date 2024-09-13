@@ -5,17 +5,18 @@ use supermusr_streaming_types::{
 
 use crate::schematic::elements::NexusError;
 
-#[derive(Default, Debug)]
+/*#[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: DateTime<Utc>,
     pub(crate) last_modified: DateTime<Utc>,
-}
+}*/
 
 #[derive(Debug)]
 pub(crate) struct RunParameters {
     pub(crate) collect_from: DateTime<Utc>,
     pub(crate) collect_until: Option<DateTime<Utc>>,
     pub(crate) last_modified: DateTime<Utc>,
+    pub(crate) num_frames: usize,
     //pub(crate) run_stop_parameters: Option<RunStopParameters>,
     //pub(crate) num_periods: u32,
     pub(crate) run_name: String,
@@ -36,6 +37,7 @@ impl RunParameters {
         Ok(Self {
             collect_from,
             collect_until: None,
+            num_frames: Default::default(),
             last_modified: Utc::now(),
             run_name: data.run_name().ok_or(NexusError::Unknown)?.to_owned(),
         })

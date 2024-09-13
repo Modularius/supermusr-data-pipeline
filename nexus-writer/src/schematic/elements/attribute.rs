@@ -35,6 +35,7 @@ pub(in crate::schematic) struct NexusAttribute<
     attribute: Option<Attribute>,
     phantom: PhantomData<T>,
 }
+
 pub(in crate::schematic) type NexusAttributeFixed<T> =
     NexusAttribute<T, NexusDataHolderConstant<T>>;
 
