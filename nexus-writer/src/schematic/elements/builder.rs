@@ -48,24 +48,26 @@ where
     NexusBuilder<NexusDataHolderMutable<H::DataType>, H, true>: NexusBuilderFinished,
     NexusDataHolderMutable<<H as NexusDataHolder>::DataType>: NexusDataHolderClass,
 {
-    pub(crate) fn default_value(
+    pub(crate) fn finish_with_default_value(
         self,
         default_value: H::DataType,
-    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
+    ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderMutable { default_value },
             phantom: PhantomData,
         }
+        .finish()
     }
-    pub(crate) fn auto_default(
-        self
-    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
+    pub(crate) fn finish_with_auto_default(
+        self,
+    ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderMutable::default(),
             phantom: PhantomData,
         }
+        .finish()
     }
 }
 
@@ -75,15 +77,16 @@ where
     H: NexusDataHolder,
     NexusBuilder<NexusDataHolderConstant<H::DataType>, H, true>: NexusBuilderFinished,
 {
-    pub(crate) fn fixed_value(
+    pub(crate) fn finish_with_fixed_value(
         self,
         fixed_value: H::DataType,
-    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
+    ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderConstant { fixed_value },
             phantom: PhantomData,
         }
+        .finish()
     }
 }
 
@@ -93,12 +96,12 @@ where
     H: NexusDataHolder,
     NexusBuilder<NexusDataHolderResizable<H::DataType>, H, true>: NexusBuilderFinished,
 {
-    pub(crate) fn resizable(
+    pub(crate) fn finish_with_resizable(
         self,
         default_value: H::DataType,
         default_size: usize,
         chunk_size: usize,
-    ) -> <Self as NexusBuilderBegun>::FinshedBuilder {
+    ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
             class: NexusDataHolderResizable {
@@ -108,6 +111,7 @@ where
             },
             phantom: PhantomData,
         }
+        .finish()
     }
 }
 

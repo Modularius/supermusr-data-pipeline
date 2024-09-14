@@ -13,7 +13,7 @@ use crate::{
         elements::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetResize},
-            NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable,
+            NexusBuildable, NexusDataHolder, NexusDataHolderAppendable,
             NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef,
             NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage, NexusUnits,
         },
@@ -42,9 +42,7 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
 
     fn new() -> Self {
         Self {
-            offset: NexusAttribute::begin("offset")
-                .default_value(Default::default())
-                .finish(),
+            offset: NexusAttribute::begin("offset").finish_with_auto_default(),
         }
     }
 }
@@ -71,7 +69,7 @@ impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Datase
                     .num_nanoseconds()
                     .ok_or(NexusError::Unknown)?
                     .try_into()
-                    .map_err(|_|NexusError::Unknown)?
+                    .map_err(|_| NexusError::Unknown)?
             } else {
                 self.offset.write_scalar(
                     _dataset,
@@ -103,24 +101,36 @@ impl NexusGroupDef for Data {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            event_id: NexusDataset::begin("event_id")
-                .resizable(0, 0, settings.eventlist_chunk_size)
-                .finish(),
-            event_index: NexusDataset::begin("event_index")
-                .resizable(0, 0, settings.framelist_chunk_size)
-                .finish(),
-            event_time_offset: NexusDataset::begin("event_time_offset")
-                .resizable(0, 0, settings.eventlist_chunk_size)
-                .finish(),
-            event_time_zero: NexusDataset::begin("event_time_zero")
-                .resizable(0, 0, settings.framelist_chunk_size)
-                .finish(),
-            event_period_number: NexusDataset::begin("event_period_number")
-                .resizable(0, 0, settings.framelist_chunk_size)
-                .finish(),
-            event_pulse_height: NexusDataset::begin("event_pulse_height")
-                .resizable(0.0, 0, settings.eventlist_chunk_size)
-                .finish(),
+            event_id: NexusDataset::begin("event_id").finish_with_resizable(
+                0,
+                0,
+                settings.eventlist_chunk_size,
+            ),
+            event_index: NexusDataset::begin("event_index").finish_with_resizable(
+                0,
+                0,
+                settings.framelist_chunk_size,
+            ),
+            event_time_offset: NexusDataset::begin("event_time_offset").finish_with_resizable(
+                0,
+                0,
+                settings.eventlist_chunk_size,
+            ),
+            event_time_zero: NexusDataset::begin("event_time_zero").finish_with_resizable(
+                0,
+                0,
+                settings.framelist_chunk_size,
+            ),
+            event_period_number: NexusDataset::begin("event_period_number").finish_with_resizable(
+                0,
+                0,
+                settings.framelist_chunk_size,
+            ),
+            event_pulse_height: NexusDataset::begin("event_pulse_height").finish_with_resizable(
+                0.0,
+                0,
+                settings.eventlist_chunk_size,
+            ),
         }
     }
 }

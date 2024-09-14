@@ -8,9 +8,9 @@ use crate::{
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed, NexusBuildable, NexusBuilderFinished, NexusDatasetDef,
-        NexusError, NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext,
-        NexusPushMessage, NexusPushMessageWithContext,
+        attribute::NexusAttributeFixed, NexusBuildable, NexusDatasetDef, NexusError, NexusGroupDef,
+        NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
+        NexusPushMessageWithContext,
     },
     nexus_class, H5String,
 };
@@ -32,30 +32,20 @@ struct RawData1Attributes {
 impl NexusDatasetDef for RawData1Attributes {
     fn new() -> Self {
         Self {
-            file_name: NexusAttribute::begin("file_name")
-                .default_value(Default::default())
-                .finish(),
-            file_time: NexusAttribute::begin("file_time")
-                .default_value(Default::default())
-                .finish(),
+            file_name: NexusAttribute::begin("file_name").finish_with_auto_default(),
+            file_time: NexusAttribute::begin("file_time").finish_with_auto_default(),
             initial_file_format: NexusAttribute::begin("initial_file_format")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
             nexus_version: NexusAttribute::begin("nexus_version")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
             hdf_version: NexusAttribute::begin("hdf_version")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
             hdf5_version: NexusAttribute::begin("hdf5_version")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
             xml_version: NexusAttribute::begin("xml_version")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
             creator: NexusAttribute::begin("creator")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
         }
     }
 }

@@ -1,10 +1,7 @@
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{
-            dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
-            NexusGroupDef,
-        },
+        elements::{dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusGroupDef},
         groups::log::Log,
         nexus_class, H5String,
     },
@@ -25,21 +22,11 @@ impl NexusGroupDef for Environment {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name")
-                .default_value(Default::default())
-                .finish(),
-            short_name: NexusDataset::begin("short_name")
-                .default_value(Default::default())
-                .finish(),
-            env_type: NexusDataset::begin("env_type")
-                .default_value(Default::default())
-                .finish(),
-            description: NexusDataset::begin("description")
-                .default_value(Default::default())
-                .finish(),
-            program: NexusDataset::begin("program")
-                .default_value(Default::default())
-                .finish(),
+            name: NexusDataset::begin("name").finish_with_auto_default(),
+            short_name: NexusDataset::begin("short_name").finish_with_auto_default(),
+            env_type: NexusDataset::begin("env_type").finish_with_auto_default(),
+            description: NexusDataset::begin("description").finish_with_auto_default(),
+            program: NexusDataset::begin("program").finish_with_auto_default(),
             hardware_log: NexusGroup::new("hardware_log", settings),
         }
     }

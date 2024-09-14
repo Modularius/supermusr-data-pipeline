@@ -5,7 +5,8 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished, NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage
+            attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable,
+            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -20,9 +21,7 @@ struct FramesRequestedAttributes {
 impl NexusDatasetDef for FramesRequestedAttributes {
     fn new() -> Self {
         Self {
-            frame_type: NexusAttribute::begin("frame_type")
-                .auto_default()
-                .finish(),
+            frame_type: NexusAttribute::begin("frame_type").finish_with_auto_default(),
         }
     }
 }
@@ -35,9 +34,7 @@ struct LabelsAttributes {
 impl NexusDatasetDef for LabelsAttributes {
     fn new() -> Self {
         Self {
-            separator: NexusAttribute::begin("separator")
-                .auto_default()
-                .finish(),
+            separator: NexusAttribute::begin("separator").finish_with_auto_default(),
         }
     }
 }
@@ -60,30 +57,14 @@ impl NexusGroupDef for Periods {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            number: NexusDataset::begin("number")
-                .default_value(Default::default())
-                .finish(),
-            period_types: NexusDataset::begin("type")
-                .default_value(Default::default())
-                .finish(),
-            frames_requested: NexusDataset::begin("frames_requested")
-                .default_value(Default::default())
-                .finish(),
-            output: NexusDataset::begin("output")
-                .default_value(Default::default())
-                .finish(),
-            labels: NexusDataset::begin("labels")
-                .default_value(Default::default())
-                .finish(),
-            raw_frames: NexusDataset::begin("raw_frames")
-                .default_value(Default::default())
-                .finish(),
-            good_frames: NexusDataset::begin("good_frames")
-                .default_value(Default::default())
-                .finish(),
-            sequences: NexusDataset::begin("sequences")
-                .default_value(Default::default())
-                .finish(),
+            number: NexusDataset::begin("number").finish_with_auto_default(),
+            period_types: NexusDataset::begin("type").finish_with_auto_default(),
+            frames_requested: NexusDataset::begin("frames_requested").finish_with_auto_default(),
+            output: NexusDataset::begin("output").finish_with_auto_default(),
+            labels: NexusDataset::begin("labels").finish_with_auto_default(),
+            raw_frames: NexusDataset::begin("raw_frames").finish_with_auto_default(),
+            good_frames: NexusDataset::begin("good_frames").finish_with_auto_default(),
+            sequences: NexusDataset::begin("sequences").finish_with_auto_default(),
             counts: NexusGroup::new("counts", settings),
         }
     }

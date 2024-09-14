@@ -5,8 +5,8 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusBuilderFinished,
-            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
+            attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusDatasetDef,
+            NexusError, NexusGroupDef, NexusHandleMessage,
         },
         nexus_class, H5String,
     },
@@ -20,9 +20,7 @@ struct NameAttributes {
 impl NexusDatasetDef for NameAttributes {
     fn new() -> Self {
         Self {
-            role: NexusAttribute::begin("role")
-                .default_value(Default::default())
-                .finish(),
+            role: NexusAttribute::begin("role").finish_with_auto_default(),
         }
     }
 }
@@ -43,27 +41,13 @@ impl NexusGroupDef for User {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name")
-                .default_value(Default::default())
-                .finish(),
-            affiliation: NexusDataset::begin("affiliation")
-                .default_value(Default::default())
-                .finish(),
-            address: NexusDataset::begin("address")
-                .default_value(Default::default())
-                .finish(),
-            telephone_number: NexusDataset::begin("telephone_number")
-                .default_value(Default::default())
-                .finish(),
-            fax_number: NexusDataset::begin("fax_number")
-                .default_value(Default::default())
-                .finish(),
-            email: NexusDataset::begin("email")
-                .default_value(Default::default())
-                .finish(),
-            facility_user_id: NexusDataset::begin("facility_user_id")
-                .default_value(Default::default())
-                .finish(),
+            name: NexusDataset::begin("name").finish_with_auto_default(),
+            affiliation: NexusDataset::begin("affiliation").finish_with_auto_default(),
+            address: NexusDataset::begin("address").finish_with_auto_default(),
+            telephone_number: NexusDataset::begin("telephone_number").finish_with_auto_default(),
+            fax_number: NexusDataset::begin("fax_number").finish_with_auto_default(),
+            email: NexusDataset::begin("email").finish_with_auto_default(),
+            facility_user_id: NexusDataset::begin("facility_user_id").finish_with_auto_default(),
         }
     }
 }

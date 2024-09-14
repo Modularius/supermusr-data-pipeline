@@ -73,7 +73,7 @@ impl Nexus {
                 }
             }
         }
-        
+
         Ok(Self {
             file: Some(file),
             nx_root: NexusGroup::new(

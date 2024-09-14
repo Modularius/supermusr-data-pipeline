@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use super::{
     attribute::NexusAttribute,
     builder::{
-        NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable, NexusDataHolderResizable
+        NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable, NexusDataHolderResizable,
     },
     NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder,
     NexusDataHolderAppendable, NexusDataHolderClass, NexusDataHolderScalarMutable, NexusDatasetDef,

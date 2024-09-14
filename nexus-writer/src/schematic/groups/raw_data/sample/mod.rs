@@ -7,8 +7,8 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            dataset::NexusDataset, NexusBuildable, NexusBuilderFinished, NexusError, NexusGroupDef,
-            NexusHandleMessage, NexusPushMessage,
+            dataset::NexusDataset, NexusBuildable, NexusError, NexusGroupDef, NexusHandleMessage,
+            NexusPushMessage,
         },
         nexus_class, H5String,
     },
@@ -49,30 +49,14 @@ impl NexusGroupDef for Sample {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name")
-                .default_value(Default::default())
-                .finish(),
-            chemical_formula: NexusDataset::begin("chemical_formula")
-                .default_value(Default::default())
-                .finish(),
-            description: NexusDataset::begin("description")
-                .default_value(Default::default())
-                .finish(),
-            sample_type: NexusDataset::begin("sample_type")
-                .default_value(Default::default())
-                .finish(),
-            situation: NexusDataset::begin("situation")
-                .default_value(Default::default())
-                .finish(),
-            shape: NexusDataset::begin("shape")
-                .default_value(Default::default())
-                .finish(),
-            preparation_date: NexusDataset::begin("preparation_date")
-                .default_value(Default::default())
-                .finish(),
-            sample_holder: NexusDataset::begin("sample_holder")
-                .default_value(Default::default())
-                .finish(),
+            name: NexusDataset::begin("name").finish_with_auto_default(),
+            chemical_formula: NexusDataset::begin("chemical_formula").finish_with_auto_default(),
+            description: NexusDataset::begin("description").finish_with_auto_default(),
+            sample_type: NexusDataset::begin("sample_type").finish_with_auto_default(),
+            situation: NexusDataset::begin("situation").finish_with_auto_default(),
+            shape: NexusDataset::begin("shape").finish_with_auto_default(),
+            preparation_date: NexusDataset::begin("preparation_date").finish_with_auto_default(),
+            sample_holder: NexusDataset::begin("sample_holder").finish_with_auto_default(),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
             sample_component: NexusDataset::begin().finish("sample_component"),

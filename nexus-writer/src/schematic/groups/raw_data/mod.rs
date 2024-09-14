@@ -20,9 +20,9 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeFixed},
             dataset::{NexusDataset, NexusDatasetFixed},
             group::NexusGroup,
-            NexusBuildable, NexusBuilderFinished, NexusDataHolderScalarMutable, NexusDatasetDef,
-            NexusError, NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext,
-            NexusPushMessage, NexusPushMessageWithContext, NexusUnits,
+            NexusBuildable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusError,
+            NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
+            NexusPushMessageWithContext, NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -46,11 +46,8 @@ impl NexusDatasetDef for DefinitionAttributes {
     fn new() -> Self {
         Self {
             version: NexusAttribute::begin("version")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
-            url: NexusAttribute::begin("URL")
-                .fixed_value("TODO".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("TODO".parse().expect("")),
+            url: NexusAttribute::begin("URL").finish_with_fixed_value("TODO".parse().expect("")),
         }
     }
 }
@@ -109,55 +106,26 @@ impl NexusGroupDef for RawData {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            idf_version: NexusDataset::begin("idf_version").fixed_value(2).finish(),
+            idf_version: NexusDataset::begin("idf_version").finish_with_fixed_value(2),
             definition: NexusDataset::begin("definition")
-                .fixed_value("muonTD".parse().expect(""))
-                .finish(),
+                .finish_with_fixed_value("muonTD".parse().expect("")),
             definition_local: NexusDataset::begin("definition_local")
-                .fixed_value("muonTD".parse().expect(""))
-                .finish(),
-            program_name: NexusDataset::begin("program_name")
-                .default_value(Default::default())
-                .finish(),
-            run_number: NexusDataset::begin("run_number")
-                .default_value(Default::default())
-                .finish(),
-            title: NexusDataset::begin("title")
-                .default_value(Default::default())
-                .finish(),
-            notes: NexusDataset::begin("notes")
-                .default_value(Default::default())
-                .finish(),
-            start_time: NexusDataset::begin("start_time")
-                .default_value(Default::default())
-                .finish(),
-            end_time: NexusDataset::begin("end_time")
-                .default_value(Default::default())
-                .finish(),
-            duration: NexusDataset::begin("duration")
-                .default_value(Default::default())
-                .finish(),
-            collection_time: NexusDataset::begin("collection_time")
-                .default_value(Default::default())
-                .finish(),
-            total_counts: NexusDataset::begin("total_counts")
-                .default_value(Default::default())
-                .finish(),
-            good_frames: NexusDataset::begin("good_frames")
-                .default_value(Default::default())
-                .finish(),
-            raw_frames: NexusDataset::begin("raw_frames")
-                .default_value(Default::default())
-                .finish(),
-            proton_charge: NexusDataset::begin("proton_charge")
-                .default_value(Default::default())
-                .finish(),
+                .finish_with_fixed_value("muonTD".parse().expect("")),
+            program_name: NexusDataset::begin("program_name").finish_with_auto_default(),
+            run_number: NexusDataset::begin("run_number").finish_with_auto_default(),
+            title: NexusDataset::begin("title").finish_with_auto_default(),
+            notes: NexusDataset::begin("notes").finish_with_auto_default(),
+            start_time: NexusDataset::begin("start_time").finish_with_auto_default(),
+            end_time: NexusDataset::begin("end_time").finish_with_auto_default(),
+            duration: NexusDataset::begin("duration").finish_with_auto_default(),
+            collection_time: NexusDataset::begin("collection_time").finish_with_auto_default(),
+            total_counts: NexusDataset::begin("total_counts").finish_with_auto_default(),
+            good_frames: NexusDataset::begin("good_frames").finish_with_auto_default(),
+            raw_frames: NexusDataset::begin("raw_frames").finish_with_auto_default(),
+            proton_charge: NexusDataset::begin("proton_charge").finish_with_auto_default(),
             experiment_identifier: NexusDataset::begin("experiment_identifier")
-                .default_value(Default::default())
-                .finish(),
-            run_cycle: NexusDataset::begin("run_cycle")
-                .default_value(Default::default())
-                .finish(),
+                .finish_with_auto_default(),
+            run_cycle: NexusDataset::begin("run_cycle").finish_with_auto_default(),
             user_1: NexusGroup::new("user_1", settings),
             run_log: NexusGroup::new("run_log", settings),
             selog: NexusGroup::new("selog", settings),
@@ -170,7 +138,7 @@ impl NexusGroupDef for RawData {
 }
 
 /* Here we handle the frame eventlist messages
-    We also alter the RunParameters context*/
+We also alter the RunParameters context*/
 
 impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for RawData {
     type Context = RunParameters;
@@ -190,7 +158,11 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for R
 /* Here we handle the start/stop messages */
 
 impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
-    fn handle_message(&mut self, message: &RunStart<'a>, parent: &Group) -> Result<RunParameters, NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &RunStart<'a>,
+        parent: &Group,
+    ) -> Result<RunParameters, NexusError> {
         self.user_1.push_message(message, parent)?;
         self.periods.push_message(message, parent)?;
         self.sample.push_message(message, parent)?;
@@ -229,7 +201,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
             .write_scalar(parent, "This".parse().map_err(|_| NexusError::Unknown)?)?;
 
         self.detector_1.push_message(message, parent)?;
-        
+
         Ok(RunParameters::new(message)?)
     }
 }

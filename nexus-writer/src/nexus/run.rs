@@ -1,4 +1,7 @@
-use crate::schematic::{elements::{group::NexusGroup, NexusError, NexusPushMessage, NexusPushMessageWithContext}, groups::NXRoot};
+use crate::schematic::{
+    elements::{group::NexusGroup, NexusError, NexusPushMessage, NexusPushMessageWithContext},
+    groups::NXRoot,
+};
 
 use super::{NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
@@ -33,7 +36,6 @@ impl Run {
             filename.set_extension("nxs");
             filename
         };
-        
 
         let file = FileBuilder::new()
             .with_fapl(|fapl| {
@@ -58,27 +60,25 @@ impl Run {
                 .ok_or(NexusError::Unknown)?
                 .to_str()
                 .ok_or(NexusError::Unknown)?,
-            nexus_settings);
+            nexus_settings,
+        );
 
         let parameters = nx_root.push_message(&run_start, &file)?;
         Ok(Self {
             span: Default::default(),
             parameters,
             file,
-            nx_root
+            nx_root,
         })
     }
-    
+
     //#[cfg(test)]  Uncomment this at a later stage
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_logdata_to_run(
-        &mut self,
-        logdata: &f144_LogData,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn push_logdata_to_run(&mut self, logdata: &f144_LogData) -> anyhow::Result<()> {
         self.nx_root.push_message(logdata, &self.file)?;
 
         self.parameters.update_last_modified();
@@ -86,10 +86,7 @@ impl Run {
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_alarm_to_run(
-        &mut self,
-        alarm: Alarm,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn push_alarm_to_run(&mut self, alarm: Alarm) -> anyhow::Result<()> {
         self.nx_root.push_message(&alarm, &self.file)?;
         self.parameters.update_last_modified();
         Ok(())
@@ -111,7 +108,8 @@ impl Run {
         &mut self,
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
-        self.nx_root.push_message_with_context(&message, &self.file, &mut self.parameters)?;
+        self.nx_root
+            .push_message_with_context(&message, &self.file, &mut self.parameters)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -126,10 +124,7 @@ impl Run {
         self.parameters.collect_until.is_some()
     }
 
-    pub(crate) fn set_stop_if_valid(
-        &mut self,
-        run_stop: RunStop<'_>,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn set_stop_if_valid(&mut self, run_stop: RunStop<'_>) -> anyhow::Result<()> {
         self.parameters.set_stop_if_valid(run_stop)?;
 
         self.nx_root.push_message(&run_stop, &self.file)?;

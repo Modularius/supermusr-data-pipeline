@@ -1,7 +1,7 @@
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{dataset::NexusDataset, NexusBuildable, NexusBuilderFinished, NexusGroupDef},
+        elements::{dataset::NexusDataset, NexusBuildable, NexusGroupDef},
         nexus_class, H5String,
     },
 };
@@ -16,9 +16,7 @@ impl NexusGroupDef for Geometry {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name")
-                .default_value(Default::default())
-                .finish(),
+            name: NexusDataset::begin("name").finish_with_auto_default(),
         }
     }
 }

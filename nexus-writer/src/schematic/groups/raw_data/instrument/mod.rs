@@ -1,4 +1,4 @@
-use hdf5::{Group, Location};
+use hdf5::Group;
 use source::Source;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
@@ -6,8 +6,8 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusBuilderFinished,
-            NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusError, NexusGroupDef,
+            NexusHandleMessage,
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -27,9 +27,7 @@ impl NexusGroupDef for Instrument {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name")
-                .default_value(Default::default())
-                .finish(),
+            name: NexusDataset::begin("name").finish_with_auto_default(),
             source: NexusGroup::new("source", settings),
         }
     }

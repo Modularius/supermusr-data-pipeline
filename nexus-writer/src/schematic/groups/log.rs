@@ -10,8 +10,8 @@ use crate::{
         elements::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetResize},
-            NexusBuildable, NexusBuilderFinished, NexusDataHolder, NexusDataHolderAppendable,
-            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage, NexusUnits,
+            NexusBuildable, NexusDataHolder, NexusDataHolderAppendable, NexusDatasetDef,
+            NexusError, NexusGroupDef, NexusHandleMessage, NexusUnits,
         },
         H5String,
     },
@@ -27,9 +27,7 @@ impl NexusDatasetDef for TimeAttributes {
 
     fn new() -> Self {
         Self {
-            offset: NexusAttribute::begin("offset")
-                .default_value(Default::default())
-                .finish(),
+            offset: NexusAttribute::begin("offset").finish_with_auto_default(),
         }
     }
 }
@@ -45,12 +43,16 @@ impl NexusGroupDef for Log {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            time: NexusDataset::begin("time")
-                .resizable(Default::default(), 0, settings.runloglist_chunk_size)
-                .finish(),
-            value: NexusDataset::begin("value")
-                .resizable(Default::default(), 0, settings.runloglist_chunk_size)
-                .finish(),
+            time: NexusDataset::begin("time").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.runloglist_chunk_size,
+            ),
+            value: NexusDataset::begin("value").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.runloglist_chunk_size,
+            ),
         }
     }
 }
@@ -84,21 +86,31 @@ impl NexusGroupDef for ValueLog {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            alarm_severity: NexusDataset::begin("alarm_severity")
-                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
-                .finish(),
-            alarm_status: NexusDataset::begin("alarm_status")
-                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
-                .finish(),
-            alarm_time: NexusDataset::begin("alarm_time")
-                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
-                .finish(),
-            time: NexusDataset::begin("time")
-                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
-                .finish(),
-            value: NexusDataset::begin("value")
-                .resizable(Default::default(), 0, settings.seloglist_chunk_size)
-                .finish(),
+            alarm_severity: NexusDataset::begin("alarm_severity").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.seloglist_chunk_size,
+            ),
+            alarm_status: NexusDataset::begin("alarm_status").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.seloglist_chunk_size,
+            ),
+            alarm_time: NexusDataset::begin("alarm_time").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.seloglist_chunk_size,
+            ),
+            time: NexusDataset::begin("time").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.seloglist_chunk_size,
+            ),
+            value: NexusDataset::begin("value").finish_with_resizable(
+                Default::default(),
+                0,
+                settings.seloglist_chunk_size,
+            ),
         }
     }
 }
