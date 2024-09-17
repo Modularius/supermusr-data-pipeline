@@ -134,6 +134,52 @@ impl DigitiserData {
     }
 }
 
+/// Holds required data for a specific digitiser.
+pub struct ChannelData {
+    pub msg_count: usize,
+    last_msg_count: usize,
+    pub msg_rate: f64,
+    pub first_msg_timestamp: Option<DateTime<Utc>>,
+    pub last_msg_timestamp: Option<DateTime<Utc>>,
+    pub last_msg_frame: u32,
+    pub num_channels_present: usize,
+    pub channels_present: Option<Vec<Channel>>,
+    pub has_num_channels_changed: bool,
+    pub num_samples_in_first_channel: usize,
+    pub is_num_samples_identical: bool,
+    pub has_num_samples_changed: bool,
+    pub bad_frame_count: usize,
+    pub mean_value: TraceStats,
+}
+
+impl ChannelData {
+    /// Create a new instance with default values.
+    pub fn new(
+        timestamp: Option<DateTime<Utc>>,
+        frame: u32,
+        num_channels_present: usize,
+        num_samples_in_first_channel: usize,
+        is_num_samples_identical: bool,
+    ) -> Self {
+        ChannelData {
+            msg_count: 1,
+            msg_rate: 0 as f64,
+            last_msg_count: 1,
+            first_msg_timestamp: timestamp,
+            last_msg_timestamp: timestamp,
+            last_msg_frame: frame,
+            num_channels_present,
+            channels_present : None,
+            has_num_channels_changed: false,
+            num_samples_in_first_channel,
+            is_num_samples_identical,
+            has_num_samples_changed: false,
+            bad_frame_count: 0,
+            mean_value: TraceStats::new(0.025, 2, 5),
+        }
+    }
+}
+
 // Trace topic diagnostic tool
 pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
     let kafka_opts = args.common.common_kafka_options;
@@ -159,7 +205,25 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // Set up app and common data.
-    let mut app = App::new();
+    let mut app = App::new(&[
+        "Digitiser ID",          // 1
+        "#Msgs Received",        // 2
+        "First Msg Timestamp",   // 3
+        "Last Msg Timestamp",    // 4
+        "Last Msg Frame",        // 5
+        "Message Rate (Hz)",     // 6
+        "#Bad Frames?",          // 7
+    ]);
+
+    // Set up app and common data.
+    let mut app2 = App::new(&[
+        "Channel Id",           // 1
+        "#Samples",             // 2
+        "#Samples Identical?",  // 3
+        "#Samples Changed?",    // 4
+        "Min Value",            // 5
+        "Max Value",            // 6
+    ]);
 
     let common_dig_data_map: DigitiserDataHashMap = Arc::new(Mutex::new(HashMap::new()));
 
@@ -207,6 +271,8 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
                 KeyCode::Char('q') => break,
                 KeyCode::Down => app.next(),
                 KeyCode::Up => app.previous(),
+                KeyCode::Left => app2.next(),
+                KeyCode::Right => app2.previous(),
                 _ => (),
             },
             Event::Tick => (),
@@ -215,8 +281,11 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
         // Use the current data to regenerate the table body (may be inefficient to call every time).
         app.generate_table_body(Arc::clone(&common_dig_data_map));
 
+        // Use the current data to regenerate the table body (may be inefficient to call every time).
+        app2.generate_table_body2(Arc::clone(&common_dig_data_map));
+
         // Draw terminal using common data.
-        terminal.draw(|frame| ui(frame, &mut app))?;
+        terminal.draw(|frame| ui(frame, &mut app, &mut app2))?;
     }
 
     // Clean up terminal.

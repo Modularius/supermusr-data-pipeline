@@ -11,25 +11,9 @@ pub struct App {
 
 impl App {
     /// Create a new instance with default values.
-    pub fn new() -> App {
+    pub fn new(table_headers: &[&str]) -> App {
         App {
-            table_headers: [
-                "Digitiser ID",          // 1
-                "#Msgs Received",        // 2
-                "First Msg Timestamp",   // 3
-                "Last Msg Timestamp",    // 4
-                "Last Msg Frame",        // 5
-                "Message Rate (Hz)",     // 6
-                "#Present Channels",     // 7
-                "#Channels Changed?",    // 8
-                "First Channel Samples", // 9
-                "#Samples Identical?",   // 10
-                "#Samples Changed?",     // 11
-                "#Bad Frames?",          // 12
-                "Min Mean Value",        // 13
-                "Max Mean Value",        // 14
-                "Channels Present",        // 15
-            ]
+            table_headers: table_headers
             .iter()
             .map(|s| s.to_string())
             .collect(),
@@ -62,6 +46,24 @@ impl App {
                 format!("{}", digitiser_data.last_msg_frame),
                 // 6. Message rate.
                 format!("{:.1}", digitiser_data.msg_rate),
+                // 7. Number of Bad Frames
+                format!("{}", digitiser_data.bad_frame_count),
+            ])
+        }
+    }
+
+    pub fn generate_table_body2(&mut self, common_dig_data_map: DigitiserDataHashMap) {
+        // Clear table body.
+        self.table_body.clear();
+        let logged_data = common_dig_data_map
+            .lock()
+            .expect("should be able to lock common data");
+        // Sort by digitiser ID.
+        let mut sorted_data: Vec<_> = logged_data.iter().collect();
+        sorted_data.sort_by_key(|x| x.0);
+        // Add rows to table.
+        for (digitiser_id, digitiser_data) in sorted_data.iter() {
+            self.table_body.push(vec![
                 // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
                 // 8. Has the number of channels changed?
