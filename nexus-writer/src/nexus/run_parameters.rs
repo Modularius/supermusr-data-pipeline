@@ -3,7 +3,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use crate::schematic::elements::NexusError;
+use crate::error::NexusPushError;
 
 /*#[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
@@ -26,13 +26,9 @@ pub(crate) struct RunParameters {
 
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new(data: &RunStart<'_>) -> Result<Self, NexusError> {
-        let collect_from = DateTime::<Utc>::from_timestamp_millis(
-            data.start_time()
-                .try_into()
-                .map_err(|_| NexusError::Unknown)?,
-        )
-        .ok_or(NexusError::Unknown)?;
+    pub(crate) fn new(data: &RunStart<'_>) -> Result<Self, NexusPushError> {
+        let collect_from = DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
+            .ok_or(NexusError::Unknown)?;
 
         Ok(Self {
             collect_from,
@@ -44,7 +40,7 @@ impl RunParameters {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<(), NexusError> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<(), NexusPushError> {
         if self.collect_until.is_some() {
             Err(NexusError::Unknown)
         } else {

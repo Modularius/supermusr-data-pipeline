@@ -3,13 +3,13 @@ use source::Source;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
+    error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
         elements::{
-            dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusError, NexusGroupDef,
+            dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable, NexusGroupDef,
             NexusHandleMessage,
         },
-        groups::log::Log,
         nexus_class, H5String,
     },
 };
@@ -17,7 +17,7 @@ use crate::{
 mod source;
 
 pub(super) struct Instrument {
-    name: NexusDataset<H5String>,
+    name: NexusDatasetMut<H5String>,
     source: NexusGroup<Source>,
 }
 
@@ -38,7 +38,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for Instrument {
         &mut self,
         message: &RunStart<'a>,
         location: &Group,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         Ok(())
     }
 }

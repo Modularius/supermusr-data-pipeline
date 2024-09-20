@@ -1,24 +1,24 @@
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusGroupDef},
+        elements::{dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable, NexusGroupDef},
         groups::log::Log,
         nexus_class, H5String,
     },
 };
 
 pub(super) struct Source {
-    name: NexusDataset<H5String>,
-    source_type: NexusDataset<H5String>,
-    probe: NexusDataset<H5String>,
-    source_frequency: NexusDataset<H5String>,
-    source_frame_pattern: NexusDataset<H5String>,
-    source_energy: NexusDataset<H5String>,
-    source_current: NexusDataset<H5String>,
+    name: NexusDatasetMut<H5String>,
+    source_type: NexusDatasetMut<H5String>,
+    probe: NexusDatasetMut<H5String>,
+    source_frequency: NexusDatasetMut<H5String>,
+    source_frame_pattern: NexusDatasetMut<H5String>,
+    source_energy: NexusDatasetMut<H5String>,
+    source_current: NexusDatasetMut<H5String>,
     source_current_log: NexusGroup<Log>,
-    source_pulse_width: NexusDataset<H5String>,
-    target_material: NexusDataset<H5String>,
-    target_thickness: NexusDataset<H5String>,
+    source_pulse_width: NexusDatasetMut<H5String>,
+    target_material: NexusDatasetMut<H5String>,
+    target_thickness: NexusDatasetMut<H5String>,
 }
 
 impl NexusGroupDef for Source {

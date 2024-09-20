@@ -4,11 +4,10 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
+    error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
-        elements::{
-            group::NexusGroup, NexusError, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
-        },
+        elements::{group::NexusGroup, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
         groups::log::ValueLog,
         nexus_class,
     },
@@ -37,7 +36,7 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for Selog {
         &mut self,
         message: &se00_SampleEnvironmentData<'a>,
         location: &Group,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         if let Some(selog_block) = self
             .selogs
             .iter_mut()
@@ -56,7 +55,11 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for Selog {
 }
 
 impl<'a> NexusHandleMessage<Alarm<'a>> for Selog {
-    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &Alarm<'a>,
+        parent: &Group,
+    ) -> Result<(), NexusPushError> {
         if let Some(selog) = self
             .selogs
             .iter_mut()
@@ -95,14 +98,18 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for SelogBlock {
         &mut self,
         message: &se00_SampleEnvironmentData<'a>,
         parent: &Group,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         //let group = self.value_log.create_hdf5(location)?;
         self.value_log.push_message(message, &parent)
     }
 }
 
 impl<'a> NexusHandleMessage<Alarm<'a>> for SelogBlock {
-    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<(), NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &Alarm<'a>,
+        parent: &Group,
+    ) -> Result<(), NexusPushError> {
         //let group = self.value_log.create_hdf5(location)?;
         self.value_log.push_message(message, parent)
     }

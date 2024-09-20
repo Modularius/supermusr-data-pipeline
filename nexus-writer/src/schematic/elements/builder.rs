@@ -1,8 +1,11 @@
 use std::marker::PhantomData;
 
-use hdf5::H5Type;
+use hdf5::{types::TypeDescriptor, H5Type};
 
-use super::{NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass};
+use super::{
+    NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass,
+    NexusTypedDataHolder,
+};
 
 /// Class of NexusDataHolder which has a mutable scalar value with customizable default
 #[derive(Default, Clone)]
@@ -30,6 +33,21 @@ pub(crate) struct NexusDataHolderResizable<T: H5Type + Default + Clone> {
 
 impl<T: H5Type + Default + Clone> NexusDataHolderClass for NexusDataHolderResizable<T> {}
 
+/// Class of NexusDataHolder for value log which has an expandable vector value with type defined at runtime
+#[derive(Clone)]
+pub(crate) struct NexusLogValueResizable {
+    pub(super) type_desc: TypeDescriptor,
+    pub(super) chunk_size: usize,
+}
+
+impl Default for NexusLogValueResizable {
+    fn default() -> Self {
+        Self { type_desc: TypeDescriptor::Unsigned(hdf5::types::IntSize::U4), chunk_size: Default::default() }
+    }
+}
+
+impl NexusDataHolderClass for NexusLogValueResizable {}
+
 /// Builder which constructs NexusDataHolder once the required parameters are given
 pub(in crate::schematic) struct NexusBuilder<
     C: NexusDataHolderClass,
@@ -44,9 +62,9 @@ pub(in crate::schematic) struct NexusBuilder<
 /// Implementation of unfinished builder with MutableWithDefault class
 impl<H> NexusBuilder<NexusDataHolderMutable<H::DataType>, H, false>
 where
-    H: NexusDataHolder,
+    H: NexusTypedDataHolder,
     NexusBuilder<NexusDataHolderMutable<H::DataType>, H, true>: NexusBuilderFinished,
-    NexusDataHolderMutable<<H as NexusDataHolder>::DataType>: NexusDataHolderClass,
+    NexusDataHolderMutable<<H as NexusTypedDataHolder>::DataType>: NexusDataHolderClass,
 {
     pub(crate) fn finish_with_default_value(
         self,
@@ -72,7 +90,7 @@ where
 }
 
 /// Implementation of unfinished builder with Constant class
-impl<H: NexusDataHolder> NexusBuilder<NexusDataHolderConstant<H::DataType>, H, false>
+impl<H: NexusTypedDataHolder> NexusBuilder<NexusDataHolderConstant<H::DataType>, H, false>
 where
     H: NexusDataHolder,
     NexusBuilder<NexusDataHolderConstant<H::DataType>, H, true>: NexusBuilderFinished,
@@ -93,7 +111,7 @@ where
 /// Implementation of unfinished builder with Resizable class
 impl<H> NexusBuilder<NexusDataHolderResizable<H::DataType>, H, false>
 where
-    H: NexusDataHolder,
+    H: NexusTypedDataHolder,
     NexusBuilder<NexusDataHolderResizable<H::DataType>, H, true>: NexusBuilderFinished,
 {
     pub(crate) fn finish_with_resizable(
@@ -109,6 +127,26 @@ where
                 default_size,
                 chunk_size,
             },
+            phantom: PhantomData,
+        }
+        .finish()
+    }
+}
+
+/// Implementation of unfinished builder with log value resizable class
+impl<H> NexusBuilder<NexusLogValueResizable, H, false>
+where
+    H: NexusDataHolder,
+    NexusBuilder<NexusLogValueResizable, H, true>: NexusBuilderFinished,
+{
+    pub(crate) fn finish_log_value_with_resizable(
+        self,
+        chunk_size: usize,
+        type_desc: TypeDescriptor,
+    ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
+        NexusBuilder {
+            name: self.name,
+            class: NexusLogValueResizable { type_desc, chunk_size },
             phantom: PhantomData,
         }
         .finish()

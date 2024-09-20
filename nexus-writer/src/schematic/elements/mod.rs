@@ -1,20 +1,14 @@
-use hdf5::{types::StringError, Group, H5Type};
+use builder::{NexusBuilder, NexusLogValueResizable};
+use hdf5::{types::StringError, Dataset, Group, H5Type};
 use thiserror::Error;
+
+use crate::error::{NexusDatasetError, NexusPushError};
 
 pub(crate) mod attribute;
 pub(crate) mod builder;
 pub(crate) mod dataset;
 pub(crate) mod group;
-
-#[derive(Debug, Error)]
-pub(crate) enum NexusError {
-    #[error("Error")]
-    Unknown,
-    #[error("HDF5 Error: {0}")]
-    HDF5(#[from] hdf5::Error),
-    #[error("String Error: {0}")]
-    HDF5String(#[from] StringError),
-}
+//pub(crate) mod logvalue;
 
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {
@@ -61,39 +55,46 @@ pub(super) trait NexusBuilderFinished {
 /// Implemented for objects which can hold data
 /// i.e. NexusBuilder with FINISHED = true
 pub(super) trait NexusDataHolder: NexusBuildable {
-    type DataType: H5Type + Default + Clone;
+    //type DataType: H5Type + Default + Clone;
 
     type HDF5Type;
     type HDF5Container;
+    type ThisError;
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError>;
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError>;
     fn create_hdf5_instance(
         &self,
         parent: &Self::HDF5Container,
-    ) -> Result<Self::HDF5Type, NexusError>;
+    ) -> Result<Self::HDF5Type, Self::ThisError>;
     fn close_hdf5(&mut self);
+}
+
+/// Implemented for objects which can hold data
+/// i.e. NexusBuilder with FINISHED = true
+pub(super) trait NexusTypedDataHolder: NexusDataHolder {
+    type DataType: H5Type + Default + Clone;
 }
 
 /// Implemented for `NexusDataHolder` objects have mutable scalar data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
-pub(super) trait NexusDataHolderScalarMutable: NexusDataHolder {
+pub(super) trait NexusDataHolderScalarMutable: NexusTypedDataHolder {
     fn write_scalar(
         &self,
         parent: &Self::HDF5Container,
         value: Self::DataType,
-    ) -> Result<(), NexusError>;
-    fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, NexusError>;
+    ) -> Result<(), Self::ThisError>;
+    fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, Self::ThisError>;
 }
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(super) trait NexusDataHolderAppendable: NexusDataHolder {
+pub(super) trait NexusDataHolderAppendable: NexusTypedDataHolder {
     fn append(
         &self,
         parent: &Self::HDF5Container,
         values: &[Self::DataType],
-    ) -> Result<(), NexusError>;
-    fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, NexusError>;
+    ) -> Result<(), Self::ThisError>;
+    fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, Self::ThisError>;
 }
 
 /// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects
@@ -124,13 +125,13 @@ impl NexusDatasetDef for () {
 /// Implemented for NexusGroup and NexusDataset instances which react immutably to `flatbuffer` messages M
 /// R is an optional return value
 pub(crate) trait NexusPushMessage<M, P = Group, R = ()> {
-    fn push_message(&mut self, message: &M, parent: &P) -> Result<R, NexusError>;
+    fn push_message(&mut self, message: &M, parent: &P) -> Result<R, NexusPushError>;
 }
 
 /// Implemented for structs in the `groups` folder which react immutably to `flatbuffer` messages M
 /// R is an optional return value
 pub(crate) trait NexusHandleMessage<M, P = Group, R = ()> {
-    fn handle_message(&mut self, message: &M, own: &P) -> Result<R, NexusError>;
+    fn handle_message(&mut self, message: &M, own: &P) -> Result<R, NexusPushError>;
 }
 
 /// Same as NexusPushMessage but allows additional mutable context to be added
@@ -142,7 +143,7 @@ pub(crate) trait NexusPushMessageWithContext<M, P = Group, R = ()> {
         message: &M,
         parent: &P,
         context: &mut Self::Context,
-    ) -> Result<R, NexusError>;
+    ) -> Result<R, NexusPushError>;
 }
 
 /// Same as NexusHandleMessage but allows additional mutable context to be added
@@ -154,5 +155,5 @@ pub(crate) trait NexusHandleMessageWithContext<M, P = Group, R = ()> {
         message: &M,
         own: &P,
         context: &mut Self::Context,
-    ) -> Result<R, NexusError>;
+    ) -> Result<R, NexusPushError>;
 }

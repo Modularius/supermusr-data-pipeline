@@ -4,10 +4,11 @@ use hdf5::{Group, Location};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
+    error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
         elements::{
-            dataset::NexusDataset, NexusBuildable, NexusError, NexusGroupDef, NexusHandleMessage,
+            dataset::{NexusDataset, NexusDatasetMut}, NexusBuildable, NexusGroupDef, NexusHandleMessage,
             NexusPushMessage,
         },
         nexus_class, H5String,
@@ -18,14 +19,14 @@ mod environment;
 mod geometry;
 
 pub(super) struct Sample {
-    name: NexusDataset<H5String>,
-    chemical_formula: NexusDataset<H5String>,
-    description: NexusDataset<H5String>,
-    sample_type: NexusDataset<H5String>,
-    situation: NexusDataset<H5String>,
-    shape: NexusDataset<H5String>,
-    preparation_date: NexusDataset<H5String>,
-    sample_holder: NexusDataset<H5String>,
+    name: NexusDatasetMut<H5String>,
+    chemical_formula: NexusDatasetMut<H5String>,
+    description: NexusDatasetMut<H5String>,
+    sample_type: NexusDatasetMut<H5String>,
+    situation: NexusDatasetMut<H5String>,
+    shape: NexusDatasetMut<H5String>,
+    preparation_date: NexusDatasetMut<H5String>,
+    sample_holder: NexusDatasetMut<H5String>,
     /*flypast: RcNexusDatasetVar<H5String>,
     geometry: NexusGroup<Geometry>,
     sample_component: RcNexusDatasetVar<H5String>,
@@ -81,7 +82,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for Sample {
         &mut self,
         message: &RunStart<'a>,
         location: &Group,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         Ok(())
     }
 }

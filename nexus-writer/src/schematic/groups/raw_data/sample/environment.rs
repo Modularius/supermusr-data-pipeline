@@ -1,18 +1,20 @@
+use hdf5::types::TypeDescriptor;
+
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{dataset::NexusDataset, group::NexusGroup, NexusBuildable, NexusGroupDef},
+        elements::{dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable, NexusGroupDef},
         groups::log::Log,
         nexus_class, H5String,
     },
 };
 
 pub(super) struct Environment {
-    name: NexusDataset<H5String>,
-    short_name: NexusDataset<H5String>,
-    env_type: NexusDataset<H5String>,
-    description: NexusDataset<H5String>,
-    program: NexusDataset<H5String>,
+    name: NexusDatasetMut<H5String>,
+    short_name: NexusDatasetMut<H5String>,
+    env_type: NexusDatasetMut<H5String>,
+    description: NexusDatasetMut<H5String>,
+    program: NexusDatasetMut<H5String>,
     hardware_log: NexusGroup<Log>,
 }
 
@@ -27,7 +29,7 @@ impl NexusGroupDef for Environment {
             env_type: NexusDataset::begin("env_type").finish_with_auto_default(),
             description: NexusDataset::begin("description").finish_with_auto_default(),
             program: NexusDataset::begin("program").finish_with_auto_default(),
-            hardware_log: NexusGroup::new("hardware_log", settings),
+            hardware_log: NexusGroup::new("hardware_log", &(settings.clone(),TypeDescriptor::VarLenUnicode)),
         }
     }
 }

@@ -2,11 +2,12 @@ use hdf5::Group;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
+    error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::NexusDataset, NexusBuildable, NexusDatasetDef,
-            NexusError, NexusGroupDef, NexusHandleMessage,
+            attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetMut}, NexusBuildable, NexusDatasetDef,
+            NexusGroupDef, NexusHandleMessage,
         },
         nexus_class, H5String,
     },
@@ -26,13 +27,13 @@ impl NexusDatasetDef for NameAttributes {
 }
 
 pub(super) struct User {
-    name: NexusDataset<H5String, NameAttributes>,
-    affiliation: NexusDataset<H5String>,
-    address: NexusDataset<H5String>,
-    telephone_number: NexusDataset<H5String>,
-    fax_number: NexusDataset<H5String>,
-    email: NexusDataset<H5String>,
-    facility_user_id: NexusDataset<H5String>,
+    name: NexusDatasetMut<H5String, NameAttributes>,
+    affiliation: NexusDatasetMut<H5String>,
+    address: NexusDatasetMut<H5String>,
+    telephone_number: NexusDatasetMut<H5String>,
+    fax_number: NexusDatasetMut<H5String>,
+    email: NexusDatasetMut<H5String>,
+    facility_user_id: NexusDatasetMut<H5String>,
 }
 
 impl NexusGroupDef for User {
@@ -57,7 +58,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for User {
         &mut self,
         message: &RunStart<'a>,
         location: &Group,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         Ok(())
     }
 }

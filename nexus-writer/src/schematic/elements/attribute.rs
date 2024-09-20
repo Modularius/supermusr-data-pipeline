@@ -2,10 +2,12 @@ use std::marker::PhantomData;
 
 use hdf5::{Attribute, Dataset, H5Type};
 
+use crate::error::NexusAttributeError;
+
 use super::{
     builder::{NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable},
     NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass,
-    NexusDataHolderScalarMutable, NexusError,
+    NexusDataHolderScalarMutable, NexusTypedDataHolder,
 };
 
 impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuilderFinished
@@ -56,31 +58,26 @@ impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderMutable<T>>
 where
     T: H5Type + Clone + Default,
 {
-    type DataType = T;
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
+    type ThisError = NexusAttributeError;
 
     fn create_hdf5_instance(
         &self,
         parent: &Self::HDF5Container,
-    ) -> Result<Self::HDF5Type, NexusError> {
+    ) -> Result<Self::HDF5Type, NexusAttributeError> {
         if let Some(ref attribute) = self.attribute {
             Ok(attribute.clone())
         } else {
             parent.attr(&self.name).or_else(|_| {
-                let attribute = parent
-                    .new_attr::<T>()
-                    .create(self.name.as_str())
-                    .map_err(|_| NexusError::Unknown)?;
-                attribute
-                    .write_scalar(&self.class.default_value)
-                    .map_err(|_| NexusError::Unknown)?;
-                Ok::<_, NexusError>(attribute)
+                let attribute = parent.new_attr::<T>().create(self.name.as_str())?;
+                attribute.write_scalar(&self.class.default_value)?;
+                Ok::<_, NexusAttributeError>(attribute)
             })
         }
     }
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusAttributeError> {
         let attribute = self.create_hdf5_instance(parent)?;
         self.attribute = Some(attribute.clone());
         Ok(())
@@ -91,31 +88,33 @@ where
     }
 }
 
-impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderConstant<T>>
+impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusDataHolderMutable<T>>
 where
     T: H5Type + Clone + Default,
 {
     type DataType = T;
+}
+
+impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderConstant<T>>
+where
+    T: H5Type + Clone + Default,
+{
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
+    type ThisError = NexusAttributeError;
 
     fn create_hdf5_instance(
         &self,
         parent: &Self::HDF5Container,
-    ) -> Result<Self::HDF5Type, NexusError> {
+    ) -> Result<Self::HDF5Type, NexusAttributeError> {
         parent.attr(&self.name).or_else(|_| {
-            let attribute = parent
-                .new_attr::<T>()
-                .create(self.name.as_str())
-                .map_err(|_| NexusError::Unknown)?;
-            attribute
-                .write_scalar(&self.class.fixed_value)
-                .map_err(|_| NexusError::Unknown)?;
-            Ok::<_, NexusError>(attribute)
+            let attribute = parent.new_attr::<T>().create(self.name.as_str())?;
+            attribute.write_scalar(&self.class.fixed_value)?;
+            Ok::<_, NexusAttributeError>(attribute)
         })
     }
 
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusError> {
+    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusAttributeError> {
         let attribute = self.create_hdf5_instance(parent)?;
         self.attribute = Some(attribute.clone());
         Ok(())
@@ -124,6 +123,13 @@ where
     fn close_hdf5(&mut self) {
         self.attribute = None;
     }
+}
+
+impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusDataHolderConstant<T>>
+where
+    T: H5Type + Clone + Default,
+{
+    type DataType = T;
 }
 
 impl<T> NexusDataHolderScalarMutable for NexusAttribute<T, NexusDataHolderMutable<T>>
@@ -135,15 +141,16 @@ where
         &self,
         parent: &Self::HDF5Container,
         value: Self::DataType,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusAttributeError> {
         let attribute = self.create_hdf5_instance(parent)?;
-        attribute
-            .write_scalar(&value)
-            .map_err(|_| NexusError::Unknown)
+        Ok(attribute.write_scalar(&value)?)
     }
 
-    fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, NexusError> {
+    fn read_scalar(
+        &self,
+        parent: &Self::HDF5Container,
+    ) -> Result<Self::DataType, NexusAttributeError> {
         let attribute = self.create_hdf5_instance(parent)?;
-        attribute.read_scalar().map_err(|_| NexusError::Unknown)
+        Ok(attribute.read_scalar()?)
     }
 }

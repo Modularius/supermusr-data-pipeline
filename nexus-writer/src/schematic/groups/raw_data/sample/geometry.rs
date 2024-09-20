@@ -1,13 +1,13 @@
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{dataset::NexusDataset, NexusBuildable, NexusGroupDef},
+        elements::{dataset::{NexusDataset, NexusDatasetMut}, NexusBuildable, NexusGroupDef},
         nexus_class, H5String,
     },
 };
 
 pub(super) struct Geometry {
-    name: NexusDataset<H5String>,
+    name: NexusDatasetMut<H5String>,
 }
 
 impl NexusGroupDef for Geometry {

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Timelike, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -8,14 +8,15 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
+    error::{NexusMissingError, NexusMissingEventlistError, NexusPushError},
     nexus::{NexusSettings, RunParameters},
     schematic::{
         elements::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetResize},
             NexusBuildable, NexusDataHolder, NexusDataHolderAppendable,
-            NexusDataHolderScalarMutable, NexusDatasetDef, NexusError, NexusGroupDef,
-            NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage, NexusUnits,
+            NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            NexusHandleMessageWithContext, NexusPushMessage, NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -54,30 +55,27 @@ impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Datase
         &mut self,
         (message, current_index): &(&FrameAssembledEventListMessage<'a>, usize),
         _dataset: &Dataset,
-    ) -> Result<u64, NexusError> {
-        let timestamp: DateTime<Utc> =
-            (*message.metadata().timestamp().ok_or(NexusError::Unknown)?)
-                .try_into()
-                .map_err(|_| NexusError::Unknown)?;
+    ) -> Result<u64, NexusPushError> {
+        let timestamp: DateTime<Utc> = (*message
+            .metadata()
+            .timestamp()
+            .ok_or(NexusMissingEventlistError::Timestamp)
+            .map_err(NexusMissingError::Eventlist)?)
+        .try_into()?;
 
         let time_zero = {
             if *current_index != 0 {
-                let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
-                    .map_err(|_| NexusError::Unknown)?;
+                let offset =
+                    DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())?;
 
                 (timestamp - offset)
                     .num_nanoseconds()
-                    .ok_or(NexusError::Unknown)?
+                    .ok_or(NexusPushError::NanosecondError(timestamp - offset))?
                     .try_into()
-                    .map_err(|_| NexusError::Unknown)?
+                    .map_err(NexusPushError::TimeDeltaNegative)?
             } else {
-                self.offset.write_scalar(
-                    _dataset,
-                    timestamp
-                        .to_rfc3339()
-                        .parse()
-                        .map_err(|_| NexusError::Unknown)?,
-                )?;
+                self.offset
+                    .write_scalar(_dataset, timestamp.to_rfc3339().parse()?)?;
 
                 u64::default()
             }
@@ -101,7 +99,8 @@ impl NexusGroupDef for Data {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            event_id: NexusDataset::begin("event_id").finish_with_resizable(
+            event_id: NexusDataset::begin("event_id")
+            .finish_with_resizable(
                 0,
                 0,
                 settings.eventlist_chunk_size,
@@ -136,7 +135,11 @@ impl NexusGroupDef for Data {
 }
 
 impl<'a> NexusHandleMessage<RunStart<'a>> for Data {
-    fn handle_message(&mut self, message: &RunStart<'a>, _group: &Group) -> Result<(), NexusError> {
+    fn handle_message(
+        &mut self,
+        message: &RunStart<'a>,
+        _group: &Group,
+    ) -> Result<(), NexusPushError> {
         //let timestamp = DateTime::<Utc>::from_timestamp_millis(i64::try_from(message.start_time())?).ok_or(anyhow::anyhow!("Millisecond error"))?;
         //self.event_time_zero.attributes(|attributes|Ok(attributes.offset.write_scalar(timestamp.to_rfc3339().parse()?)?))?;
         Ok(())
@@ -151,7 +154,7 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
         message: &FrameAssembledEventListMessage<'a>,
         parent: &Group,
         _params: &mut RunParameters,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         // Here is where we extend the datasets
 
         //  event_id
@@ -160,7 +163,8 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
             parent,
             &message
                 .channel()
-                .ok_or(NexusError::Unknown)?
+                .ok_or(NexusMissingEventlistError::Channels)
+                .map_err(NexusMissingError::Eventlist)?
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
@@ -170,7 +174,8 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
             parent,
             &message
                 .time()
-                .ok_or(NexusError::Unknown)?
+                .ok_or(NexusMissingEventlistError::Times)
+                .map_err(NexusMissingError::Eventlist)?
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
@@ -181,7 +186,8 @@ impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for D
             parent,
             &message
                 .voltage()
-                .ok_or(NexusError::Unknown)?
+                .ok_or(NexusMissingEventlistError::Voltages)
+                .map_err(NexusMissingError::Eventlist)?
                 .iter()
                 .map(From::from)
                 .collect::<Vec<_>>(),

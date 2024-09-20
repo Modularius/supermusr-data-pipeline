@@ -2,13 +2,14 @@ use hdf5::Group;
 use raw_data::RawData;
 
 use crate::{
+    error::NexusPushError,
     nexus::NexusSettings,
     schematic::elements::{attribute::NexusAttribute, group::NexusGroup},
 };
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed, NexusBuildable, NexusDatasetDef, NexusError, NexusGroupDef,
+        attribute::NexusAttributeFixed, NexusBuildable, NexusDatasetDef, NexusGroupDef,
         NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
         NexusPushMessageWithContext,
     },
@@ -69,7 +70,7 @@ impl<M, R> NexusHandleMessage<M, Group, R> for NXRoot
 where
     RawData: NexusHandleMessage<M, Group, R>,
 {
-    fn handle_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusError> {
+    fn handle_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }
@@ -85,7 +86,7 @@ where
         message: &M,
         parent: &Group,
         context: &mut Self::Context,
-    ) -> Result<R, NexusError> {
+    ) -> Result<R, NexusPushError> {
         self.raw_data_1
             .push_message_with_context(message, parent, context)
     }

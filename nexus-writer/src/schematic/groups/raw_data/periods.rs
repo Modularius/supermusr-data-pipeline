@@ -1,12 +1,13 @@
-use hdf5::Group;
+use hdf5::{types::TypeDescriptor, Group};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
+    error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::NexusDataset, group::NexusGroup, NexusBuildable,
-            NexusDatasetDef, NexusError, NexusGroupDef, NexusHandleMessage,
+            attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable,
+            NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -40,14 +41,14 @@ impl NexusDatasetDef for LabelsAttributes {
 }
 
 pub(super) struct Periods {
-    number: NexusDataset<u32>,
-    period_types: NexusDataset<u32>,
-    frames_requested: NexusDataset<u32, FramesRequestedAttributes>,
-    output: NexusDataset<u32>,
-    labels: NexusDataset<H5String, LabelsAttributes>,
-    raw_frames: NexusDataset<u32>,
-    good_frames: NexusDataset<u32>,
-    sequences: NexusDataset<u32>,
+    number: NexusDatasetMut<u32>,
+    period_types: NexusDatasetMut<u32>,
+    frames_requested: NexusDatasetMut<u32, FramesRequestedAttributes>,
+    output: NexusDatasetMut<u32>,
+    labels: NexusDatasetMut<H5String, LabelsAttributes>,
+    raw_frames: NexusDatasetMut<u32>,
+    good_frames: NexusDatasetMut<u32>,
+    sequences: NexusDatasetMut<u32>,
     counts: NexusGroup<Log>,
 }
 
@@ -65,7 +66,7 @@ impl NexusGroupDef for Periods {
             raw_frames: NexusDataset::begin("raw_frames").finish_with_auto_default(),
             good_frames: NexusDataset::begin("good_frames").finish_with_auto_default(),
             sequences: NexusDataset::begin("sequences").finish_with_auto_default(),
-            counts: NexusGroup::new("counts", settings),
+            counts: NexusGroup::new("counts", &(settings.clone(),TypeDescriptor::Unsigned(hdf5::types::IntSize::U4))),
         }
     }
 }
@@ -75,7 +76,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for Periods {
         &mut self,
         message: &RunStart<'a>,
         location: &Group,
-    ) -> Result<(), NexusError> {
+    ) -> Result<(), NexusPushError> {
         Ok(())
     }
 }

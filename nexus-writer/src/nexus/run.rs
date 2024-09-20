@@ -1,5 +1,5 @@
 use crate::schematic::{
-    elements::{group::NexusGroup, NexusError, NexusPushMessage, NexusPushMessageWithContext},
+    elements::{group::NexusGroup, NexusPushMessage, NexusPushMessageWithContext},
     groups::NXRoot,
 };
 
