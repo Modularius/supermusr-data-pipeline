@@ -1,9 +1,9 @@
+use super::log_value::NumericVector;
 use super::{builder::NexusBuilder, NexusUnits};
 use hdf5::{
     types::{StringError, TypeDescriptor},
     Dataset, Group, H5Type,
 };
-use super::log_value::NumericVector;
 use thiserror::Error;
 
 use crate::error::{NexusDatasetError, NexusPushError};
@@ -132,28 +132,4 @@ pub(crate) trait NexusPushMessage<M, P = Group, R = ()> {
 /// R is an optional return value
 pub(crate) trait NexusHandleMessage<M, P = Group, R = ()> {
     fn handle_message(&mut self, message: &M, own: &P) -> Result<R, NexusPushError>;
-}
-
-/// Same as NexusPushMessage but allows additional mutable context to be added
-pub(crate) trait NexusPushMessageWithContext<M, P = Group, R = ()> {
-    type Context;
-
-    fn push_message_with_context(
-        &mut self,
-        message: &M,
-        parent: &P,
-        context: &mut Self::Context,
-    ) -> Result<R, NexusPushError>;
-}
-
-/// Same as NexusHandleMessage but allows additional mutable context to be added
-pub(crate) trait NexusHandleMessageWithContext<M, P = Group, R = ()> {
-    type Context;
-
-    fn handle_message_with_context(
-        &mut self,
-        message: &M,
-        own: &P,
-        context: &mut Self::Context,
-    ) -> Result<R, NexusPushError>;
 }

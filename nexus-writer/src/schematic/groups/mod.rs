@@ -9,9 +9,8 @@ use crate::{
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed, NexusBuildable, NexusDatasetDef, NexusGroupDef,
-        NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
-        NexusPushMessageWithContext,
+        attribute::NexusAttributeFixed, traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef,
+        NexusHandleMessage, NexusPushMessage}
     },
     nexus_class, H5String,
 };

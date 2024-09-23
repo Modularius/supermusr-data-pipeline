@@ -4,8 +4,7 @@ use std::str::FromStr;
 use crate::error::{NexusGroupError, NexusPushError};
 
 use super::traits::{
-    NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
-    NexusPushMessageWithContext,
+    NexusGroupDef, NexusHandleMessage, NexusPushMessage
 };
 
 pub(crate) struct NexusGroup<D: NexusGroupDef> {
@@ -59,27 +58,6 @@ where
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         let parent = self.create_hdf5(parent)?;
         let ret = self.definition.handle_message(message, &parent)?;
-        self.close_hdf5();
-        Ok(ret)
-    }
-}
-
-impl<D, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusGroup<D>
-where
-    D: NexusGroupDef + NexusHandleMessageWithContext<M, Group, R, Context = Ctxt>,
-{
-    type Context = Ctxt;
-
-    fn push_message_with_context(
-        &mut self,
-        message: &M,
-        parent: &Group,
-        context: &mut Self::Context,
-    ) -> Result<R, NexusPushError> {
-        let parent = self.create_hdf5(parent)?;
-        let ret = self
-            .definition
-            .handle_message_with_context(message, &parent, context)?;
         self.close_hdf5();
         Ok(ret)
     }

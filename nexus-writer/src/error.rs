@@ -1,4 +1,4 @@
-use chrono::{Duration, TimeDelta};
+use chrono::TimeDelta;
 use hdf5::types::TypeDescriptor;
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::Value, ecs_se00_data_generated::ValueUnion,
@@ -95,7 +95,7 @@ pub(crate) enum NexusDatasetError {
 }
 
 #[derive(Debug, Error)]
-pub(crate) enum NexusLogValueError {
+pub(crate) enum NexusNumericError {
     #[error("HDF5 Error {0}")]
     HDF5(#[from] hdf5::Error),
     #[error("HDF5 String Error: {0}")]
@@ -110,7 +110,7 @@ pub(crate) enum NexusLogValueError {
         input_type: TypeDescriptor,
     },
     #[error("Type Not Set")]
-    NumericTypeNotSet
+    NumericTypeNotSet,
 }
 
 #[derive(Debug, Error)]

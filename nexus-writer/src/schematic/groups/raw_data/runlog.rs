@@ -1,5 +1,5 @@
-use hdf5::{types::TypeDescriptor, Group};
-use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, Value};
+use hdf5::Group;
+use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::{
     error::NexusPushError,

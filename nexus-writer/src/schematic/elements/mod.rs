@@ -1,4 +1,4 @@
-use builder::{NexusBuilder};
+use builder::NexusBuilder;
 use hdf5::{
     types::{StringError, TypeDescriptor},
     Dataset, Group, H5Type,
@@ -10,11 +10,11 @@ use crate::error::{NexusDatasetError, NexusPushError};
 
 pub(crate) mod attribute;
 pub(crate) mod builder;
+pub(crate) mod dataholder_class;
 pub(crate) mod dataset;
 pub(crate) mod group;
-pub(crate) mod traits;
-pub(crate) mod dataholder_class;
 pub(crate) mod log_value;
+pub(crate) mod traits;
 
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {

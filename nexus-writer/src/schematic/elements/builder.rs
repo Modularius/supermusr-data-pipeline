@@ -1,14 +1,17 @@
 use hdf5::{types::TypeDescriptor, H5Type};
 use std::marker::PhantomData;
 
-use crate::error::NexusLogValueError;
+use crate::error::NexusNumericError;
 
 use super::{
-    dataholder_class::{NexusClassDataHolder, NexusClassWithSize, NexusClassWithStaticDataType,
-        NexusClassMutableDataHolder, NexusClassFixedDataHolder, NexusClassAppendableDataHolder,
-        NexusClassNumericAppendableDataHolder},
-        traits::{NexusDataHolderWithStaticType, NexusBuilderBegun, NexusBuilderFinished,
-            NexusDataHolder}
+    dataholder_class::{
+        NexusClassAppendableDataHolder, NexusClassDataHolder, NexusClassFixedDataHolder,
+        NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder, NexusClassWithSize,
+        NexusClassWithStaticDataType,
+    },
+    traits::{
+        NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderWithStaticType,
+    },
 };
 
 /// Builder which constructs NexusDataHolder once the required parameters are given
@@ -27,7 +30,8 @@ impl<H> NexusBuilder<NexusClassMutableDataHolder<H::DataType>, H, false>
 where
     H: NexusDataHolderWithStaticType,
     NexusBuilder<NexusClassMutableDataHolder<H::DataType>, H, true>: NexusBuilderFinished,
-    NexusClassMutableDataHolder<<H as NexusDataHolderWithStaticType>::DataType>: NexusClassDataHolder,
+    NexusClassMutableDataHolder<<H as NexusDataHolderWithStaticType>::DataType>:
+        NexusClassDataHolder,
 {
     pub(crate) fn finish_with_default_value(
         self,
@@ -53,7 +57,8 @@ where
 }
 
 /// Implementation of unfinished builder with Constant class
-impl<H: NexusDataHolderWithStaticType> NexusBuilder<NexusClassFixedDataHolder<H::DataType>, H, false>
+impl<H: NexusDataHolderWithStaticType>
+    NexusBuilder<NexusClassFixedDataHolder<H::DataType>, H, false>
 where
     H: NexusDataHolder,
     NexusBuilder<NexusClassFixedDataHolder<H::DataType>, H, true>: NexusBuilderFinished,
@@ -108,7 +113,10 @@ where
     ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
-            class: NexusClassNumericAppendableDataHolder { type_desc: None, chunk_size },
+            class: NexusClassNumericAppendableDataHolder {
+                type_desc: None,
+                chunk_size,
+            },
             phantom: PhantomData,
         }
         .finish()

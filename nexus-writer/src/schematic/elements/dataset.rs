@@ -1,15 +1,24 @@
 use hdf5::{types::TypeDescriptor, Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
 
-use crate::error::{NexusDatasetError, NexusLogValueError, NexusPushError};
+use crate::error::{NexusDatasetError, NexusNumericError, NexusPushError};
 
 use super::{
     attribute::NexusAttribute,
+    builder::NexusBuilder,
     dataholder_class::{
-        NexusClassDataHolder, NexusClassAppendableDataHolder, NexusClassWithSize, NexusClassWithStaticDataType, NexusClassFixedDataHolder, NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder},
-    builder::{
-        NexusBuilder,
-    }, log_value::{NumericVector}, traits::{NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusHandleMessageWithContext, NexusNumericAppendableDataHolder, NexusPushMessage, NexusPushMessageWithContext}
+        NexusClassAppendableDataHolder, NexusClassDataHolder, NexusClassFixedDataHolder,
+        NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder, NexusClassWithSize,
+        NexusClassWithStaticDataType,
+    },
+    log_value::NumericVector,
+    traits::{
+        NexusAppendableDataHolder, NexusBuildable, NexusBuilderBegun, NexusBuilderFinished,
+        NexusDataHolder, NexusDataHolderScalarMutable, NexusDataHolderWithSize,
+        NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder,
+        NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder,
+        NexusPushMessage,
+    },
 };
 
 impl<C, D> NexusBuilderFinished for NexusBuilder<C, NexusDataset<D, C>, true>
@@ -43,10 +52,9 @@ where
     D: NexusDatasetDef,
     C: NexusClassDataHolder,
 {
-    pub(crate) fn attribute<F, T2, C2>(&self, f: F) -> &NexusAttribute<T2, C2>
+    pub(crate) fn attribute<F, C2>(&self, f: F) -> &NexusAttribute<C2>
     where
-        F: Fn(&D) -> &NexusAttribute<T2, C2>,
-        T2: H5Type + Clone + Default,
+        F: Fn(&D) -> &NexusAttribute<C2>,
         C2: NexusClassDataHolder,
     {
         f(&self.definition)
@@ -176,8 +184,10 @@ where
     }
 }
 
-impl<D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassNumericAppendableDataHolder>
-where D: NexusDatasetDef,
+impl<D> NexusH5InstanceCreatableDataHolder
+    for NexusDataset<D, NexusClassNumericAppendableDataHolder>
+where
+    D: NexusDatasetDef,
 {
     fn create_hdf5_instance(
         &self,
@@ -234,7 +244,7 @@ where D: NexusDatasetDef,
                 })
             }
         } else {
-            Err(NexusLogValueError::NumericTypeNotSet)
+            Err(NexusNumericError::NumericTypeNotSet)
         }
     }
 }
@@ -260,8 +270,7 @@ where
     }
 }
 
-impl<D: NexusDatasetDef, C: NexusClassWithSize> NexusDataHolderWithSize
-    for NexusDataset<D, C>
+impl<D: NexusDatasetDef, C: NexusClassWithSize> NexusDataHolderWithSize for NexusDataset<D, C>
 where
     NexusDataset<D, C>: NexusDataHolder<HDF5Type = Dataset>,
 {
@@ -296,7 +305,7 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
         values: &NumericVector,
     ) -> Result<(), NexusDatasetError> {
         if values.type_descriptor() != self.definition.type_descriptor() {
-            return NexusLogValueError::TypeMismatch {
+            return NexusNumericError::TypeMismatch {
                 required_type: self.definition.type_descriptor(),
                 input_type: values.type_descriptor(),
             };
@@ -321,70 +330,30 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
     }
 }
 
-impl<D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<D, C>
+impl<T, D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<D, C>
+where
+    T: H5Type + Clone + Default,
+    D: NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
+    C: NexusClassWithStaticDataType<T>,
+{
+    fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
+        let dataset = self.create_hdf5_instance(parent)?;
+        let ret = self.definition.handle_message(message, &dataset)?;
+        Ok(ret)
+    }
+}
+
+impl<D, C, M, R> NexusPushMessage<M, Group, R>
+    for NexusDataset<D, NexusClassNumericAppendableDataHolder>
 where
     D: NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
-    C: NexusClassWithStaticDataType,
+    for<'a> &'a M: TryInto<NumericVector>,
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
+        self.class
+            .try_set_type(message.try_into()?.type_descriptor())?;
         let dataset = self.create_hdf5_instance(parent)?;
         let ret = self.definition.handle_message(message, &dataset)?;
-        Ok(ret)
-    }
-}
-
-impl<D, C, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusDataset<D, C>
-where
-    D: NexusDatasetDef + NexusHandleMessageWithContext<M, Dataset, R, Context = Ctxt>,
-    C: NexusClassWithStaticDataType,
-{
-    type Context = Ctxt;
-
-    fn push_message_with_context(
-        &mut self,
-        message: &M,
-        parent: &Group,
-        context: &mut Self::Context,
-    ) -> Result<R, NexusPushError> {
-        let parent = self.create_hdf5_instance(parent)?;
-        let ret = self
-            .definition
-            .handle_message_with_context(message, &parent, context)?;
-        Ok(ret)
-    }
-}
-
-impl<D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<D, NexusClassNumericAppendableDataHolder>
-where
-    D : NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
-    for<'a> &'a M : TryInto<NumericVector>
-{
-    fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
-        self.class.try_set_type(message.try_into()?.type_descriptor())?;
-        let dataset = self.create_hdf5_instance(parent)?;
-        let ret = self.definition.handle_message(message, &dataset)?;
-        Ok(ret)
-    }
-}
-
-impl<D, C, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusDataset<D, C>
-where
-    D : NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
-    for<'a> &'a M : TryInto<NumericVector>
-{
-    type Context = Ctxt;
-
-    fn push_message_with_context(
-        &mut self,
-        message: &M,
-        parent: &Group,
-        context: &mut Self::Context,
-    ) -> Result<R, NexusPushError> {
-        self.class.try_set_type(message.try_into()?.type_descriptor())?;
-        let parent = self.create_hdf5_instance(parent)?;
-        let ret = self
-            .definition
-            .handle_message_with_context(message, &parent, context)?;
         Ok(ret)
     }
 }

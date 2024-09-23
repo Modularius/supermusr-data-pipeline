@@ -68,8 +68,10 @@ impl<'a> NexusHandleMessage<Alarm<'a>> for Selog {
             //let group = selog.create_hdf5(location)?;
             selog.push_message(message, parent)?;
         } else {
-            let mut selog_block =
-                NexusGroup::<SelogBlock>::new(message.source_name().expect(""), &LogSettings::new(self.settings,message.));
+            let mut selog_block = NexusGroup::<SelogBlock>::new(
+                message.source_name().expect(""),
+                &LogSettings::new(self.settings, message),
+            );
             //let group = selog_block.create_hdf5(parent)?;
             selog_block.push_message(message, parent)?;
             self.selogs.push(selog_block);

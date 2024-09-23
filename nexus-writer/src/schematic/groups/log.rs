@@ -22,7 +22,7 @@ use crate::{
             dataset::{
                 NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusLogValueDatasetResize,
             },
-            log_value::VectorOfScalars,
+            log_value::NumericVector,
             NexusBuildable, NexusBuilderBegun, NexusDataHolder, NexusDataHolderAppendable,
             NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusLogValueDataHolderAppendable,
             NexusUnits,
