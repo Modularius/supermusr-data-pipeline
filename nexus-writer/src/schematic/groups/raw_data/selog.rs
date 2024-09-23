@@ -103,7 +103,7 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for SelogBlock {
         parent: &Group,
     ) -> Result<(), NexusPushError> {
         //let group = self.value_log.create_hdf5(location)?;
-        self.value_log.push_message(message, &parent)
+        self.value_log.push_message(message, parent)
     }
 }
 

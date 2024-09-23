@@ -9,7 +9,7 @@ use crate::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
+            traits::{NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },
@@ -37,8 +37,8 @@ impl NexusGroupDef for Instrument {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Instrument {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
-        location: &Group,
+        _message: &RunStart<'a>,
+        _location: &Group,
     ) -> Result<(), NexusPushError> {
         Ok(())
     }

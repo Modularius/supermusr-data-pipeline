@@ -3,7 +3,7 @@ use crate::{
     schematic::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
-            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef},
+            traits::{NexusDataHolderScalarMutable, NexusGroupDef},
         },
         nexus_class, H5String,
     },

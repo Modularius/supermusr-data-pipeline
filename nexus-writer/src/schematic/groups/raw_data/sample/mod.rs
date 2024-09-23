@@ -9,7 +9,7 @@ use crate::{
     schematic::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
-            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
+            traits::{NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },
@@ -80,8 +80,8 @@ impl NexusGroupDef for Sample {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Sample {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
-        location: &Group,
+        _message: &RunStart<'a>,
+        _location: &Group,
     ) -> Result<(), NexusPushError> {
         Ok(())
     }

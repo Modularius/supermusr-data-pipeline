@@ -48,15 +48,21 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
     }
 }
 
-impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Dataset, u64>
+struct EventTimeZeroAttributesMessage<'a> {
+    frame_assembled_event_list: &'a FrameAssembledEventListMessage<'a>,
+    has_offset: bool,
+}
+
+impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
     for EventTimeZeroAttributes
 {
     fn handle_message(
         &mut self,
-        (message, current_index): &(&FrameAssembledEventListMessage<'a>, usize),
+        message: &EventTimeZeroAttributesMessage<'a>,
         _dataset: &Dataset,
     ) -> Result<u64, NexusPushError> {
         let timestamp: DateTime<Utc> = (*message
+            .frame_assembled_event_list
             .metadata()
             .timestamp()
             .ok_or(NexusMissingEventlistError::Timestamp)
@@ -64,7 +70,7 @@ impl<'a> NexusHandleMessage<(&FrameAssembledEventListMessage<'a>, usize), Datase
         .try_into()?;
 
         let time_zero = {
-            if *current_index != 0 {
+            if message.has_offset {
                 let offset =
                     DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())?;
 
@@ -124,7 +130,7 @@ impl NexusGroupDef for Data {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Data {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
+        _message: &RunStart<'a>,
         _group: &Group,
     ) -> Result<(), NexusPushError> {
         //let timestamp = DateTime::<Utc>::from_timestamp_millis(i64::try_from(message.start_time())?).ok_or(anyhow::anyhow!("Millisecond error"))?;
@@ -185,9 +191,13 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
             .append(parent, &[message.metadata().period_number()])?;
 
         //  event_time_zero
+        let event_time_zero_attributes_message = EventTimeZeroAttributesMessage {
+            frame_assembled_event_list: message,
+            has_offset: current_index != 0
+        };
         let time_zero = self
             .event_time_zero
-            .push_message(&(message, current_index), parent)?;
+            .push_message(&event_time_zero_attributes_message, parent)?;
 
         self.event_time_zero.append(parent, &[time_zero])?;
         Ok(())

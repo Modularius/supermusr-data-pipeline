@@ -57,8 +57,8 @@ impl NexusGroupDef for User {
 impl<'a> NexusHandleMessage<RunStart<'a>> for User {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
-        location: &Group,
+        _message: &RunStart<'a>,
+        _location: &Group,
     ) -> Result<(), NexusPushError> {
         Ok(())
     }

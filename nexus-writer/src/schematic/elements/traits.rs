@@ -146,9 +146,7 @@ pub(crate) trait NexusDatasetDef: Sized {
 }
 
 impl NexusDatasetDef for () {
-    fn new() -> Self {
-        ()
-    }
+    fn new() -> Self {}
 }
 
 /// Implemented for NexusGroup and NexusDataset instances which react immutably to `flatbuffer` messages M

@@ -16,7 +16,7 @@ pub(super) struct RunLog {
     logs: Vec<NexusGroup<Log>>,
 }
 
-impl<'a> NexusGroupDef for RunLog {
+impl NexusGroupDef for RunLog {
     const CLASS_NAME: &'static str = nexus_class::RUNLOG;
     type Settings = NexusSettings;
 

@@ -180,15 +180,15 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
 
         self.detector_1.push_message(message, parent)?;
 
-        Ok(RunParameters::new(message)?)
+        RunParameters::new(message)
     }
 }
 
 impl<'a> NexusHandleMessage<RunStop<'a>> for RawData {
     fn handle_message(
         &mut self,
-        message: &RunStop<'a>,
-        location: &Group,
+        _message: &RunStop<'a>,
+        _location: &Group,
     ) -> Result<(), NexusPushError> {
         //self.raw_data_1.push_message(message)
         Ok(())

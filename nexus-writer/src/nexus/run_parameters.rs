@@ -3,7 +3,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use crate::error::{NexusError, NexusMissingError, NexusMissingRunStartError, NexusMissingSelogError, NexusPushError};
+use crate::error::{NexusMissingError, NexusMissingRunStartError, NexusPushError};
 
 /*#[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {

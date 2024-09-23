@@ -9,7 +9,7 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
+            traits::{NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -76,8 +76,8 @@ impl NexusGroupDef for Periods {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Periods {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
-        location: &Group,
+        _message: &RunStart<'a>,
+        _location: &Group,
     ) -> Result<(), NexusPushError> {
         Ok(())
     }

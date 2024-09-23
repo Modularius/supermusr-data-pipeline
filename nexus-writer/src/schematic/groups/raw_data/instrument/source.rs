@@ -4,7 +4,7 @@ use crate::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef},
+            traits::{NexusDataHolderScalarMutable, NexusGroupDef},
         },
         groups::log::Log,
         nexus_class, H5String,

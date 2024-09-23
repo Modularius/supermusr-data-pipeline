@@ -1,4 +1,4 @@
-use hdf5::{types::TypeDescriptor, Group};
+use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::{f144_LogData, Value},
@@ -14,9 +14,9 @@ use crate::{
     schematic::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeMut},
-            dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
+            dataset::{NexusDatasetResize, NexusLogValueDatasetResize},
             log_value::NumericVector,
-            traits::{NexusAppendableDataHolder, NexusBuildable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder},
+            traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder},
             NexusUnits,
         },
         H5String,
