@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use crate::error::{NexusGroupError, NexusPushError};
 
-use super::{
+use super::traits::{
     NexusGroupDef, NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
     NexusPushMessageWithContext,
 };

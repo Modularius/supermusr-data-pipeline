@@ -5,9 +5,8 @@ use hdf5::{Attribute, Dataset, H5Type};
 use crate::error::NexusAttributeError;
 
 use super::{
-    builder::{NexusBuilder, NexusClassFixedDataHolder, NexusClassMutableDataHolder},
-    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusClassDataHolder, NexusDataHolder,
-    NexusDataHolderScalarMutable, NexusTypedDataHolder,
+    builder::NexusBuilder, dataholder_class::{NexusClassDataHolder, NexusClassFixedDataHolder, NexusClassMutableDataHolder, NexusClassWithStaticDataType},
+    traits::{NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderScalarMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder},
 };
 
 impl<T: H5Type + Clone + Default, C: NexusClassDataHolder> NexusBuilderFinished
@@ -29,23 +28,23 @@ where
 
 #[derive(Clone)]
 pub(in crate::schematic) struct NexusAttribute<
-    T: H5Type + Clone + Default,
-    C: NexusClassDataHolder = NexusClassMutableDataHolder<T>,
+    C: NexusClassDataHolder
 > {
     name: String,
     class: C,
-    attribute: Option<Attribute>,
-    phantom: PhantomData<T>,
+    attribute: Option<Attribute>
 }
 
-pub(in crate::schematic) type NexusAttributeFixed<T> =
-    NexusAttribute<T, NexusClassFixedDataHolder<T>>;
+pub(in crate::schematic) type NexusAttributeMut<T> =
+    NexusAttribute<NexusClassMutableDataHolder<T>>;
 
-impl<T, C> NexusBuildable for NexusAttribute<T, C>
+pub(in crate::schematic) type NexusAttributeFixed<T> =
+    NexusAttribute<NexusClassFixedDataHolder<T>>;
+
+impl<T, C> NexusBuildable for NexusAttribute<C>
 where
     T: H5Type + Clone + Default,
     C: NexusClassDataHolder,
-    NexusAttribute<T, C>: NexusDataHolder,
 {
     type Builder = NexusBuilder<C, NexusAttribute<T, C>, false>;
 
@@ -54,14 +53,19 @@ where
     }
 }
 
-impl<T> NexusDataHolder for NexusAttribute<T, NexusClassMutableDataHolder<T>>
-where
-    T: H5Type + Clone + Default,
+impl<C> NexusDataHolder for NexusAttribute<C>
+where C : NexusClassDataHolder
 {
     type HDF5Type = Attribute;
     type HDF5Container = Dataset;
     type ThisError = NexusAttributeError;
+}
 
+
+impl<T> NexusH5InstanceCreatableDataHolder for NexusAttribute<T, NexusClassMutableDataHolder<T>>
+where
+    T: H5Type + Clone + Default,
+{
     fn create_hdf5_instance(
         &self,
         parent: &Self::HDF5Container,
@@ -76,7 +80,10 @@ where
             })
         }
     }
-
+}
+impl<C> NexusH5CreatableDataHolder for NexusAttribute<C>
+where
+    C: NexusClassDataHolder {
     fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusAttributeError> {
         let attribute = self.create_hdf5_instance(parent)?;
         self.attribute = Some(attribute.clone());
@@ -88,9 +95,10 @@ where
     }
 }
 
-impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusClassMutableDataHolder<T>>
+impl<T> NexusDataHolderWithStaticType for NexusAttribute<T, C>
 where
     T: H5Type + Clone + Default,
+    C: NexusClassWithStaticDataType<T>
 {
     type DataType = T;
 }

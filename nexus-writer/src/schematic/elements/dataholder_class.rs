@@ -1,3 +1,6 @@
+use hdf5::{H5Type, types::TypeDescriptor};
+
+use crate::error::NexusLogValueError;
 
 /// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects
 /// i.e. `NexusDataMutable`, `NexusDataHolderConstant` and `NexusDataHolderResizable`
@@ -59,7 +62,7 @@ impl NexusClassNumericAppendableDataHolder {
                 Err(NexusLogValueError::TypeMismatch { required_type: type_desc, input_type: init_type_desc })?;
             }
         } else {
-            type_desc = Some(input_type_desc);
+            self.type_desc = Some(init_type_desc);
         }
         Ok(())
     }

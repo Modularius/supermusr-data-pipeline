@@ -1,9 +1,9 @@
-use builder::{NexusBuilder, NexusLogValueResizable};
+use builder::{NexusBuilder};
 use hdf5::{
     types::{StringError, TypeDescriptor},
     Dataset, Group, H5Type,
 };
-use log_value::VectorOfScalars;
+use log_value::NumericVector;
 use thiserror::Error;
 
 use crate::error::{NexusDatasetError, NexusPushError};

@@ -4,7 +4,11 @@ use std::marker::PhantomData;
 use crate::error::NexusLogValueError;
 
 use super::{
-    dataholder_class::{NexusClassDataHolder, NexusClassWithSize, NexusClassWithStaticDataType}, traits::NexusDataHolderWithStaticType, NexusBuilderBegun, NexusBuilderFinished, NexusClassDataHolder, NexusDataHolder, NexusTypedDataHolder
+    dataholder_class::{NexusClassDataHolder, NexusClassWithSize, NexusClassWithStaticDataType,
+        NexusClassMutableDataHolder, NexusClassFixedDataHolder, NexusClassAppendableDataHolder,
+        NexusClassNumericAppendableDataHolder},
+        traits::{NexusDataHolderWithStaticType, NexusBuilderBegun, NexusBuilderFinished,
+            NexusDataHolder}
 };
 
 /// Builder which constructs NexusDataHolder once the required parameters are given
@@ -21,9 +25,9 @@ pub(in crate::schematic) struct NexusBuilder<
 /// Implementation of unfinished builder with MutableWithDefault class
 impl<H> NexusBuilder<NexusClassMutableDataHolder<H::DataType>, H, false>
 where
-    H: NexusTypedDataHolder,
+    H: NexusDataHolderWithStaticType,
     NexusBuilder<NexusClassMutableDataHolder<H::DataType>, H, true>: NexusBuilderFinished,
-    NexusClassMutableDataHolder<<H as NexusTypedDataHolder>::DataType>: NexusClassDataHolder,
+    NexusClassMutableDataHolder<<H as NexusDataHolderWithStaticType>::DataType>: NexusClassDataHolder,
 {
     pub(crate) fn finish_with_default_value(
         self,
@@ -49,7 +53,7 @@ where
 }
 
 /// Implementation of unfinished builder with Constant class
-impl<H: NexusTypedDataHolder> NexusBuilder<NexusClassFixedDataHolder<H::DataType>, H, false>
+impl<H: NexusDataHolderWithStaticType> NexusBuilder<NexusClassFixedDataHolder<H::DataType>, H, false>
 where
     H: NexusDataHolder,
     NexusBuilder<NexusClassFixedDataHolder<H::DataType>, H, true>: NexusBuilderFinished,
@@ -104,7 +108,7 @@ where
     ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
-            class: NexusLogValueResizable { type_desc: None, chunk_size },
+            class: NexusClassNumericAppendableDataHolder { type_desc: None, chunk_size },
             phantom: PhantomData,
         }
         .finish()

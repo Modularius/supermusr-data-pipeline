@@ -1,9 +1,9 @@
-use builder::{NexusBuilder, NexusLogValueResizable};
+use super::{builder::NexusBuilder, NexusUnits};
 use hdf5::{
     types::{StringError, TypeDescriptor},
     Dataset, Group, H5Type,
 };
-use log_value::VectorOfScalars;
+use super::log_value::NumericVector;
 use thiserror::Error;
 
 use crate::error::{NexusDatasetError, NexusPushError};
@@ -64,7 +64,7 @@ pub(super) trait NexusDataHolderWithStaticType: NexusDataHolder {
 
 /// Implemented for `NexusDataHolder` objects have mutable scalar data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
-pub(super) trait NexusDataHolderScalarMutable: NexusTypedDataHolder {
+pub(super) trait NexusDataHolderScalarMutable: NexusDataHolderWithStaticType {
     fn write_scalar(
         &self,
         parent: &Self::HDF5Container,

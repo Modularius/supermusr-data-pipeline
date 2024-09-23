@@ -4,9 +4,12 @@ use ndarray::s;
 use crate::error::{NexusDatasetError, NexusLogValueError, NexusPushError};
 
 use super::{
-    attribute::NexusAttribute, builder::{
-        NexusBuilder, NexusClassAppendableDataHolder, NexusClassDataHolderWithSize, NexusClassDataHolderWithStaticDataType, NexusClassFixedDataHolder, NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder
-    }, log_value::{NumericVector, VectorOfScalars}, NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusClassDataHolder, NexusDataHolder, NexusDataHolderAppendable, NexusDataHolderScalarMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusHandleMessageWithContext, NexusNumericAppendableDataHolder, NexusPushMessage, NexusPushMessageWithContext
+    attribute::NexusAttribute,
+    dataholder_class::{
+        NexusClassDataHolder, NexusClassAppendableDataHolder, NexusClassWithSize, NexusClassWithStaticDataType, NexusClassFixedDataHolder, NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder},
+    builder::{
+        NexusBuilder,
+    }, log_value::{NumericVector}, traits::{NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusHandleMessageWithContext, NexusNumericAppendableDataHolder, NexusPushMessage, NexusPushMessageWithContext}
 };
 
 impl<C, D> NexusBuilderFinished for NexusBuilder<C, NexusDataset<D, C>, true>
@@ -60,7 +63,7 @@ pub(in crate::schematic) type NexusDatasetResize<T, D = ()> =
     NexusDataset<D, NexusClassAppendableDataHolder<T>>;
 
 pub(in crate::schematic) type NexusLogValueDatasetResize<D = ()> =
-    NexusDataset<D, NexusLogValueResizable>;
+    NexusDataset<D, NexusClassNumericAppendableDataHolder>;
 
 impl<D, C> NexusBuildable for NexusDataset<D, C>
 where
@@ -86,7 +89,7 @@ where
     type ThisError = NexusDatasetError;
 }
 
-impl<T, D, C> NexusCreatableDataHolder for NexusDataset<D, C>
+impl<T, D, C> NexusH5CreatableDataHolder for NexusDataset<D, C>
 where
     T: H5Type + Clone + Default,
     D: NexusDatasetDef,
@@ -115,11 +118,11 @@ impl<T, D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassMuta
     }
 }
 
-impl<T, D> NexusDataHolderWithStaticType for NexusDataset<D, C>
+impl<T, D, C> NexusDataHolderWithStaticType for NexusDataset<D, C>
 where
     T: H5Type + Clone + Default,
     D: NexusDatasetDef,
-    C: NexusClassDataHolderWithStaticDataType<T>,
+    C: NexusClassWithStaticDataType<T>,
 {
     type DataType = T;
 }
@@ -257,7 +260,7 @@ where
     }
 }
 
-impl<D: NexusDatasetDef, C: NexusClassDataHolderWithSize> NexusDataHolderSizable
+impl<D: NexusDatasetDef, C: NexusClassWithSize> NexusDataHolderWithSize
     for NexusDataset<D, C>
 where
     NexusDataset<D, C>: NexusDataHolder<HDF5Type = Dataset>,
@@ -268,7 +271,7 @@ where
     }
 }
 
-impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusDataHolderAppendable
+impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusAppendableDataHolder
     for NexusDataset<D, NexusClassAppendableDataHolder<T>>
 {
     fn append(
@@ -290,7 +293,7 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
     fn append_numerics(
         &self,
         parent: &Self::HDF5Container,
-        values: &VectorOfScalars,
+        values: &NumericVector,
     ) -> Result<(), NexusDatasetError> {
         if values.type_descriptor() != self.definition.type_descriptor() {
             return NexusLogValueError::TypeMismatch {
@@ -303,16 +306,16 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
         let next_values_slice = s![size..(size + values.len())];
         dataset.resize(size + values.len())?;
         match values {
-            VectorOfScalars::I1(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::I2(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::I4(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::I8(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::U1(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::U2(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::U4(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::U8(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::F4(vec) => dataset.write_slice(vec, next_values_slice),
-            VectorOfScalars::F8(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::I1(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::I2(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::I4(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::I8(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::U1(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::U2(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::U4(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::U8(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::F4(vec) => dataset.write_slice(vec, next_values_slice),
+            NumericVector::F8(vec) => dataset.write_slice(vec, next_values_slice),
         }?;
         Ok(())
     }
@@ -321,7 +324,7 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
 impl<D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<D, C>
 where
     D: NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
-    C: NexusClassDataHolderWithStaticDataType,
+    C: NexusClassWithStaticDataType,
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         let dataset = self.create_hdf5_instance(parent)?;
@@ -333,7 +336,7 @@ where
 impl<D, C, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusDataset<D, C>
 where
     D: NexusDatasetDef + NexusHandleMessageWithContext<M, Dataset, R, Context = Ctxt>,
-    C: NexusClassDataHolderWithStaticDataType,
+    C: NexusClassWithStaticDataType,
 {
     type Context = Ctxt;
 
@@ -354,7 +357,7 @@ where
 impl<D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<D, NexusClassNumericAppendableDataHolder>
 where
     D : NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
-    &M : TryInto<NumericVector>
+    for<'a> &'a M : TryInto<NumericVector>
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         self.class.try_set_type(message.try_into()?.type_descriptor())?;
@@ -367,7 +370,7 @@ where
 impl<D, C, M, Ctxt, R> NexusPushMessageWithContext<M, Group, R> for NexusDataset<D, C>
 where
     D : NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
-    &M : TryInto<NumericVector>
+    for<'a> &'a M : TryInto<NumericVector>
 {
     type Context = Ctxt;
 
