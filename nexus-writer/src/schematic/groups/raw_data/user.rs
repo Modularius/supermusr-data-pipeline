@@ -8,7 +8,7 @@ use crate::{
         elements::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetMut},
-            NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },

@@ -1,5 +1,5 @@
-use environment::Environment;
-use geometry::Geometry;
+//use environment::Environment;
+//use geometry::Geometry;
 use hdf5::Group;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
@@ -9,7 +9,7 @@ use crate::{
     schematic::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
-            NexusBuildable, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            traits::{NexusBuildable, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },

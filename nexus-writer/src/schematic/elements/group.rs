@@ -3,9 +3,7 @@ use std::str::FromStr;
 
 use crate::error::{NexusGroupError, NexusPushError};
 
-use super::traits::{
-    NexusGroupDef, NexusHandleMessage, NexusPushMessage
-};
+use super::traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage};
 
 pub(crate) struct NexusGroup<D: NexusGroupDef> {
     name: String,

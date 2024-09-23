@@ -1,16 +1,12 @@
 use super::log_value::NumericVector;
-use super::{builder::NexusBuilder, NexusUnits};
-use hdf5::{
-    types::{StringError, TypeDescriptor},
-    Dataset, Group, H5Type,
-};
-use thiserror::Error;
+use super::NexusUnits;
+use hdf5::{Group, H5Type};
 
-use crate::error::{NexusDatasetError, NexusPushError};
+use crate::error::NexusPushError;
 
 /// Implemented for objects who are constructed by a builder
 /// i.e. NexusDataset and NexusAttribute instances
-pub(super) trait NexusBuildable: Sized {
+pub(in crate::schematic) trait NexusBuildable: Sized {
     type Builder: NexusBuilderBegun;
 
     fn begin(name: &str) -> Self::Builder;
@@ -18,7 +14,7 @@ pub(super) trait NexusBuildable: Sized {
 
 /// Implemented for builders which require input
 /// i.e. NexusBuilder with FINISHED = false
-pub(super) trait NexusBuilderBegun: Sized {
+pub(in crate::schematic) trait NexusBuilderBegun: Sized {
     type FinshedBuilder: NexusBuilderFinished;
 
     fn new(name: &str) -> Self;
@@ -26,7 +22,7 @@ pub(super) trait NexusBuilderBegun: Sized {
 
 /// Implemented for builders which are ready to complete
 /// i.e. NexusBuilder with FINISHED = true
-pub(super) trait NexusBuilderFinished {
+pub(in crate::schematic) trait NexusBuilderFinished {
     type BuildType: NexusBuildable;
 
     fn finish(self) -> Self::BuildType;
@@ -34,7 +30,7 @@ pub(super) trait NexusBuilderFinished {
 
 /// Implemented for objects which can hold data
 /// i.e. NexusBuilder with FINISHED = true
-pub(super) trait NexusDataHolder: NexusBuildable {
+pub(in crate::schematic) trait NexusDataHolder: NexusBuildable {
     type HDF5Type;
     type HDF5Container;
     type ThisError;
@@ -64,24 +60,29 @@ pub(super) trait NexusDataHolderWithStaticType: NexusDataHolder {
 
 /// Implemented for `NexusDataHolder` objects have mutable scalar data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
-pub(super) trait NexusDataHolderScalarMutable: NexusDataHolderWithStaticType {
+pub(in crate::schematic) trait NexusDataHolderScalarMutable:
+    NexusDataHolderWithStaticType
+{
     fn write_scalar(
         &self,
         parent: &Self::HDF5Container,
         value: Self::DataType,
     ) -> Result<(), Self::ThisError>;
+
     fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, Self::ThisError>;
 }
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(super) trait NexusDataHolderWithSize: NexusDataHolder {
+pub(in crate::schematic) trait NexusDataHolderWithSize:
+    NexusDataHolder
+{
     fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, Self::ThisError>;
 }
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(super) trait NexusAppendableDataHolder:
+pub(in crate::schematic) trait NexusAppendableDataHolder:
     NexusDataHolderWithStaticType + NexusDataHolderWithSize
 {
     fn append(
@@ -93,7 +94,9 @@ pub(super) trait NexusAppendableDataHolder:
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(super) trait NexusNumericAppendableDataHolder: NexusDataHolderWithSize {
+pub(in crate::schematic) trait NexusNumericAppendableDataHolder:
+    NexusDataHolderWithSize
+{
     fn append_numerics(
         &self,
         parent: &Self::HDF5Container,
@@ -102,7 +105,7 @@ pub(super) trait NexusNumericAppendableDataHolder: NexusDataHolderWithSize {
 }
 
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure
-pub(crate) trait NexusGroupDef: Sized {
+pub(in crate::schematic) trait NexusGroupDef: Sized {
     const CLASS_NAME: &'static str;
     type Settings;
 
@@ -110,7 +113,7 @@ pub(crate) trait NexusGroupDef: Sized {
 }
 
 /// Implemented for structs in the `groups` folder which define the HDF5 dataset structure
-pub(super) trait NexusDatasetDef: Sized {
+pub(in crate::schematic) trait NexusDatasetDef: Sized {
     const UNITS: Option<NexusUnits> = None;
 
     fn new() -> Self;

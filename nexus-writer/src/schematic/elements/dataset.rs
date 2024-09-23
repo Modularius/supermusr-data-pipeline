@@ -15,7 +15,7 @@ use super::{
     traits::{
         NexusAppendableDataHolder, NexusBuildable, NexusBuilderBegun, NexusBuilderFinished,
         NexusDataHolder, NexusDataHolderScalarMutable, NexusDataHolderWithSize,
-        NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder,
+        NexusDatasetDef, NexusH5CreatableDataHolder,
         NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder,
         NexusPushMessage,
     },
@@ -97,9 +97,8 @@ where
     type ThisError = NexusDatasetError;
 }
 
-impl<T, D, C> NexusH5CreatableDataHolder for NexusDataset<D, C>
+impl<D, C> NexusH5CreatableDataHolder for NexusDataset<D, C>
 where
-    T: H5Type + Clone + Default,
     D: NexusDatasetDef,
     C: NexusClassDataHolder,
     NexusDataset<D, C>: NexusH5InstanceCreatableDataHolder,
@@ -124,15 +123,6 @@ impl<T, D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassMuta
             Ok::<_, NexusDatasetError>(dataset)
         })?)
     }
-}
-
-impl<T, D, C> NexusDataHolderWithStaticType for NexusDataset<D, C>
-where
-    T: H5Type + Clone + Default,
-    D: NexusDatasetDef,
-    C: NexusClassWithStaticDataType<T>,
-{
-    type DataType = T;
 }
 
 impl<T, D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassFixedDataHolder<T>>

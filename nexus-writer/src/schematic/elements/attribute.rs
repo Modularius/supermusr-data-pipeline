@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use hdf5::{Attribute, Dataset, H5Type};
 
 use crate::error::NexusAttributeError;

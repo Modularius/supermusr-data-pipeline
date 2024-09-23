@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -9,14 +9,14 @@ use supermusr_streaming_types::{
 
 use crate::{
     error::{NexusMissingError, NexusMissingEventlistError, NexusPushError},
-    nexus::{NexusSettings, RunParameters},
+    nexus::NexusSettings,
     schematic::{
         elements::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetResize},
-            NexusBuildable, NexusDataHolder, NexusDataHolderAppendable,
+            traits::{NexusBuildable, NexusAppendableDataHolder,
             NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
-            NexusHandleMessageWithContext, NexusPushMessage, NexusUnits,
+            NexusPushMessage}, NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -145,14 +145,11 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for Data {
     }
 }
 
-impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for Data {
-    type Context = RunParameters;
-
-    fn handle_message_with_context(
+impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
+    fn handle_message(
         &mut self,
         message: &FrameAssembledEventListMessage<'a>,
         parent: &Group,
-        _params: &mut RunParameters,
     ) -> Result<(), NexusPushError> {
         // Here is where we extend the datasets
 

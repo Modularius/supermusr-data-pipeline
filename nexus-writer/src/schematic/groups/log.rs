@@ -1,9 +1,4 @@
-use std::any::Any;
-
-use hdf5::{
-    types::{OwnedDynValue, TypeDescriptor},
-    Datatype, Group, H5Type,
-};
+use hdf5::{types::TypeDescriptor, Group, H5Type};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::{f144_LogData, Value},
@@ -12,19 +7,16 @@ use supermusr_streaming_types::{
 
 use crate::{
     error::{
-        NexusDatasetError, NexusLogValueError, NexusMissingAlarmError, NexusMissingError,
-        NexusMissingRunlogError, NexusMissingSelogError, NexusPushError,
+        NexusMissingAlarmError, NexusMissingError, NexusMissingRunlogError, NexusMissingSelogError,
+        NexusNumericError, NexusPushError,
     },
     nexus::{nexus_class, NexusSettings},
     schematic::{
         elements::{
             attribute::NexusAttribute,
-            dataset::{
-                NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusLogValueDatasetResize,
-            },
+            dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
             log_value::NumericVector,
-            NexusBuildable, NexusBuilderBegun, NexusDataHolder, NexusDataHolderAppendable,
-            NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusLogValueDataHolderAppendable,
+            traits::{NexusDatasetDef, NexusGroupDef, NexusHandleMessage,NexusBuildable, NexusBuilderBegun},
             NexusUnits,
         },
         H5String,
@@ -75,7 +67,7 @@ fn get_value<T>(val: Option<T>) -> Result<T, NexusMissingError> {
         .map_err(NexusMissingError::Runlog)
 }
 
-impl<'a> TryFrom<&f144_LogData<'a>> for VectorOfScalars {
+impl<'a> TryFrom<&f144_LogData<'a>> for NumericVector {
     type Error = NexusPushError;
 
     fn try_from(value: &f144_LogData<'a>) -> Result<Self, NexusPushError> {
@@ -90,7 +82,7 @@ impl<'a> TryFrom<&f144_LogData<'a>> for VectorOfScalars {
             Value::ULong => Self::U8(vec![get_value(value.value_as_ulong())?.value()]),
             Value::Float => Self::F4(vec![get_value(value.value_as_float())?.value()]),
             Value::Double => Self::F8(vec![get_value(value.value_as_double())?.value()]),
-            value => Err(NexusLogValueError::InvalidRunLogType { value })?,
+            value => Err(NexusNumericError::InvalidRunLogType { value })?,
         })
     }
 }
@@ -103,10 +95,10 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for Log {
     ) -> Result<(), NexusPushError> {
         self.time.append(parent, &[message.timestamp()])?;
 
-        let value: VectorOfScalars = message.try_into()?;
+        let value: NumericVector = message.try_into()?;
         if let Some(type_desc) = self.type_desc {
             if type_desc != value.type_descriptor() {
-                return Err(NexusLogValueError::TypeMismatch {
+                return Err(NexusNumericError::TypeMismatch {
                     required_type: type_desc,
                     input_type: value.type_descriptor(),
                 })?;
@@ -157,7 +149,7 @@ impl NexusGroupDef for ValueLog {
     }
 }
 
-impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for VectorOfScalars {
+impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for NumericVector {
     type Error = NexusPushError;
 
     fn try_from(value: &se00_SampleEnvironmentData<'a>) -> Result<Self, NexusPushError> {

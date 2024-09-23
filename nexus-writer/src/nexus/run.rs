@@ -1,6 +1,9 @@
-use crate::schematic::{
-    elements::{group::NexusGroup, traits::NexusPushMessage},
-    groups::NXRoot,
+use crate::{
+    error::NexusError,
+    schematic::{
+        elements::{group::NexusGroup, traits::NexusPushMessage},
+        groups::NXRoot,
+    },
 };
 
 use super::{NexusSettings, RunParameters};

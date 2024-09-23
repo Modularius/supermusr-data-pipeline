@@ -1,13 +1,9 @@
-use hdf5::{types::TypeDescriptor, H5Type};
 use std::marker::PhantomData;
-
-use crate::error::NexusNumericError;
 
 use super::{
     dataholder_class::{
         NexusClassAppendableDataHolder, NexusClassDataHolder, NexusClassFixedDataHolder,
-        NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder, NexusClassWithSize,
-        NexusClassWithStaticDataType,
+        NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder,
     },
     traits::{
         NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderWithStaticType,

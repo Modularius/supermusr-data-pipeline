@@ -1,13 +1,3 @@
-use builder::NexusBuilder;
-use hdf5::{
-    types::{StringError, TypeDescriptor},
-    Dataset, Group, H5Type,
-};
-use log_value::NumericVector;
-use thiserror::Error;
-
-use crate::error::{NexusDatasetError, NexusPushError};
-
 pub(crate) mod attribute;
 pub(crate) mod builder;
 pub(crate) mod dataholder_class;

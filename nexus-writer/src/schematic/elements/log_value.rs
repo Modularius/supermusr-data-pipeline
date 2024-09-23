@@ -1,7 +1,4 @@
-use hdf5::{
-    types::{EnumMember, EnumType, OwnedDynValue, TypeDescriptor},
-    Dataset, Group, H5Type, SimpleExtents,
-};
+use hdf5::{types::TypeDescriptor, H5Type};
 
 pub(crate) enum NumericVector {
     I1(Vec<i8>),

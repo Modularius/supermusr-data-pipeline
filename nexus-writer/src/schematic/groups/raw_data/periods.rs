@@ -1,4 +1,4 @@
-use hdf5::{types::TypeDescriptor, Group};
+use hdf5::Group;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
             attribute::NexusAttribute,
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
         },
         groups::log::Log,
         nexus_class, H5String,

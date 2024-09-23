@@ -68,8 +68,8 @@ pub(crate) enum NexusPushError {
     Dataset(#[from] NexusDatasetError),
     #[error("Attribute Error: {0}")]
     Attribute(#[from] NexusAttributeError),
-    #[error("Log Value Error: {0}")]
-    LogValue(#[from] NexusLogValueError),
+    #[error("Numeric Vector Error: {0}")]
+    LogValue(#[from] NexusNumericError),
     #[error("HDF5 Error {0}")]
     HDF5(#[from] hdf5::Error),
     #[error("HDF5 String Error: {0}")]

@@ -21,9 +21,9 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeFixed},
             dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
             group::NexusGroup,
-            NexusBuildable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef,
-            NexusHandleMessage, NexusHandleMessageWithContext, NexusPushMessage,
-            NexusPushMessageWithContext, NexusUnits,
+            traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef,
+            NexusHandleMessage, NexusPushMessage},
+            NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -141,18 +141,14 @@ impl NexusGroupDef for RawData {
 /* Here we handle the frame eventlist messages
 We also alter the RunParameters context*/
 
-impl<'a> NexusHandleMessageWithContext<FrameAssembledEventListMessage<'a>> for RawData {
-    type Context = RunParameters;
-
-    fn handle_message_with_context(
+impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for RawData {
+    fn handle_message(
         &mut self,
         message: &FrameAssembledEventListMessage<'a>,
         location: &Group,
-        run_parameters: &mut RunParameters,
     ) -> Result<(), NexusPushError> {
-        run_parameters.num_frames += 1;
         self.detector_1
-            .push_message_with_context(message, location, run_parameters)
+            .push_message(message, location)
     }
 }
 

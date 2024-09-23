@@ -1,11 +1,11 @@
-use hdf5::Group;
+use hdf5::{types::TypeDescriptor, Group};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::{
     error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
-        elements::{group::NexusGroup, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+        elements::{group::NexusGroup, traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage}},
         groups::log::Log,
         nexus_class,
     },

@@ -9,8 +9,10 @@ use crate::{
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed, traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef,
-        NexusHandleMessage, NexusPushMessage}
+        attribute::NexusAttributeFixed,
+        traits::{
+            NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+        },
     },
     nexus_class, H5String,
 };
@@ -71,22 +73,5 @@ where
 {
     fn handle_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         self.raw_data_1.push_message(message, parent)
-    }
-}
-
-impl<M, Ctxt, R> NexusHandleMessageWithContext<M, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessageWithContext<M, Group, R, Context = Ctxt>,
-{
-    type Context = Ctxt;
-
-    fn handle_message_with_context(
-        &mut self,
-        message: &M,
-        parent: &Group,
-        context: &mut Self::Context,
-    ) -> Result<R, NexusPushError> {
-        self.raw_data_1
-            .push_message_with_context(message, parent, context)
     }
 }
