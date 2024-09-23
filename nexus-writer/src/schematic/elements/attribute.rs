@@ -6,7 +6,7 @@ use crate::error::NexusAttributeError;
 
 use super::{
     builder::{NexusBuilder, NexusClassFixedDataHolder, NexusClassMutableDataHolder},
-    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusClassDataHolder,
+    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusClassDataHolder, NexusDataHolder,
     NexusDataHolderScalarMutable, NexusTypedDataHolder,
 };
 

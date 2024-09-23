@@ -1,7 +1,8 @@
 use chrono::{Duration, TimeDelta};
 use hdf5::types::TypeDescriptor;
 use supermusr_streaming_types::{
-    ecs_f144_logdata_generated::Value, ecs_se00_data_generated::ValueUnion, time_conversions::GpsTimeConversionError
+    ecs_f144_logdata_generated::Value, ecs_se00_data_generated::ValueUnion,
+    time_conversions::GpsTimeConversionError,
 };
 use thiserror::Error;
 
@@ -104,7 +105,12 @@ pub(crate) enum NexusLogValueError {
     #[error("Invalid Selog Type of Value: {0:?}", value.variant_name())]
     InvalidSelogType { value: ValueUnion },
     #[error("Type Mismatch required: {0}, input: {1} ", required_type, input_type)]
-    TypeMismatch { required_type: TypeDescriptor, input_type: TypeDescriptor }
+    TypeMismatch {
+        required_type: TypeDescriptor,
+        input_type: TypeDescriptor,
+    },
+    #[error("Type Not Set")]
+    NumericTypeNotSet
 }
 
 #[derive(Debug, Error)]

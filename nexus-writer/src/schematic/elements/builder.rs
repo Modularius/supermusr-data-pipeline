@@ -1,59 +1,11 @@
-use hdf5::H5Type;
+use hdf5::{types::TypeDescriptor, H5Type};
 use std::marker::PhantomData;
 
+use crate::error::NexusLogValueError;
+
 use super::{
-    NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusClassDataHolder,
-    NexusTypedDataHolder,
+    dataholder_class::{NexusClassDataHolder, NexusClassWithSize, NexusClassWithStaticDataType}, traits::NexusDataHolderWithStaticType, NexusBuilderBegun, NexusBuilderFinished, NexusClassDataHolder, NexusDataHolder, NexusTypedDataHolder
 };
-
-/// Class of NexusDataHolder which has a mutable scalar value with customizable default
-#[derive(Default, Clone)]
-pub(crate) struct NexusClassMutableDataHolder<T: H5Type + Default + Clone> {
-    pub(super) default_value: T,
-}
-
-impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassMutableDataHolder<T> {}
-
-/// Class of NexusDataHolder which has an immutable scalar value with customizable fixed value
-#[derive(Default, Clone)]
-pub(crate) struct NexusClassFixedDataHolder<T: H5Type + Default + Clone> {
-    pub(super) fixed_value: T,
-}
-
-impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassFixedDataHolder<T> {}
-
-/// Class of NexusDataHolder whose size can be queried
-pub(crate) trait NexusClassDataHolderWithSize : NexusClassDataHolder {}
-
-/// Class of NexusDataHolder which has an expandable vector value with customizable default value
-#[derive(Default, Clone)]
-pub(crate) struct NexusClassAppendableDataHolder<T: H5Type + Default + Clone> {
-    pub(super) default_value: T,
-    pub(super) default_size: usize,
-    pub(super) chunk_size: usize,
-}
-
-impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassAppendableDataHolder<T> {}
-
-impl<T: H5Type + Default + Clone> NexusClassDataHolderWithSize for NexusClassAppendableDataHolder<T> {}
-
-/// Class of NexusDataHolder for value log which has an expandable vector value with type defined at runtime
-#[derive(Clone)]
-pub(crate) struct NexusLogValueResizable {
-    pub(super) chunk_size: usize,
-}
-
-impl Default for NexusLogValueResizable {
-    fn default() -> Self {
-        Self {
-            chunk_size: Default::default(),
-        }
-    }
-}
-
-impl NexusClassDataHolder for NexusLogValueResizable {}
-
-impl NexusClassDataHolderWithSize for NexusLogValueResizable {}
 
 /// Builder which constructs NexusDataHolder once the required parameters are given
 pub(in crate::schematic) struct NexusBuilder<
@@ -118,7 +70,7 @@ where
 /// Implementation of unfinished builder with Resizable class
 impl<H> NexusBuilder<NexusClassAppendableDataHolder<H::DataType>, H, false>
 where
-    H: NexusTypedDataHolder,
+    H: NexusDataHolderWithStaticType,
     NexusBuilder<NexusClassAppendableDataHolder<H::DataType>, H, true>: NexusBuilderFinished,
 {
     pub(crate) fn finish_with_resizable(
@@ -141,10 +93,10 @@ where
 }
 
 /// Implementation of unfinished builder with log value resizable class
-impl<H> NexusBuilder<NexusLogValueResizable, H, false>
+impl<H> NexusBuilder<NexusClassNumericAppendableDataHolder, H, false>
 where
     H: NexusDataHolder,
-    NexusBuilder<NexusLogValueResizable, H, true>: NexusBuilderFinished,
+    NexusBuilder<NexusClassNumericAppendableDataHolder, H, true>: NexusBuilderFinished,
 {
     pub(crate) fn finish_log_value_with_resizable(
         self,
@@ -152,9 +104,7 @@ where
     ) -> <<Self as NexusBuilderBegun>::FinshedBuilder as NexusBuilderFinished>::BuildType {
         NexusBuilder {
             name: self.name,
-            class: NexusLogValueResizable {
-                chunk_size,
-            },
+            class: NexusLogValueResizable { type_desc: None, chunk_size },
             phantom: PhantomData,
         }
         .finish()

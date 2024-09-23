@@ -12,14 +12,20 @@ use supermusr_streaming_types::{
 
 use crate::{
     error::{
-        NexusDatasetError, NexusLogValueError, NexusMissingAlarmError, NexusMissingError, NexusMissingRunlogError, NexusMissingSelogError, NexusPushError
+        NexusDatasetError, NexusLogValueError, NexusMissingAlarmError, NexusMissingError,
+        NexusMissingRunlogError, NexusMissingSelogError, NexusPushError,
     },
     nexus::{nexus_class, NexusSettings},
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::{
+            attribute::NexusAttribute,
+            dataset::{
                 NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusLogValueDatasetResize,
-            }, log_value::VectorOfScalars, NexusBuildable, NexusBuilderBegun, NexusDataHolder, NexusDataHolderAppendable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusLogValueDataHolderAppendable, NexusUnits
+            },
+            log_value::VectorOfScalars,
+            NexusBuildable, NexusBuilderBegun, NexusDataHolder, NexusDataHolderAppendable,
+            NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusLogValueDataHolderAppendable,
+            NexusUnits,
         },
         H5String,
     },
@@ -57,9 +63,8 @@ impl NexusGroupDef for Log {
                 0,
                 settings.runloglist_chunk_size,
             ),
-            value: NexusDataset::begin("value").finish_log_value_with_resizable(
-                settings.runloglist_chunk_size
-            ),
+            value: NexusDataset::begin("value")
+                .finish_log_value_with_resizable(settings.runloglist_chunk_size),
             type_desc: None,
         }
     }
@@ -97,11 +102,14 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for Log {
         parent: &Group,
     ) -> Result<(), NexusPushError> {
         self.time.append(parent, &[message.timestamp()])?;
-        
-        let value : VectorOfScalars = message.try_into()?;
+
+        let value: VectorOfScalars = message.try_into()?;
         if let Some(type_desc) = self.type_desc {
             if type_desc != value.type_descriptor() {
-                return Err(NexusLogValueError::TypeMismatch { required_type: type_desc, input_type: value.type_descriptor() })?
+                return Err(NexusLogValueError::TypeMismatch {
+                    required_type: type_desc,
+                    input_type: value.type_descriptor(),
+                })?;
             }
         }
         self.value.append(parent, &value)?;
@@ -143,29 +151,77 @@ impl NexusGroupDef for ValueLog {
                 0,
                 settings.seloglist_chunk_size,
             ),
-            value: NexusDataset::begin("value").finish_log_value_with_resizable(
-                settings.seloglist_chunk_size
-            ),
+            value: NexusDataset::begin("value")
+                .finish_log_value_with_resizable(settings.seloglist_chunk_size),
         }
     }
 }
-
 
 impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for VectorOfScalars {
     type Error = NexusPushError;
 
     fn try_from(value: &se00_SampleEnvironmentData<'a>) -> Result<Self, NexusPushError> {
         Ok(match value.values_type() {
-            ValueUnion::Int8Array => Self::I1(get_value(value.values_as_int_8_array())?.value().iter().collect()),
-            ValueUnion::Int16Array => Self::I2(get_value(value.values_as_int_16_array())?.value().iter().collect()),
-            ValueUnion::Int32Array => Self::I4(get_value(value.values_as_int_32_array())?.value().iter().collect()),
-            ValueUnion::Int64Array => Self::I8(get_value(value.values_as_int_64_array())?.value().iter().collect()),
-            ValueUnion::UInt8Array => Self::U1(get_value(value.values_as_uint_8_array())?.value().iter().collect()),
-            ValueUnion::UInt16Array => Self::U2(get_value(value.values_as_uint_16_array())?.value().iter().collect()),
-            ValueUnion::UInt32Array => Self::U4(get_value(value.values_as_uint_32_array())?.value().iter().collect()),
-            ValueUnion::UInt64Array => Self::U8(get_value(value.values_as_uint_64_array())?.value().iter().collect()),
-            ValueUnion::FloatArray => Self::F4(get_value(value.values_as_float_array())?.value().iter().collect()),
-            ValueUnion::DoubleArray => Self::F8(get_value(value.values_as_double_array())?.value().iter().collect()),
+            ValueUnion::Int8Array => Self::I1(
+                get_value(value.values_as_int_8_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::Int16Array => Self::I2(
+                get_value(value.values_as_int_16_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::Int32Array => Self::I4(
+                get_value(value.values_as_int_32_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::Int64Array => Self::I8(
+                get_value(value.values_as_int_64_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::UInt8Array => Self::U1(
+                get_value(value.values_as_uint_8_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::UInt16Array => Self::U2(
+                get_value(value.values_as_uint_16_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::UInt32Array => Self::U4(
+                get_value(value.values_as_uint_32_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::UInt64Array => Self::U8(
+                get_value(value.values_as_uint_64_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::FloatArray => Self::F4(
+                get_value(value.values_as_float_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
+            ValueUnion::DoubleArray => Self::F8(
+                get_value(value.values_as_double_array())?
+                    .value()
+                    .iter()
+                    .collect(),
+            ),
             value => Err(NexusPushError::InvalidSelogType { value })?,
         })
     }
@@ -188,7 +244,7 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
         )?;
         self.time.close_hdf5();
 
-        self.value.append(parent,&message.try_into()?)?;
+        self.value.append(parent, &message.try_into()?)?;
         Ok(())
     }
 }
