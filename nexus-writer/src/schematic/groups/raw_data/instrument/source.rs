@@ -4,7 +4,7 @@ use crate::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusBuildable, NexusGroupDef},
+            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef},
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -31,20 +31,17 @@ impl NexusGroupDef for Source {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish_with_auto_default(),
-            source_type: NexusDataset::begin("source_type").finish_with_auto_default(),
-            probe: NexusDataset::begin("probe").finish_with_auto_default(),
-            source_frequency: NexusDataset::begin("source_frequency").finish_with_auto_default(),
-            source_frame_pattern: NexusDataset::begin("source_frame_pattern")
-                .finish_with_auto_default(),
-            source_energy: NexusDataset::begin("source_energy").finish_with_auto_default(),
-            source_current: NexusDataset::begin("tarsource_currentget_thickness")
-                .finish_with_auto_default(),
+            name: NexusDataset::new_with_auto_default("name"),
+            source_type: NexusDataset::new_with_auto_default("source_type"),
+            probe: NexusDataset::new_with_auto_default("probe"),
+            source_frequency: NexusDataset::new_with_auto_default("source_frequency"),
+            source_frame_pattern: NexusDataset::new_with_auto_default("source_frame_pattern"),
+            source_energy: NexusDataset::new_with_auto_default("source_energy"),
+            source_current: NexusDataset::new_with_auto_default("tarsource_currentget_thickness"),
             source_current_log: NexusGroup::new("source_current_log", settings),
-            source_pulse_width: NexusDataset::begin("source_pulse_width")
-                .finish_with_auto_default(),
-            target_material: NexusDataset::begin("target_material").finish_with_auto_default(),
-            target_thickness: NexusDataset::begin("target_thickness").finish_with_auto_default(),
+            source_pulse_width: NexusDataset::new_with_auto_default("source_pulse_width"),
+            target_material: NexusDataset::new_with_auto_default("target_material"),
+            target_thickness: NexusDataset::new_with_auto_default("target_thickness"),
         }
     }
 }

@@ -1,4 +1,4 @@
-use hdf5::{types::TypeDescriptor, Group, H5Type};
+use hdf5::{types::TypeDescriptor, Group};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::{f144_LogData, Value},
@@ -13,10 +13,10 @@ use crate::{
     nexus::{nexus_class, NexusSettings},
     schematic::{
         elements::{
-            attribute::NexusAttribute,
+            attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
             log_value::NumericVector,
-            traits::{NexusDatasetDef, NexusGroupDef, NexusHandleMessage,NexusBuildable, NexusBuilderBegun},
+            traits::{NexusAppendableDataHolder, NexusBuildable, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder},
             NexusUnits,
         },
         H5String,
@@ -25,7 +25,7 @@ use crate::{
 
 #[derive(Clone)]
 struct TimeAttributes {
-    offset: NexusAttribute<H5String>,
+    offset: NexusAttributeMut<H5String>,
 }
 
 impl NexusDatasetDef for TimeAttributes {
@@ -33,15 +33,14 @@ impl NexusDatasetDef for TimeAttributes {
 
     fn new() -> Self {
         Self {
-            offset: NexusAttribute::begin("offset").finish_with_auto_default(),
+            offset: NexusAttribute::new_with_auto_default("offset"),
         }
     }
 }
 
 pub(super) struct Log {
     time: NexusDatasetResize<i64, TimeAttributes>,
-    value: NexusLogValueDatasetResize,
-    type_desc: Option<TypeDescriptor>,
+    value: NexusLogValueDatasetResize
 }
 
 impl NexusGroupDef for Log {
@@ -50,14 +49,10 @@ impl NexusGroupDef for Log {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            time: NexusDataset::begin("time").finish_with_resizable(
-                Default::default(),
-                0,
+            time: NexusDatasetResize::new("time", 
                 settings.runloglist_chunk_size,
             ),
-            value: NexusDataset::begin("value")
-                .finish_log_value_with_resizable(settings.runloglist_chunk_size),
-            type_desc: None,
+            value: NexusLogValueDatasetResize::new("value", settings.runloglist_chunk_size)
         }
     }
 }
@@ -96,15 +91,8 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for Log {
         self.time.append(parent, &[message.timestamp()])?;
 
         let value: NumericVector = message.try_into()?;
-        if let Some(type_desc) = self.type_desc {
-            if type_desc != value.type_descriptor() {
-                return Err(NexusNumericError::TypeMismatch {
-                    required_type: type_desc,
-                    input_type: value.type_descriptor(),
-                })?;
-            }
-        }
-        self.value.append(parent, &value)?;
+        self.value.try_set_type(value.type_descriptor())?;
+        self.value.append_numerics(parent, &value)?;
         Ok(())
     }
 }
@@ -123,28 +111,19 @@ impl NexusGroupDef for ValueLog {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            alarm_severity: NexusDataset::begin("alarm_severity").finish_with_resizable(
-                Default::default(),
-                0,
+            alarm_severity: NexusDatasetResize::new("alarm_severity",
                 settings.seloglist_chunk_size,
             ),
-            alarm_status: NexusDataset::begin("alarm_status").finish_with_resizable(
-                Default::default(),
-                0,
+            alarm_status: NexusDatasetResize::new("alarm_status",
                 settings.seloglist_chunk_size,
             ),
-            alarm_time: NexusDataset::begin("alarm_time").finish_with_resizable(
-                Default::default(),
-                0,
+            alarm_time: NexusDatasetResize::new("alarm_time",
                 settings.seloglist_chunk_size,
             ),
-            time: NexusDataset::begin("time").finish_with_resizable(
-                Default::default(),
-                0,
+            time: NexusDatasetResize::new("time", 
                 settings.seloglist_chunk_size,
             ),
-            value: NexusDataset::begin("value")
-                .finish_log_value_with_resizable(settings.seloglist_chunk_size),
+            value: NexusLogValueDatasetResize::new("value", settings.seloglist_chunk_size),
         }
     }
 }
@@ -214,7 +193,7 @@ impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for NumericVector {
                     .iter()
                     .collect(),
             ),
-            value => Err(NexusPushError::InvalidSelogType { value })?,
+            value => Err(NexusNumericError::InvalidSelogType { value })?,
         })
     }
 }
@@ -236,7 +215,7 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
         )?;
         self.time.close_hdf5();
 
-        self.value.append(parent, &message.try_into()?)?;
+        self.value.append_numerics(parent, &message.try_into()?)?;
         Ok(())
     }
 }

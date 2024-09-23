@@ -11,7 +11,7 @@ use super::{
 };
 
 /// Builder which constructs NexusDataHolder once the required parameters are given
-pub(in crate::schematic) struct NexusBuilder<
+pub(crate) struct NexusBuilder<
     C: NexusClassDataHolder,
     H: NexusDataHolder,
     const FINISHED: bool,
@@ -78,7 +78,7 @@ where
     H: NexusDataHolderWithStaticType,
     NexusBuilder<NexusClassAppendableDataHolder<H::DataType>, H, true>: NexusBuilderFinished,
 {
-    pub(crate) fn finish_with_resizable(
+    pub(in crate::schematic) fn finish_with_resizable(
         self,
         default_value: H::DataType,
         default_size: usize,

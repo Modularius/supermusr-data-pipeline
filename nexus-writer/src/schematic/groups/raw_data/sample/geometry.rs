@@ -3,7 +3,7 @@ use crate::{
     schematic::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
-            traits::{NexusBuildable, NexusGroupDef},
+            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef},
         },
         nexus_class, H5String,
     },
@@ -19,7 +19,7 @@ impl NexusGroupDef for Geometry {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish_with_auto_default(),
+            name: NexusDataset::new_with_auto_default("name"),
         }
     }
 }

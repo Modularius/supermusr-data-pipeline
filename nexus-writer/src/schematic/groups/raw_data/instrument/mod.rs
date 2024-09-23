@@ -9,7 +9,7 @@ use crate::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusBuildable, NexusGroupDef, NexusHandleMessage},
+            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },
@@ -28,7 +28,7 @@ impl NexusGroupDef for Instrument {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish_with_auto_default(),
+            name: NexusDataset::new_with_auto_default("name"),
             source: NexusGroup::new("source", settings),
         }
     }

@@ -36,6 +36,14 @@ pub(crate) enum NexusMissingRunlogError {
     Message,
 }
 
+
+
+#[derive(Debug, Error)]
+pub(crate) enum NexusMissingRunStartError {
+    #[error("Runstart Run Name Missing")]
+    RunName,
+}
+
 #[derive(Debug, Error)]
 pub(crate) enum NexusMissingEventlistError {
     #[error("Timestamp")]
@@ -58,6 +66,8 @@ pub(crate) enum NexusMissingError {
     Runlog(NexusMissingRunlogError),
     #[error("Eventlist {0}")]
     Eventlist(NexusMissingEventlistError),
+    #[error("RunStart {0}")]
+    RunStart(NexusMissingRunStartError)
 }
 
 #[derive(Debug, Error)]
@@ -92,6 +102,8 @@ pub(crate) enum NexusDatasetError {
     HDF5(#[from] hdf5::Error),
     #[error("HDF5 String Error: {0}")]
     HDF5String(#[from] hdf5::types::StringError),
+    #[error("Numeric Error: {0}")]
+    Numeric(#[from] NexusNumericError),
 }
 
 #[derive(Debug, Error)]

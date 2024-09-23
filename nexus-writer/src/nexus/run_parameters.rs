@@ -1,9 +1,9 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use crate::error::{NexusError, NexusPushError};
+use crate::error::{NexusError, NexusMissingError, NexusMissingRunStartError, NexusMissingSelogError, NexusPushError};
 
 /*#[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
@@ -27,36 +27,39 @@ pub(crate) struct RunParameters {
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new(data: &RunStart<'_>) -> Result<Self, NexusPushError> {
-        let collect_from = DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
-            .ok_or(NexusError::Unknown)?;
+        let collect_from = DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into().unwrap())
+            .ok_or(NexusPushError::NanosecondError(TimeDelta::default()))?;
 
         Ok(Self {
             collect_from,
             collect_until: None,
             num_frames: Default::default(),
             last_modified: Utc::now(),
-            run_name: data.run_name().ok_or(NexusError::Unknown)?.to_owned(),
+            run_name: data.run_name()
+                .ok_or(NexusMissingRunStartError::RunName)
+                .map_err(NexusMissingError::RunStart)?
+                .to_owned(),
         })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<(), NexusPushError> {
         if self.collect_until.is_some() {
-            Err(NexusError::Unknown)
+            Err(NexusPushError::NanosecondError(TimeDelta::default()))
         } else {
             let now = DateTime::<Utc>::from_timestamp_millis(
                 data.stop_time()
                     .try_into()
-                    .map_err(|_| NexusError::Unknown)?,
+                    .map_err(|_| NexusPushError::NanosecondError(TimeDelta::default()))?,
             )
-            .ok_or(NexusError::Unknown)?;
+            .ok_or(NexusPushError::NanosecondError(TimeDelta::default()))?;
 
             if self.collect_from < now {
                 self.collect_until = Some(now);
                 self.update_last_modified();
                 Ok(())
             } else {
-                Err(NexusError::Unknown)
+                Err(NexusPushError::NanosecondError(TimeDelta::default()))
             }
         }
     }

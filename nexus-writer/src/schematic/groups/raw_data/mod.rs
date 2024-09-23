@@ -21,8 +21,7 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeFixed},
             dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef,
-            NexusHandleMessage, NexusPushMessage},
+            traits::{NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
             NexusUnits,
         },
         nexus_class, H5String,
@@ -46,9 +45,8 @@ struct DefinitionAttributes {
 impl NexusDatasetDef for DefinitionAttributes {
     fn new() -> Self {
         Self {
-            version: NexusAttribute::begin("version")
-                .finish_with_fixed_value("TODO".parse().expect("")),
-            url: NexusAttribute::begin("URL").finish_with_fixed_value("TODO".parse().expect("")),
+            version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
+            url: NexusAttribute::new_with_fixed_value("URL", "TODO".parse().expect("")),
         }
     }
 }
@@ -107,26 +105,23 @@ impl NexusGroupDef for RawData {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            idf_version: NexusDataset::begin("idf_version").finish_with_fixed_value(2),
-            definition: NexusDataset::begin("definition")
-                .finish_with_fixed_value("muonTD".parse().expect("")),
-            definition_local: NexusDataset::begin("definition_local")
-                .finish_with_fixed_value("muonTD".parse().expect("")),
-            program_name: NexusDataset::begin("program_name").finish_with_auto_default(),
-            run_number: NexusDataset::begin("run_number").finish_with_auto_default(),
-            title: NexusDataset::begin("title").finish_with_auto_default(),
-            notes: NexusDataset::begin("notes").finish_with_auto_default(),
-            start_time: NexusDataset::begin("start_time").finish_with_auto_default(),
-            end_time: NexusDataset::begin("end_time").finish_with_auto_default(),
-            duration: NexusDataset::begin("duration").finish_with_auto_default(),
-            collection_time: NexusDataset::begin("collection_time").finish_with_auto_default(),
-            total_counts: NexusDataset::begin("total_counts").finish_with_auto_default(),
-            good_frames: NexusDataset::begin("good_frames").finish_with_auto_default(),
-            raw_frames: NexusDataset::begin("raw_frames").finish_with_auto_default(),
-            proton_charge: NexusDataset::begin("proton_charge").finish_with_auto_default(),
-            experiment_identifier: NexusDataset::begin("experiment_identifier")
-                .finish_with_auto_default(),
-            run_cycle: NexusDataset::begin("run_cycle").finish_with_auto_default(),
+            idf_version: NexusDataset::new_with_fixed_value("idf_version", 2),
+            definition: NexusDataset::new_with_fixed_value("definition", "muonTD".parse().expect("")),
+            definition_local: NexusDataset::new_with_fixed_value("definition_local", "muonTD".parse().expect("")),
+            program_name: NexusDataset::new_with_auto_default("program_name"),
+            run_number: NexusDataset::new_with_auto_default("run_number"),
+            title: NexusDataset::new_with_auto_default("title"),
+            notes: NexusDataset::new_with_auto_default("notes"),
+            start_time: NexusDataset::new_with_auto_default("start_time"),
+            end_time: NexusDataset::new_with_auto_default("end_time"),
+            duration: NexusDataset::new_with_auto_default("duration"),
+            collection_time: NexusDataset::new_with_auto_default("collection_time"),
+            total_counts: NexusDataset::new_with_auto_default("total_counts"),
+            good_frames: NexusDataset::new_with_auto_default("good_frames"),
+            raw_frames: NexusDataset::new_with_auto_default("raw_frames"),
+            proton_charge: NexusDataset::new_with_auto_default("proton_charge"),
+            experiment_identifier: NexusDataset::new_with_auto_default("experiment_identifier"),
+            run_cycle: NexusDataset::new_with_auto_default("run_cycle"),
             user_1: NexusGroup::new("user_1", settings),
             run_log: NexusGroup::new("run_log", settings),
             selog: NexusGroup::new("selog", settings),

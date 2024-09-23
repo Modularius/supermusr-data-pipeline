@@ -66,7 +66,7 @@ impl Run {
             nexus_settings,
         );
 
-        let parameters = nx_root.push_message(&run_start, &file)?;
+        let parameters = nx_root.push_message(&run_start, &file).unwrap();
         Ok(Self {
             span: Default::default(),
             parameters,
@@ -112,7 +112,8 @@ impl Run {
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
         self.nx_root
-            .push_message_with_context(&message, &self.file, &mut self.parameters)?;
+            .push_message(message, &self.file)?;
+        self.parameters.num_frames += 1;
 
         self.parameters.update_last_modified();
         Ok(())

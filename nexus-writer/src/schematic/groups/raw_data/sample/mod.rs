@@ -9,7 +9,7 @@ use crate::{
     schematic::{
         elements::{
             dataset::{NexusDataset, NexusDatasetMut},
-            traits::{NexusBuildable, NexusGroupDef, NexusHandleMessage},
+            traits::{NexusBuildable, NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },
@@ -50,14 +50,14 @@ impl NexusGroupDef for Sample {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish_with_auto_default(),
-            chemical_formula: NexusDataset::begin("chemical_formula").finish_with_auto_default(),
-            description: NexusDataset::begin("description").finish_with_auto_default(),
-            sample_type: NexusDataset::begin("sample_type").finish_with_auto_default(),
-            situation: NexusDataset::begin("situation").finish_with_auto_default(),
-            shape: NexusDataset::begin("shape").finish_with_auto_default(),
-            preparation_date: NexusDataset::begin("preparation_date").finish_with_auto_default(),
-            sample_holder: NexusDataset::begin("sample_holder").finish_with_auto_default(),
+            name: NexusDataset::new_with_auto_default("name"),
+            chemical_formula: NexusDataset::new_with_auto_default("chemical_formula"),
+            description: NexusDataset::new_with_auto_default("description"),
+            sample_type: NexusDataset::new_with_auto_default("sample_type"),
+            situation: NexusDataset::new_with_auto_default("situation"),
+            shape: NexusDataset::new_with_auto_default("shape"),
+            preparation_date: NexusDataset::new_with_auto_default("preparation_date"),
+            sample_holder: NexusDataset::new_with_auto_default("sample_holder"),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
             sample_component: NexusDataset::begin().finish("sample_component"),

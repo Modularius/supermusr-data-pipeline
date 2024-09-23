@@ -1,4 +1,4 @@
-use hdf5::{types::TypeDescriptor, Group};
+use hdf5::Group;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::{
@@ -41,98 +41,7 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for RunLog {
         {
             log.push_message(message, location)?;
         } else {
-            let mut log = match message.value_type() {
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::Byte => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Integer(hdf5::types::IntSize::U1),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::Short => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Integer(hdf5::types::IntSize::U2),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::Int => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Integer(hdf5::types::IntSize::U4),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::Long => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Integer(hdf5::types::IntSize::U8),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::UByte => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Unsigned(hdf5::types::IntSize::U1),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::UShort => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Unsigned(hdf5::types::IntSize::U2),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::UInt => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Unsigned(hdf5::types::IntSize::U4),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::ULong => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Unsigned(hdf5::types::IntSize::U8),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::Float => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Float(hdf5::types::FloatSize::U4),
-                        ),
-                    )
-                }
-                supermusr_streaming_types::ecs_f144_logdata_generated::Value::Double => {
-                    NexusGroup::<Log>::new(
-                        message.source_name(),
-                        &(
-                            self.settings,
-                            TypeDescriptor::Float(hdf5::types::FloatSize::U8),
-                        ),
-                    )
-                }
-            };
+            let mut log = NexusGroup::<Log>::new(message.source_name(), &self.settings);
             log.push_message(message, location)?;
             self.logs.push(log);
         }

@@ -6,9 +6,9 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute,
+            attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetMut},
-            traits::{NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
+            traits::{NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
         },
         nexus_class, H5String,
     },
@@ -16,13 +16,13 @@ use crate::{
 
 #[derive(Clone)]
 struct NameAttributes {
-    role: NexusAttribute<H5String>,
+    role: NexusAttributeMut<H5String>,
 }
 
 impl NexusDatasetDef for NameAttributes {
     fn new() -> Self {
         Self {
-            role: NexusAttribute::begin("role").finish_with_auto_default(),
+            role: NexusAttribute::new_with_auto_default("role"),
         }
     }
 }
@@ -43,13 +43,13 @@ impl NexusGroupDef for User {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::begin("name").finish_with_auto_default(),
-            affiliation: NexusDataset::begin("affiliation").finish_with_auto_default(),
-            address: NexusDataset::begin("address").finish_with_auto_default(),
-            telephone_number: NexusDataset::begin("telephone_number").finish_with_auto_default(),
-            fax_number: NexusDataset::begin("fax_number").finish_with_auto_default(),
-            email: NexusDataset::begin("email").finish_with_auto_default(),
-            facility_user_id: NexusDataset::begin("facility_user_id").finish_with_auto_default(),
+            name: NexusDataset::new_with_auto_default("name"),
+            affiliation: NexusDataset::new_with_auto_default("affiliation"),
+            address: NexusDataset::new_with_auto_default("address"),
+            telephone_number: NexusDataset::new_with_auto_default("telephone_number"),
+            fax_number: NexusDataset::new_with_auto_default("fax_number"),
+            email: NexusDataset::new_with_auto_default("email"),
+            facility_user_id: NexusDataset::new_with_auto_default("facility_user_id"),
         }
     }
 }

@@ -4,7 +4,7 @@ use crate::error::NexusNumericError;
 
 /// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects
 /// i.e. `NexusDataMutable`, `NexusDataHolderConstant` and `NexusDataHolderResizable`
-pub(super) trait NexusClassDataHolder: Default + Clone {}
+pub(crate) trait NexusClassDataHolder: Default + Clone {}
 
 /// Class of NexusDataHolder which has a mutable scalar value with customizable default
 #[derive(Default, Clone)]
@@ -67,10 +67,10 @@ impl NexusClassNumericAppendableDataHolder {
         &mut self,
         init_type_desc: TypeDescriptor,
     ) -> Result<(), NexusNumericError> {
-        if let Some(type_desc) = self.type_desc {
-            if type_desc != init_type_desc {
+        if let Some(type_desc) = &self.type_desc {
+            if *type_desc != init_type_desc {
                 Err(NexusNumericError::TypeMismatch {
-                    required_type: type_desc,
+                    required_type: type_desc.clone(),
                     input_type: init_type_desc,
                 })?;
             }

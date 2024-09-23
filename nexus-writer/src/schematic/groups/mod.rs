@@ -9,9 +9,9 @@ use crate::{
 
 use super::{
     elements::{
-        attribute::NexusAttributeFixed,
+        attribute::{NexusAttributeFixed, NexusAttributeMut},
         traits::{
-            NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage
         },
     },
     nexus_class, H5String,
@@ -21,8 +21,8 @@ pub(super) mod log;
 pub(crate) mod raw_data;
 
 struct RawData1Attributes {
-    file_name: NexusAttribute<H5String>,
-    file_time: NexusAttribute<H5String>,
+    file_name: NexusAttributeMut<H5String>,
+    file_time: NexusAttributeMut<H5String>,
     initial_file_format: NexusAttributeFixed<H5String>,
     nexus_version: NexusAttributeFixed<H5String>,
     hdf_version: NexusAttributeFixed<H5String>,
@@ -34,20 +34,14 @@ struct RawData1Attributes {
 impl NexusDatasetDef for RawData1Attributes {
     fn new() -> Self {
         Self {
-            file_name: NexusAttribute::begin("file_name").finish_with_auto_default(),
-            file_time: NexusAttribute::begin("file_time").finish_with_auto_default(),
-            initial_file_format: NexusAttribute::begin("initial_file_format")
-                .finish_with_fixed_value("TODO".parse().expect("")),
-            nexus_version: NexusAttribute::begin("nexus_version")
-                .finish_with_fixed_value("TODO".parse().expect("")),
-            hdf_version: NexusAttribute::begin("hdf_version")
-                .finish_with_fixed_value("TODO".parse().expect("")),
-            hdf5_version: NexusAttribute::begin("hdf5_version")
-                .finish_with_fixed_value("TODO".parse().expect("")),
-            xml_version: NexusAttribute::begin("xml_version")
-                .finish_with_fixed_value("TODO".parse().expect("")),
-            creator: NexusAttribute::begin("creator")
-                .finish_with_fixed_value("TODO".parse().expect("")),
+            file_name: NexusAttribute::new_with_auto_default("file_name"),
+            file_time: NexusAttribute::new_with_auto_default("file_time"),
+            initial_file_format: NexusAttribute::new_with_fixed_value("initial_file_format", "TODO".parse().expect("")),
+            nexus_version: NexusAttribute::new_with_fixed_value("nexus_version", "TODO".parse().expect("")),
+            hdf_version: NexusAttribute::new_with_fixed_value("hdf_version", "TODO".parse().expect("")),
+            hdf5_version: NexusAttribute::new_with_fixed_value("hdf5_version", "TODO".parse().expect("")),
+            xml_version: NexusAttribute::new_with_fixed_value("xml_version", "TODO".parse().expect("")),
+            creator: NexusAttribute::new_with_fixed_value("creator", "TODO".parse().expect("")),
         }
     }
 }
