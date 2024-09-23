@@ -6,8 +6,9 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetMut}, NexusBuildable, NexusDatasetDef,
-            NexusGroupDef, NexusHandleMessage,
+            attribute::NexusAttribute,
+            dataset::{NexusDataset, NexusDatasetMut},
+            NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
         },
         nexus_class, H5String,
     },

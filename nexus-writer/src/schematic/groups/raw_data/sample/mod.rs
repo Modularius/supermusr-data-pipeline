@@ -8,8 +8,8 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            dataset::{NexusDataset, NexusDatasetMut}, NexusBuildable, NexusGroupDef, NexusHandleMessage,
-            NexusPushMessage,
+            dataset::{NexusDataset, NexusDatasetMut},
+            NexusBuildable, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
         },
         nexus_class, H5String,
     },

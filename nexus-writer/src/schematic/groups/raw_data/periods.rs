@@ -6,8 +6,10 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{
-            attribute::NexusAttribute, dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable,
-            NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            attribute::NexusAttribute,
+            dataset::{NexusDataset, NexusDatasetMut},
+            group::NexusGroup,
+            NexusBuildable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
         },
         groups::log::Log,
         nexus_class, H5String,
@@ -66,7 +68,7 @@ impl NexusGroupDef for Periods {
             raw_frames: NexusDataset::begin("raw_frames").finish_with_auto_default(),
             good_frames: NexusDataset::begin("good_frames").finish_with_auto_default(),
             sequences: NexusDataset::begin("sequences").finish_with_auto_default(),
-            counts: NexusGroup::new("counts", &(settings.clone(),TypeDescriptor::Unsigned(hdf5::types::IntSize::U4))),
+            counts: NexusGroup::new("counts", settings),
         }
     }
 }

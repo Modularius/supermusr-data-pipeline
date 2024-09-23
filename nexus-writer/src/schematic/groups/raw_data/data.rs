@@ -99,8 +99,7 @@ impl NexusGroupDef for Data {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            event_id: NexusDataset::begin("event_id")
-            .finish_with_resizable(
+            event_id: NexusDataset::begin("event_id").finish_with_resizable(
                 0,
                 0,
                 settings.eventlist_chunk_size,

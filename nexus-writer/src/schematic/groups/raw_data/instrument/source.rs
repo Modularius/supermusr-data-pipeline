@@ -1,7 +1,11 @@
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable, NexusGroupDef},
+        elements::{
+            dataset::{NexusDataset, NexusDatasetMut},
+            group::NexusGroup,
+            NexusBuildable, NexusGroupDef,
+        },
         groups::log::Log,
         nexus_class, H5String,
     },

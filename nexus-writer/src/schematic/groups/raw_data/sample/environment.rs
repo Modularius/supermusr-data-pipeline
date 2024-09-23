@@ -3,7 +3,11 @@ use hdf5::types::TypeDescriptor;
 use crate::{
     nexus::NexusSettings,
     schematic::{
-        elements::{dataset::{NexusDataset, NexusDatasetMut}, group::NexusGroup, NexusBuildable, NexusGroupDef},
+        elements::{
+            dataset::{NexusDataset, NexusDatasetMut},
+            group::NexusGroup,
+            NexusBuildable, NexusGroupDef,
+        },
         groups::log::Log,
         nexus_class, H5String,
     },
@@ -29,7 +33,10 @@ impl NexusGroupDef for Environment {
             env_type: NexusDataset::begin("env_type").finish_with_auto_default(),
             description: NexusDataset::begin("description").finish_with_auto_default(),
             program: NexusDataset::begin("program").finish_with_auto_default(),
-            hardware_log: NexusGroup::new("hardware_log", &(settings.clone(),TypeDescriptor::VarLenUnicode)),
+            hardware_log: NexusGroup::new(
+                "hardware_log",
+                &(settings.clone(), TypeDescriptor::VarLenUnicode),
+            ),
         }
     }
 }

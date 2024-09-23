@@ -1,5 +1,8 @@
 use chrono::{Duration, TimeDelta};
-use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
+use hdf5::types::TypeDescriptor;
+use supermusr_streaming_types::{
+    ecs_f144_logdata_generated::Value, ecs_se00_data_generated::ValueUnion, time_conversions::GpsTimeConversionError
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -62,8 +65,10 @@ pub(crate) enum NexusPushError {
     Group(#[from] NexusGroupError),
     #[error("Group Error: {0}")]
     Dataset(#[from] NexusDatasetError),
-    #[error("Group Error: {0}")]
+    #[error("Attribute Error: {0}")]
     Attribute(#[from] NexusAttributeError),
+    #[error("Log Value Error: {0}")]
+    LogValue(#[from] NexusLogValueError),
     #[error("HDF5 Error {0}")]
     HDF5(#[from] hdf5::Error),
     #[error("HDF5 String Error: {0}")]
@@ -86,6 +91,20 @@ pub(crate) enum NexusDatasetError {
     HDF5(#[from] hdf5::Error),
     #[error("HDF5 String Error: {0}")]
     HDF5String(#[from] hdf5::types::StringError),
+}
+
+#[derive(Debug, Error)]
+pub(crate) enum NexusLogValueError {
+    #[error("HDF5 Error {0}")]
+    HDF5(#[from] hdf5::Error),
+    #[error("HDF5 String Error: {0}")]
+    HDF5String(#[from] hdf5::types::StringError),
+    #[error("Invalid Run Log Type of Value: {0:?}", value.variant_name())]
+    InvalidRunLogType { value: Value },
+    #[error("Invalid Selog Type of Value: {0:?}", value.variant_name())]
+    InvalidSelogType { value: ValueUnion },
+    #[error("Type Mismatch required: {0}, input: {1} ", required_type, input_type)]
+    TypeMismatch { required_type: TypeDescriptor, input_type: TypeDescriptor }
 }
 
 #[derive(Debug, Error)]

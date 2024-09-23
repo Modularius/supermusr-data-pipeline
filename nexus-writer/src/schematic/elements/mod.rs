@@ -1,5 +1,6 @@
 use builder::{NexusBuilder, NexusLogValueResizable};
-use hdf5::{types::StringError, Dataset, Group, H5Type};
+use hdf5::{types::{StringError, TypeDescriptor}, Dataset, Group, H5Type};
+use log_value::VectorOfScalars;
 use thiserror::Error;
 
 use crate::error::{NexusDatasetError, NexusPushError};
@@ -8,7 +9,7 @@ pub(crate) mod attribute;
 pub(crate) mod builder;
 pub(crate) mod dataset;
 pub(crate) mod group;
-//pub(crate) mod logvalue;
+pub(crate) mod log_value;
 
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {
@@ -38,7 +39,7 @@ pub(super) trait NexusBuildable: Sized {
 
 /// Implemented for builders which require input
 /// i.e. NexusBuilder with FINISHED = false
-pub(super) trait NexusBuilderBegun {
+pub(super) trait NexusBuilderBegun: Sized {
     type FinshedBuilder: NexusBuilderFinished;
 
     fn new(name: &str) -> Self;
@@ -88,18 +89,35 @@ pub(super) trait NexusDataHolderScalarMutable: NexusTypedDataHolder {
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(super) trait NexusDataHolderAppendable: NexusTypedDataHolder {
+pub(super) trait NexusDataHolderSizable: NexusDataHolder {
+    fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, Self::ThisError>;
+}
+
+/// Implemented for `NexusDataHolder` objects have extendable vector data
+/// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
+pub(super) trait NexusDataHolderAppendable:
+    NexusTypedDataHolder + NexusDataHolderSizable
+{
     fn append(
         &self,
         parent: &Self::HDF5Container,
         values: &[Self::DataType],
     ) -> Result<(), Self::ThisError>;
-    fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, Self::ThisError>;
+}
+
+/// Implemented for `NexusDataHolder` objects have extendable vector data
+/// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
+pub(super) trait NexusLogValueDataHolderAppendable: NexusDataHolderSizable {
+    fn append(
+        &self,
+        parent: &Self::HDF5Container,
+        values: &VectorOfScalars,
+    ) -> Result<(), Self::ThisError>;
 }
 
 /// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects
 /// i.e. `NexusDataMutable`, `NexusDataHolderConstant` and `NexusDataHolderResizable`
-pub(super) trait NexusDataHolderClass: Default + Clone {}
+pub(super) trait NexusClassDataHolder: Default + Clone {}
 
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure
 pub(crate) trait NexusGroupDef: Sized {
@@ -120,6 +138,11 @@ impl NexusDatasetDef for () {
     fn new() -> Self {
         ()
     }
+}
+
+/// Implemented for structs in the `groups` folder which define the HDF5 dataset structure
+pub(super) trait NexusDatasetDefWithTypeDesciptor: NexusDatasetDef {
+    fn type_descriptor() -> Option<TypeDescriptor>;
 }
 
 /// Implemented for NexusGroup and NexusDataset instances which react immutably to `flatbuffer` messages M

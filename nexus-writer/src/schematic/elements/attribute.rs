@@ -5,12 +5,12 @@ use hdf5::{Attribute, Dataset, H5Type};
 use crate::error::NexusAttributeError;
 
 use super::{
-    builder::{NexusBuilder, NexusDataHolderConstant, NexusDataHolderMutable},
-    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusDataHolderClass,
+    builder::{NexusBuilder, NexusClassFixedDataHolder, NexusClassMutableDataHolder},
+    NexusBuildable, NexusBuilderBegun, NexusBuilderFinished, NexusDataHolder, NexusClassDataHolder,
     NexusDataHolderScalarMutable, NexusTypedDataHolder,
 };
 
-impl<T: H5Type + Clone + Default, C: NexusDataHolderClass> NexusBuilderFinished
+impl<T: H5Type + Clone + Default, C: NexusClassDataHolder> NexusBuilderFinished
     for NexusBuilder<C, NexusAttribute<T, C>, true>
 where
     NexusAttribute<T, C>: NexusDataHolder,
@@ -30,7 +30,7 @@ where
 #[derive(Clone)]
 pub(in crate::schematic) struct NexusAttribute<
     T: H5Type + Clone + Default,
-    C: NexusDataHolderClass = NexusDataHolderMutable<T>,
+    C: NexusClassDataHolder = NexusClassMutableDataHolder<T>,
 > {
     name: String,
     class: C,
@@ -39,12 +39,12 @@ pub(in crate::schematic) struct NexusAttribute<
 }
 
 pub(in crate::schematic) type NexusAttributeFixed<T> =
-    NexusAttribute<T, NexusDataHolderConstant<T>>;
+    NexusAttribute<T, NexusClassFixedDataHolder<T>>;
 
 impl<T, C> NexusBuildable for NexusAttribute<T, C>
 where
     T: H5Type + Clone + Default,
-    C: NexusDataHolderClass,
+    C: NexusClassDataHolder,
     NexusAttribute<T, C>: NexusDataHolder,
 {
     type Builder = NexusBuilder<C, NexusAttribute<T, C>, false>;
@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderMutable<T>>
+impl<T> NexusDataHolder for NexusAttribute<T, NexusClassMutableDataHolder<T>>
 where
     T: H5Type + Clone + Default,
 {
@@ -88,14 +88,14 @@ where
     }
 }
 
-impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusDataHolderMutable<T>>
+impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusClassMutableDataHolder<T>>
 where
     T: H5Type + Clone + Default,
 {
     type DataType = T;
 }
 
-impl<T> NexusDataHolder for NexusAttribute<T, NexusDataHolderConstant<T>>
+impl<T> NexusDataHolder for NexusAttribute<T, NexusClassFixedDataHolder<T>>
 where
     T: H5Type + Clone + Default,
 {
@@ -125,17 +125,17 @@ where
     }
 }
 
-impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusDataHolderConstant<T>>
+impl<T> NexusTypedDataHolder for NexusAttribute<T, NexusClassFixedDataHolder<T>>
 where
     T: H5Type + Clone + Default,
 {
     type DataType = T;
 }
 
-impl<T> NexusDataHolderScalarMutable for NexusAttribute<T, NexusDataHolderMutable<T>>
+impl<T> NexusDataHolderScalarMutable for NexusAttribute<T, NexusClassMutableDataHolder<T>>
 where
     T: H5Type + Clone + Default,
-    NexusDataHolderMutable<T>: NexusDataHolderClass,
+    NexusClassMutableDataHolder<T>: NexusClassDataHolder,
 {
     fn write_scalar(
         &self,

@@ -1,4 +1,4 @@
-use hdf5::Group;
+use hdf5::{types::TypeDescriptor, Group};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -8,7 +8,7 @@ use crate::{
     nexus::NexusSettings,
     schematic::{
         elements::{group::NexusGroup, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
-        groups::log::ValueLog,
+        groups::log::{LogSettings, ValueLog},
         nexus_class,
     },
 };
@@ -69,7 +69,7 @@ impl<'a> NexusHandleMessage<Alarm<'a>> for Selog {
             selog.push_message(message, parent)?;
         } else {
             let mut selog_block =
-                NexusGroup::<SelogBlock>::new(message.source_name().expect(""), &self.settings);
+                NexusGroup::<SelogBlock>::new(message.source_name().expect(""), &LogSettings::new(self.settings,message.));
             //let group = selog_block.create_hdf5(parent)?;
             selog_block.push_message(message, parent)?;
             self.selogs.push(selog_block);
@@ -84,9 +84,9 @@ pub(super) struct SelogBlock {
 
 impl NexusGroupDef for SelogBlock {
     const CLASS_NAME: &'static str = nexus_class::SELOG_BLOCK;
-    type Settings = NexusSettings;
+    type Settings = LogSettings<TypeDescriptor>;
 
-    fn new(settings: &NexusSettings) -> Self {
+    fn new(settings: &Self::Settings) -> Self {
         Self {
             value_log: NexusGroup::new("value_log", settings),
         }
