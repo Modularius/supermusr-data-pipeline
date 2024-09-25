@@ -259,7 +259,7 @@ mod test {
 
         assert_eq!(nexus.run_cache.len(), 1);
         assert_eq!(
-            nexus.run_cache.front().unwrap().parameters().collect_from,
+            nexus.run_cache.front().unwrap().parameters().collect_until.unwrap(),
             DateTime::<Utc>::from_timestamp_millis(16).unwrap()
         );
         assert!(nexus

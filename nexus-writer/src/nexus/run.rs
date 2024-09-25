@@ -65,10 +65,10 @@ impl Run {
             nexus_settings,
         );
 
-        let parameters = nx_root.push_message(&run_start, &file).unwrap();
+        let run_started = nx_root.push_message(&run_start, &file).unwrap();
         Ok(Self {
             span: Default::default(),
-            parameters,
+            parameters: RunParameters::new(run_started),
             file,
             nx_root,
         })
@@ -112,15 +112,13 @@ impl Run {
     ) -> anyhow::Result<()> {
         self.nx_root
             .push_message(message, &self.file)?;
-        self.parameters.num_frames += 1;
-
-        self.parameters.update_last_modified();
+        self.parameters.new_frame();
         Ok(())
     }
 
     #[cfg(test)]
     pub(crate) fn get_name(&self) -> &str {
-        &self.parameters.run_name
+        &self.parameters.started.run_name
     }
 
     pub(crate) fn has_run_stop(&self) -> bool {
@@ -128,23 +126,8 @@ impl Run {
     }
 
     pub(crate) fn set_stop_if_valid(&mut self, run_stop: RunStop<'_>) -> anyhow::Result<()> {
-        self.parameters.set_stop_if_valid(run_stop)?;
-
-        self.nx_root.push_message(&run_stop, &self.file)?;
-
-        /*if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-
-            hdf5.set_end_time(
-                &self
-                    .parameters
-                    .run_stop_parameters
-                    .as_ref()
-                    .expect("RunStopParameters exists") // This never panics
-                    .collect_until,
-            )?;
-            hdf5.close()?;
-        }*/
+        let bounded = self.nx_root.push_message(&run_stop, &self.file)?;
+        self.parameters.bound(bounded)?;
         Ok(())
     }
 
@@ -175,7 +158,7 @@ impl SpannedAggregator for Run {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
         let span = info_span!(target: "otel", parent: None,
             "Run",
-            "run_name" = self.parameters.run_name.as_str(),
+            "run_name" = self.parameters.started.run_name.as_str(),
             "run_has_run_stop" = tracing::field::Empty
         );
         self.span_mut().init(span)

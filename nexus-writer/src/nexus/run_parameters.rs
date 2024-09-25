@@ -12,6 +12,96 @@ pub(crate) struct RunStopParameters {
 }*/
 
 #[derive(Debug)]
+pub(crate) struct RunStarted {
+    pub(crate) collect_from: DateTime<Utc>,
+    pub(crate) run_name: String,
+}
+
+impl RunStarted {
+    pub(crate) fn new<'a>(message: &RunStart<'a>) -> Result<Self,RunStartError> {
+        let collect_from = DateTime::<Utc>::from_timestamp_millis(message.start_time()
+                .try_into()
+                .map_err(NexusConversionError::TryFromInt)?
+            ).ok_or(RunStartError::CollectFrom)?;
+        let run_name = message.run_name()
+            .ok_or(NexusMissingRunStartError::RunName)
+            .map_err(NexusMissingError::RunStart)?
+            .to_owned();
+        Ok(Self { collect_from, run_name })
+    }
+}
+
+pub(crate) trait RunBounded : Sized {
+    fn new<'a>(message: &RunStop<'a>) -> Result<Self,RunStopError>;
+}
+
+impl RunBounded for DateTime<Utc> {
+    fn new<'a>(message: &RunStop<'a>) -> Result<Self,RunStopError> {
+        DateTime::<Utc>::from_timestamp_millis(
+            message.stop_time()
+                .try_into()
+                .map_err(NexusConversionError::TryFromInt)?
+        ).ok_or(RunStopError::CollectUntil)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct RunParameters {
+    pub(crate) started : RunStarted,
+    pub(crate) collect_until : Option<DateTime<Utc>>,
+    pub(crate) last_modified: DateTime<Utc>,
+    pub(crate) num_frames: usize,   // Do we actually need this?
+}
+
+impl RunParameters {
+    pub(super) fn new(started: RunStarted) -> Self {
+        Self { started, collect_until: None, last_modified: Utc::now(), num_frames: 0 }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn bound(&mut self, collect_until : DateTime<Utc>) -> Result<(), RunStopError> {
+        if self.collect_until.is_some() {
+            Err(RunStopError::UnexpectedRunStop)
+        } else {
+            if self.started.collect_from < collect_until {
+                self.collect_until = Some(collect_until);
+                self.update_last_modified();
+                Ok(())
+            } else {
+                Err(RunStopError::RunStopBeforeRunStart)
+            }
+        }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub(crate) fn new_frame(&mut self) {
+        self.num_frames += 1;
+        self.update_last_modified();
+    }
+    
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub(crate) fn update_last_modified(&mut self) {
+        self.last_modified = Utc::now();
+    }
+
+    /// Returns true if timestamp is strictly after collect_from and,
+    /// if run_stop_parameters exist then, if timestamp is strictly
+    /// before params.collect_until.
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
+        if self.started.collect_from < *timestamp {
+            self.collect_until
+                .as_ref()
+                .map(|collect_until| timestamp < collect_until)
+                .unwrap_or(true)
+        } else {
+            false
+        }
+    }
+}
+
+/*
+#[derive(Debug)]
 pub(crate) struct RunParameters {
     pub(crate) collect_from: DateTime<Utc>,
     pub(crate) collect_until: Option<DateTime<Utc>>,
@@ -23,13 +113,12 @@ pub(crate) struct RunParameters {
     //pub(crate) run_number: u32,
     //pub(crate) instrument_name: String,
 }
-
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new(data: &RunStart<'_>) -> Result<Self, RunStartError> {
         let collect_from = DateTime::<Utc>::from_timestamp_millis(data.start_time()
             .try_into()
-            .map_err(NexusConversionError::from)?
+            .map_err(NexusConversionError::TryFromInt)?
         ).ok_or(RunStartError::CollectFrom)?;
 
         Ok(Self {
@@ -87,6 +176,7 @@ impl RunParameters {
     }
 }
 
+*/
 /*
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]

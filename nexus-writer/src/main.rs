@@ -330,7 +330,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
                 if let Err(e) = run.link_current_span(|| {
                     info_span!(target: "otel",
                     "Run Start Command",
-                    "Start" = run.parameters().collect_from.to_string())
+                    "Start" = run.parameters().started.collect_from.to_string())
                 }) {
                     warn!("Run span linking failed {e}")
                 }

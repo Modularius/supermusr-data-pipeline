@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use data::Data;
 use hdf5::Group;
 use instrument::Instrument;
@@ -14,8 +15,8 @@ use supermusr_streaming_types::{
 use user::User;
 
 use crate::{
-    error::NexusPushError,
-    nexus::{NexusSettings, RunParameters},
+    error::{NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError, RunStartError, RunStopError},
+    nexus::{NexusSettings, RunBounded, RunStarted},
     schematic::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeFixed},
@@ -149,12 +150,12 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for RawData {
 
 /* Here we handle the start/stop messages */
 
-impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
+impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
     fn handle_message(
         &mut self,
         message: &RunStart<'a>,
         parent: &Group,
-    ) -> Result<RunParameters, NexusPushError> {
+    ) -> Result<RunStarted, NexusPushError> {
         self.user_1.push_message(message, parent)?;
         self.periods.push_message(message, parent)?;
         self.sample.push_message(message, parent)?;
@@ -180,18 +181,17 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
 
         self.detector_1.push_message(message, parent)?;
 
-        Ok(RunParameters::new(message)?)
+        Ok(RunStarted::new(message)?)
     }
 }
 
-impl<'a> NexusHandleMessage<RunStop<'a>> for RawData {
+impl<'a> NexusHandleMessage<RunStop<'a>,Group, DateTime<Utc>> for RawData {
     fn handle_message(
         &mut self,
-        _message: &RunStop<'a>,
+        message: &RunStop<'a>,
         _location: &Group,
-    ) -> Result<(), NexusPushError> {
-        //self.raw_data_1.push_message(message)
-        Ok(())
+    ) -> Result<DateTime<Utc>, NexusPushError> {
+        Ok(DateTime::<Utc>::new(message)?)
     }
 }
 
