@@ -7,14 +7,13 @@ use supermusr_streaming_types::{
 
 use crate::{
     error::{
-        NexusMissingAlarmError, NexusMissingError, NexusMissingRunlogError, NexusMissingSelogError,
-        NexusNumericError, NexusPushError,
+        HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError, NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError
     },
     nexus::{nexus_class, NexusSettings},
     schematic::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeMut},
-            dataset::{NexusDatasetResize, NexusLogValueDatasetResize},
+            dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
             log_value::NumericVector,
             traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder},
             NexusUnits,
@@ -49,7 +48,7 @@ impl NexusGroupDef for Log {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            time: NexusDatasetResize::new("time", 
+            time: NexusDatasetResize::new_appendable_with_default("time", 
                 settings.runloglist_chunk_size,
             ),
             value: NexusLogValueDatasetResize::new("value", settings.runloglist_chunk_size)
@@ -59,6 +58,13 @@ impl NexusGroupDef for Log {
 
 fn get_value<T>(val: Option<T>) -> Result<T, NexusMissingError> {
     val.ok_or(NexusMissingRunlogError::Message)
+        .map_err(NexusMissingError::Runlog)
+}
+
+fn get_vec<'a, T : supermusr_streaming_types::flatbuffers::Follow<'a>>(val: Option<supermusr_streaming_types::flatbuffers::Vector<'a, T>>) -> Result<Vec<T>, NexusMissingError>
+where Vec<T>: FromIterator<<T as supermusr_streaming_types::flatbuffers::Follow<'a>>::Inner> {
+    val.map(|vec|vec.iter().collect())
+        .ok_or(NexusMissingRunlogError::Message)
         .map_err(NexusMissingError::Runlog)
 }
 
@@ -77,7 +83,18 @@ impl<'a> TryFrom<&f144_LogData<'a>> for NumericVector {
             Value::ULong => Self::U8(vec![get_value(value.value_as_ulong())?.value()]),
             Value::Float => Self::F4(vec![get_value(value.value_as_float())?.value()]),
             Value::Double => Self::F8(vec![get_value(value.value_as_double())?.value()]),
-            value => Err(NexusNumericError::InvalidRunLogType { value })?,
+            Value::ArrayByte => Self::I1(get_vec(get_value(value.value_as_array_byte())?.value())?),
+            Value::ArrayShort => Self::I2(get_vec(get_value(value.value_as_array_short())?.value())?),
+            Value::ArrayInt => Self::I4(get_vec(get_value(value.value_as_array_int())?.value())?),
+            Value::ArrayLong => Self::I8(get_vec(get_value(value.value_as_array_long())?.value())?),
+            Value::ArrayUByte => Self::U1(get_vec(get_value(value.value_as_array_ubyte())?.value())?),
+            Value::ArrayUShort => Self::U2(get_vec(get_value(value.value_as_array_ushort())?.value())?),
+            Value::ArrayUInt => Self::U4(get_vec(get_value(value.value_as_array_uint())?.value())?),
+            Value::ArrayULong => Self::U8(get_vec(get_value(value.value_as_array_ulong())?.value())?),
+            Value::ArrayFloat => Self::F4(get_vec(get_value(value.value_as_array_float())?.value())?),
+            Value::ArrayDouble => Self::F8(get_vec(get_value(value.value_as_array_double())?.value())?),
+            value => Err(NexusNumericError::InvalidRunLogType { value })
+                .map_err(NexusDatasetError::Numeric)?,
         })
     }
 }
@@ -111,16 +128,16 @@ impl NexusGroupDef for ValueLog {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            alarm_severity: NexusDatasetResize::new("alarm_severity",
+            alarm_severity: NexusDataset::new_appendable_with_default("alarm_severity",
                 settings.seloglist_chunk_size,
             ),
-            alarm_status: NexusDatasetResize::new("alarm_status",
+            alarm_status: NexusDataset::new_appendable_with_default("alarm_status",
                 settings.seloglist_chunk_size,
             ),
-            alarm_time: NexusDatasetResize::new("alarm_time",
+            alarm_time: NexusDataset::new_appendable_with_default("alarm_time",
                 settings.seloglist_chunk_size,
             ),
-            time: NexusDatasetResize::new("time", 
+            time: NexusDataset::new_appendable_with_default("time", 
                 settings.seloglist_chunk_size,
             ),
             value: NexusLogValueDatasetResize::new("value", settings.seloglist_chunk_size),
@@ -132,7 +149,7 @@ impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for NumericVector {
     type Error = NexusPushError;
 
     fn try_from(value: &se00_SampleEnvironmentData<'a>) -> Result<Self, NexusPushError> {
-        Ok(match value.values_type() {
+        let values = match value.values_type() {
             ValueUnion::Int8Array => Self::I1(
                 get_value(value.values_as_int_8_array())?
                     .value()
@@ -193,8 +210,10 @@ impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for NumericVector {
                     .iter()
                     .collect(),
             ),
-            value => Err(NexusNumericError::InvalidSelogType { value })?,
-        })
+            value => Err(NexusNumericError::InvalidSelogType { value })
+                .map_err(NexusDatasetError::Numeric)?,
+        };
+        Ok(values)
     }
 }
 
@@ -233,7 +252,8 @@ impl<'a> NexusHandleMessage<Alarm<'a>> for ValueLog {
                 .variant_name()
                 .ok_or(NexusMissingAlarmError::Severity)
                 .map_err(NexusMissingError::Alarm)?
-                .parse()?],
+                .parse()
+                .map_err(HDF5Error::HDF5String)?],
         )?;
         self.alarm_status.append(
             parent,

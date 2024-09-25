@@ -21,7 +21,7 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeFixed},
             dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+            traits::{NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
             NexusUnits,
         },
         nexus_class, H5String,
@@ -161,13 +161,13 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
         self.instrument.push_message(message, parent)?;
 
         self.program_name
-            .write_scalar(parent, "The Program".parse()?)?;
+            .write_string(parent, "The Program")?;
         self.run_number.write_scalar(parent, 0)?;
-        self.title.write_scalar(parent, "The Title".parse()?)?;
+        self.title.write_string(parent, "The Title")?;
         self.notes
-            .write_scalar(parent, message.metadata().unwrap_or_default().parse()?)?;
-        self.start_time.write_scalar(parent, "Now".parse()?)?;
-        self.end_time.write_scalar(parent, "Then".parse()?)?;
+            .write_string(parent, message.metadata().unwrap_or_default())?;
+        self.start_time.write_string(parent, "Now")?;
+        self.end_time.write_string(parent, "Then")?;
         self.duration.write_scalar(parent, 1)?;
         self.collection_time.write_scalar(parent, 1000.0)?;
         self.total_counts.write_scalar(parent, 1)?;
@@ -175,12 +175,12 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunParameters> for RawData {
         self.raw_frames.write_scalar(parent, 1)?;
         self.proton_charge.write_scalar(parent, 1.0)?;
         self.experiment_identifier
-            .write_scalar(parent, "POAS35".parse()?)?;
-        self.run_cycle.write_scalar(parent, "This".parse()?)?;
+            .write_string(parent, "POAS35")?;
+        self.run_cycle.write_string(parent, "This")?;
 
         self.detector_1.push_message(message, parent)?;
 
-        RunParameters::new(message)
+        Ok(RunParameters::new(message)?)
     }
 }
 

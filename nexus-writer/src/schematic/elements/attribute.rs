@@ -1,13 +1,13 @@
-use hdf5::{Attribute, Dataset, H5Type};
+use hdf5::{types::StringError, Attribute, Dataset, H5Type};
 
-use crate::error::NexusAttributeError;
+use crate::{error::{HDF5Error, NexusAttributeError}, schematic::H5String};
 
 use super::{
     dataholder_class::{
         NexusClassDataHolder, NexusClassFixedDataHolder, NexusClassMutableDataHolder
     },
     traits::{
-        NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder
+        NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder
     },
 };
 
@@ -62,8 +62,8 @@ where
             Ok(attribute.clone())
         } else {
             parent.attr(&self.name).or_else(|_| {
-                let attribute = parent.new_attr::<T>().create(self.name.as_str())?;
-                attribute.write_scalar(&self.class.default_value)?;
+                let attribute = parent.new_attr::<T>().create(self.name.as_str()).map_err(HDF5Error::HDF5)?;
+                attribute.write_scalar(&self.class.default_value).map_err(HDF5Error::HDF5)?;
                 Ok::<_, NexusAttributeError>(attribute)
             })
         }
@@ -79,21 +79,12 @@ impl<T> NexusDataHolderWithStaticType for NexusAttribute<NexusClassMutableDataHo
 impl<T> NexusDataHolderScalarMutable for NexusAttribute<NexusClassMutableDataHolder<T>>
 where
     T: H5Type + Clone + Default,
-    NexusClassMutableDataHolder<T>: NexusClassDataHolder,
-    Self: NexusDataHolderWithStaticType<DataType = T, HDF5Type = Attribute, ThisError = NexusAttributeError>
+    NexusClassMutableDataHolder<T>: NexusClassDataHolder
 {
-    fn new_with_default(name: &str, default_value: Self::DataType) -> Self {
+    fn new_with_initial(name: &str, default_value: Self::DataType) -> Self {
         Self {
             name: name.to_string(),
             class: NexusClassMutableDataHolder { default_value },
-            attribute: None,
-        }
-    }
-    
-    fn new_with_auto_default(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            class: NexusClassMutableDataHolder { ..Default::default() },
             attribute: None,
         }
     }
@@ -102,21 +93,24 @@ where
         &self,
         parent: &Self::HDF5Container,
         value: Self::DataType,
-    ) -> Result<(), NexusAttributeError> {
+    ) -> Result<(), Self::ThisError> {
         let attribute = self.create_hdf5_instance(parent)?;
-        Ok(attribute.write_scalar(&value)?)
+        Ok(attribute.write_scalar(&value).map_err(HDF5Error::HDF5)?)
     }
 
     fn read_scalar(
         &self,
         parent: &Self::HDF5Container,
-    ) -> Result<Self::DataType, NexusAttributeError> {
+    ) -> Result<Self::DataType, Self::ThisError> {
         let attribute = self.create_hdf5_instance(parent)?;
-        Ok(attribute.read_scalar()?)
+        Ok(attribute.read_scalar().map_err(HDF5Error::HDF5)?)
     }
 }
 
-
+impl NexusDataHolderStringMutable for NexusAttribute<NexusClassMutableDataHolder<H5String>>
+where
+    Self::ThisError : From<HDF5Error>
+{}
 
 /*
     NexusClassFixedDataHolder
@@ -129,28 +123,12 @@ where
     fn create_hdf5_instance(
         &self,
         parent: &Self::HDF5Container,
-    ) -> Result<Self::HDF5Type, NexusAttributeError> {
+    ) -> Result<Self::HDF5Type, Self::ThisError> {
         parent.attr(&self.name).or_else(|_| {
-            let attribute = parent.new_attr::<T>().create(self.name.as_str())?;
-            attribute.write_scalar(&self.class.fixed_value)?;
-            Ok::<_, NexusAttributeError>(attribute)
+            let attribute = parent.new_attr::<T>().create(self.name.as_str()).map_err(HDF5Error::HDF5)?;
+            attribute.write_scalar(&self.class.fixed_value).map_err(HDF5Error::HDF5)?;
+            Ok::<_, Self::ThisError>(attribute)
         })
-    }
-}
-
-
-impl<T> NexusDataHolderFixed for NexusAttribute<NexusClassFixedDataHolder<T>>
-where
-    T: H5Type + Clone + Default,
-    NexusClassFixedDataHolder<T>: NexusClassDataHolder,
-    Self: NexusDataHolderWithStaticType<DataType = T, HDF5Type = Attribute, ThisError = NexusAttributeError>
-{
-    fn new_with_fixed_value(name: &str, fixed_value : Self::DataType) -> Self {
-        Self {
-            name: name.to_string(),
-            class: NexusClassFixedDataHolder { fixed_value },
-            attribute: None,
-        }
     }
 }
 
@@ -159,4 +137,18 @@ impl<T> NexusDataHolderWithStaticType for NexusAttribute<NexusClassFixedDataHold
     where T: H5Type + Clone + Default
 {
     type DataType = T;
+}
+
+impl<T> NexusDataHolderFixed for NexusAttribute<NexusClassFixedDataHolder<T>>
+where
+    T: H5Type + Clone + Default,
+    NexusClassFixedDataHolder<T>: NexusClassDataHolder,
+{
+    fn new_with_fixed_value(name: &str, fixed_value : Self::DataType) -> Self {
+        Self {
+            name: name.to_string(),
+            class: NexusClassFixedDataHolder { fixed_value },
+            attribute: None,
+        }
+    }
 }

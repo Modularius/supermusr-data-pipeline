@@ -1,9 +1,8 @@
 use crate::{
-    error::NexusError,
-    schematic::{
+    error::{HDF5Error, NexusPushError, RunError}, schematic::{
         elements::{group::NexusGroup, traits::NexusPushMessage},
         groups::NXRoot,
-    },
+    }
 };
 
 use super::{NexusSettings, RunParameters};
@@ -32,7 +31,7 @@ impl Run {
         filename: Option<&Path>,
         run_start: RunStart<'_>,
         nexus_settings: &NexusSettings,
-    ) -> Result<Self, NexusError> {
+    ) -> Result<Self, RunError> {
         let filename = {
             let mut filename = filename.expect("").to_owned();
             filename.push(run_start.run_name().unwrap());
@@ -48,21 +47,21 @@ impl Run {
                 )
             })
             .create(&filename)
-            .map_err(|_| NexusError::Unknown)?;
+            .map_err(HDF5Error::HDF5)?;
         {
             if nexus_settings.use_swmr {
                 let err = unsafe { hdf5_sys::h5f::H5Fstart_swmr_write(file.id()) };
                 if err != 0 {
-                    return Err(NexusError::Unknown);
+                    Err(RunError::StartSWMRWriterError(err))?;
                 }
             }
         }
         let mut nx_root = NexusGroup::new(
             filename
                 .file_name()
-                .ok_or(NexusError::Unknown)?
+                .ok_or(RunError::FileNameError)?
                 .to_str()
-                .ok_or(NexusError::Unknown)?,
+                .ok_or(RunError::FileNameError)?,
             nexus_settings,
         );
 

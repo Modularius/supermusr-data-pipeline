@@ -1,18 +1,16 @@
-use hdf5::{types::TypeDescriptor, Dataset, Group, H5Type, SimpleExtents};
+use hdf5::{types::{StringError, TypeDescriptor}, Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
 
-use crate::error::{NexusDatasetError, NexusNumericError, NexusPushError};
+use crate::{error::{HDF5Error, NexusDatasetError, NexusNumericError, NexusPushError}, schematic::H5String};
 
 use super::{
     dataholder_class::{
         NexusClassAppendableDataHolder, NexusClassDataHolder, NexusClassFixedDataHolder,
         NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder, NexusClassWithSize
     },
-    log_value::NumericVector,
+    log_value::{DatasetBuilderNumericExt, DatasetNumericExt, NumericVector},
     traits::{
-        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed,
-        NexusDataHolderScalarMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType,
-        NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
+        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
     },
 };
 
@@ -36,6 +34,9 @@ pub(crate) type NexusDatasetResize<T, D = ()> =
 pub(crate) type NexusLogValueDatasetResize<D = ()> =
     NexusDataset<D, NexusClassNumericAppendableDataHolder>;
 
+/*
+    Generic Traits
+        */
 impl<D, C> NexusDataHolder for NexusDataset<D, C>
 where
     D: NexusDatasetDef,
@@ -74,7 +75,6 @@ where
     }
 }
 
-
 /*
     NexusClassMutableDataHolder
         */
@@ -87,8 +87,10 @@ where T: H5Type + Clone + Default, D: NexusDatasetDef
         parent: &Self::HDF5Container,
     ) -> Result<hdf5::Dataset, NexusDatasetError> {
         parent.dataset(&self.name).or_else(|_| {
-            let dataset = parent.new_dataset::<T>().create(self.name.as_str())?;
-            dataset.write_scalar(&self.class.default_value)?;
+            let dataset = parent.new_dataset::<T>().create(self.name.as_str())
+                .map_err(HDF5Error::HDF5)?;
+            dataset.write_scalar(&self.class.default_value)
+                .map_err(HDF5Error::HDF5)?;
             Ok::<_, NexusDatasetError>(dataset)
         })
     }
@@ -106,21 +108,11 @@ impl<T, D> NexusDataHolderScalarMutable for NexusDataset<D, NexusClassMutableDat
 where
     T: H5Type + Clone + Default,
     D: NexusDatasetDef,
-    NexusClassMutableDataHolder<T>: NexusClassDataHolder,
 {
-    fn new_with_default(name: &str, default_value: Self::DataType) -> Self {
+    fn new_with_initial(name: &str, default_value: Self::DataType) -> Self {
         Self {
             name: name.to_string(),
             class: NexusClassMutableDataHolder { default_value },
-            dataset: None,
-            definition: D::new(),
-        }
-    }
-    
-    fn new_with_auto_default(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            class: NexusClassMutableDataHolder { ..Default::default() },
             dataset: None,
             definition: D::new(),
         }
@@ -132,14 +124,20 @@ where
         value: Self::DataType,
     ) -> Result<(), NexusDatasetError> {
         let dataset = self.create_hdf5_instance(parent)?;
-        Ok(dataset.write_scalar(&value)?)
+        Ok(dataset.write_scalar(&value).map_err(HDF5Error::HDF5)?)
     }
 
     fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<T, NexusDatasetError> {
         let dataset = self.create_hdf5_instance(parent)?;
-        Ok(dataset.read_scalar()?)
+        Ok(dataset.read_scalar().map_err(HDF5Error::HDF5)?)
     }
 }
+
+impl<D> NexusDataHolderStringMutable for NexusDataset<D, NexusClassMutableDataHolder<H5String>>
+where
+    D: NexusDatasetDef,
+    Self::ThisError : From<HDF5Error>
+{}
 
 
 /*
@@ -159,8 +157,8 @@ where
             Ok(dataset.clone())
         } else {
             parent.dataset(&self.name).or_else(|_| {
-                let dataset = parent.new_dataset::<T>().create(self.name.as_str())?;
-                dataset.write_scalar(&self.class.fixed_value)?;
+                let dataset = parent.new_dataset::<T>().create(self.name.as_str()).map_err(HDF5Error::HDF5)?;
+                dataset.write_scalar(&self.class.fixed_value).map_err(HDF5Error::HDF5)?;
                 Ok::<_, NexusDatasetError>(dataset)
             })
         }
@@ -211,11 +209,11 @@ where
                     .new_dataset::<T>()
                     .shape(SimpleExtents::resizable(vec![self.class.default_size]))
                     .chunk(vec![self.class.chunk_size])
-                    .create(self.name.as_str())?;
+                    .create(self.name.as_str()).map_err(HDF5Error::HDF5)?;
                 dataset.write_slice(
                     &vec![self.class.default_value.clone(); self.class.default_size],
                     s![0..self.class.default_size],
-                )?;
+                ).map_err(HDF5Error::HDF5)?;
                 Ok::<_, NexusDatasetError>(dataset)
             })
         }
@@ -258,8 +256,8 @@ impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusAppendableDataHolder
         let dataset = self.create_hdf5_instance(parent)?;
         let size = dataset.size();
         let next_values_slice = s![size..(size + values.len())];
-        dataset.resize(size + values.len())?;
-        Ok(dataset.write_slice(values, next_values_slice)?)
+        dataset.resize(size + values.len()).map_err(HDF5Error::HDF5)?;
+        Ok(dataset.write_slice(values, next_values_slice).map_err(HDF5Error::HDF5)?)
     }
 }
 
@@ -281,49 +279,10 @@ where
                 Ok(dataset.clone())
             } else {
                 parent.dataset(&self.name).or_else(|_| {
-                    let builder = parent
+                    parent
                         .new_dataset_builder()
-                        .chunk(vec![self.class.chunk_size]);
-                    let dataset = match type_desc {
-                        TypeDescriptor::Integer(int_size) => match int_size {
-                            hdf5::types::IntSize::U1 => builder
-                                .with_data(&[i8::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::IntSize::U2 => builder
-                                .with_data(&[i16::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::IntSize::U4 => builder
-                                .with_data(&[i32::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::IntSize::U8 => builder
-                                .with_data(&[i64::default(); 0])
-                                .create(self.name.as_str()),
-                        },
-                        TypeDescriptor::Unsigned(int_size) => match int_size {
-                            hdf5::types::IntSize::U1 => builder
-                                .with_data(&[u8::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::IntSize::U2 => builder
-                                .with_data(&[u16::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::IntSize::U4 => builder
-                                .with_data(&[u32::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::IntSize::U8 => builder
-                                .with_data(&[u64::default(); 0])
-                                .create(self.name.as_str()),
-                        },
-                        TypeDescriptor::Float(float_size) => match float_size {
-                            hdf5::types::FloatSize::U4 => builder
-                                .with_data(&[f32::default(); 0])
-                                .create(self.name.as_str()),
-                            hdf5::types::FloatSize::U8 => builder
-                                .with_data(&[f64::default(); 0])
-                                .create(self.name.as_str()),
-                        },
-                        _ => Err(hdf5::Error::Internal(Default::default())),
-                    }?;
-                    Ok::<_, NexusDatasetError>(dataset)
+                        .chunk(vec![self.class.chunk_size])
+                        .create_numeric(self.name.as_str(), type_desc)
                 })
             }
         } else {
@@ -363,38 +322,16 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
         Ok(())
     }
     
+    /// This function assumes values is of the correct type (i.e. that try_set_type has successfully been called).
     fn append_numerics(
         &self,
         parent: &Self::HDF5Container,
         values: &NumericVector,
     ) -> Result<(), NexusDatasetError> {
-        if let Some(type_desc) = &self.class.type_desc {
-            if values.type_descriptor() != *type_desc {
-                Err(NexusNumericError::TypeMismatch {
-                    required_type: type_desc.clone(),
-                    input_type: values.type_descriptor(),
-                })?;
-            }
-        } else {
-            Err(NexusNumericError::NumericTypeNotSet)?
-        }
         let dataset = self.create_hdf5_instance(parent)?;
         let size = dataset.size();
-        let next_values_slice = s![size..(size + values.len())];
-        dataset.resize(size + values.len())?;
-        match values {
-            NumericVector::I1(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::I2(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::I4(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::I8(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::U1(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::U2(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::U4(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::U8(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::F4(vec) => dataset.write_slice(vec, next_values_slice),
-            NumericVector::F8(vec) => dataset.write_slice(vec, next_values_slice),
-        }?;
-        Ok(())
+        dataset.resize(size + values.len()).map_err(HDF5Error::HDF5)?;
+        dataset.write_numeric_slice(values, s![size..(size + values.len())])
     }
 }
 

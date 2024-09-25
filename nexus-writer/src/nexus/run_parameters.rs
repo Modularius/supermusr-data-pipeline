@@ -3,7 +3,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use crate::error::{NexusMissingError, NexusMissingRunStartError, NexusPushError};
+use crate::error::{NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError, RunStartError, RunStopError};
 
 /*#[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
@@ -26,9 +26,11 @@ pub(crate) struct RunParameters {
 
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new(data: &RunStart<'_>) -> Result<Self, NexusPushError> {
-        let collect_from = DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into().unwrap())
-            .ok_or(NexusPushError::NanosecondError(TimeDelta::default()))?;
+    pub(crate) fn new(data: &RunStart<'_>) -> Result<Self, RunStartError> {
+        let collect_from = DateTime::<Utc>::from_timestamp_millis(data.start_time()
+            .try_into()
+            .map_err(NexusConversionError::from)?
+        ).ok_or(RunStartError::CollectFrom)?;
 
         Ok(Self {
             collect_from,
@@ -43,23 +45,23 @@ impl RunParameters {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<(), NexusPushError> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<(), RunStopError> {
         if self.collect_until.is_some() {
-            Err(NexusPushError::NanosecondError(TimeDelta::default()))
+            Err(RunStopError::UnexpectedRunStop)
         } else {
             let now = DateTime::<Utc>::from_timestamp_millis(
                 data.stop_time()
                     .try_into()
-                    .map_err(|_| NexusPushError::NanosecondError(TimeDelta::default()))?,
+                    .map_err(NexusConversionError::TryFromInt)?,
             )
-            .ok_or(NexusPushError::NanosecondError(TimeDelta::default()))?;
+            .ok_or(RunStopError::CollectUntil)?;
 
             if self.collect_from < now {
                 self.collect_until = Some(now);
                 self.update_last_modified();
                 Ok(())
             } else {
-                Err(NexusPushError::NanosecondError(TimeDelta::default()))
+                Err(RunStopError::RunStopBeforeRunStart)
             }
         }
     }

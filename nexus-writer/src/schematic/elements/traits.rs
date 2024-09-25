@@ -1,8 +1,8 @@
 use super::log_value::NumericVector;
 use super::NexusUnits;
-use hdf5::{types::TypeDescriptor, Group, H5Type};
+use hdf5::{types::{StringError, TypeDescriptor}, Group, H5Type};
 
-use crate::error::NexusPushError;
+use crate::{error::{HDF5Error, NexusPushError}, schematic::H5String};
 
 /// Implemented for objects who are constructed by a builder
 /// i.e. NexusDataset and NexusAttribute instances
@@ -61,11 +61,13 @@ pub(crate) trait NexusDataHolderWithStaticType: NexusDataHolder {
 /// Implemented for `NexusDataHolder` objects have mutable scalar data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
 pub(crate) trait NexusDataHolderScalarMutable:
-    NexusDataHolderWithStaticType
+    NexusDataHolderWithStaticType + Sized
 {
-    fn new_with_default(name: &str, default: Self::DataType) -> Self;
+    fn new_with_initial(name: &str, default: Self::DataType) -> Self;
     
-    fn new_with_auto_default(name: &str) -> Self;
+    fn new_with_auto_default(name: &str) -> Self {
+        Self::new_with_initial(name, Default::default())
+    }
     
     fn write_scalar(
         &self,
@@ -80,10 +82,21 @@ pub(crate) trait NexusDataHolderFixed : NexusDataHolderWithStaticType {
     fn new_with_fixed_value(name: &str, fixed_value : Self::DataType) -> Self;
 }
 
+pub(crate) trait NexusDataHolderStringMutable : NexusDataHolderScalarMutable + NexusDataHolderWithStaticType<DataType = H5String>
+    where Self::ThisError : From<HDF5Error>
+    {
+    fn write_string(
+        &self,
+        parent: &Self::HDF5Container,
+        value: &str,
+    ) -> Result<(), Self::ThisError> {
+        self.write_scalar(parent, value.parse().map_err(HDF5Error::HDF5String)?)
+    }
+}
+
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(crate) trait NexusDataHolderWithSize:
-    NexusDataHolder
+pub(crate) trait NexusDataHolderWithSize: NexusDataHolder
 {
     fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, Self::ThisError>;
 }
@@ -99,7 +112,7 @@ pub(crate) trait NexusAppendableDataHolder:
         chunk_size: usize
     ) -> Self;
 
-    fn new(name: &str,
+    fn new_appendable_with_default(name: &str,
         chunk_size: usize
     ) -> Self {
         Self::new_with_initial_size(name, Default::default(), Default::default(), chunk_size)

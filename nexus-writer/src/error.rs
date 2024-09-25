@@ -1,3 +1,5 @@
+use std::num::TryFromIntError;
+
 use chrono::TimeDelta;
 use hdf5::types::TypeDescriptor;
 use supermusr_streaming_types::{
@@ -24,8 +26,6 @@ pub(crate) enum NexusMissingAlarmError {
 
 #[derive(Debug, Error)]
 pub(crate) enum NexusMissingSelogError {
-    #[error("Selog Message Missing")]
-    Message,
     #[error("Selog Times Missing")]
     Times,
 }
@@ -71,21 +71,7 @@ pub(crate) enum NexusMissingError {
 }
 
 #[derive(Debug, Error)]
-pub(crate) enum NexusPushError {
-    #[error("Dataset Error: {0}")]
-    Group(#[from] NexusGroupError),
-    #[error("Group Error: {0}")]
-    Dataset(#[from] NexusDatasetError),
-    #[error("Attribute Error: {0}")]
-    Attribute(#[from] NexusAttributeError),
-    #[error("Numeric Vector Error: {0}")]
-    LogValue(#[from] NexusNumericError),
-    #[error("HDF5 Error {0}")]
-    HDF5(#[from] hdf5::Error),
-    #[error("HDF5 String Error: {0}")]
-    HDF5String(#[from] hdf5::types::StringError),
-    #[error("HDF5 String Error: {0}")]
-    MissingValue(#[from] NexusMissingError),
+pub(crate) enum NexusConversionError {
     #[error("Cannot fit duration into i64: {0}")]
     NanosecondError(TimeDelta),
     #[error("TimeDelta negative: {0}")]
@@ -94,14 +80,70 @@ pub(crate) enum NexusPushError {
     ChronoParse(#[from] chrono::ParseError),
     #[error("Parse Error: {0}")]
     GpsTimeConversion(#[from] GpsTimeConversionError),
+    #[error("TryFromInt Error {0}")]
+    TryFromInt(#[from] TryFromIntError)
+}
+
+#[derive(Debug, Error)]
+pub(crate) enum RunError {
+    #[error("Push Error: {0}")]
+    Push(#[from] NexusPushError),
+    #[error("HDF5 Error {0}")]
+    HDF5(#[from] HDF5Error),
+    #[error("Start SWMR Write Error: {0}")]
+    StartSWMRWriterError(i32),
+    #[error("File Name Error")]
+    FileNameError
+    
+}
+
+#[derive(Debug, Error)]
+pub(crate) enum NexusPushError {
+    #[error("Group Error: {0}")]
+    Group(#[from] NexusGroupError),
+    #[error("Dataset Error: {0}")]
+    Dataset(#[from] NexusDatasetError),
+    #[error("Attribute Error: {0}")]
+    Attribute(#[from] NexusAttributeError),
+    #[error("HDF5 Error {0}")]
+    HDF5(#[from] HDF5Error),
+    #[error("HDF5 String Error: {0}")]
+    MissingValue(#[from] NexusMissingError),
+    #[error("Conversion: {0}")]
+    Conversion(#[from] NexusConversionError),
+    #[error("Run Start: {0}")]
+    RunStart(#[from] RunStartError),
+    #[error("Run Stop: {0}")]
+    RunStop(#[from] RunStopError),
+}
+
+#[derive(Debug, Error)]
+pub(crate) enum RunStartError {
+    #[error("Missing: {0}")]
+    MissingValue(#[from] NexusMissingError),
+    #[error("Conversion: {0}")]
+    Conversion(#[from] NexusConversionError),
+    #[error("Cannot Construct Collect From Time")]
+    CollectFrom,
+}
+
+
+#[derive(Debug, Error)]
+pub(crate) enum RunStopError {
+    #[error("Unexpected Run Stop")]
+    UnexpectedRunStop,
+    #[error("Cannot Construct Collect Until Time")]
+    CollectUntil,
+    #[error("Conversion: {0}")]
+    Conversion(#[from] NexusConversionError),
+    #[error("Run Stop before Run Start")]
+    RunStopBeforeRunStart
 }
 
 #[derive(Debug, Error)]
 pub(crate) enum NexusDatasetError {
     #[error("HDF5 Error {0}")]
-    HDF5(#[from] hdf5::Error),
-    #[error("HDF5 String Error: {0}")]
-    HDF5String(#[from] hdf5::types::StringError),
+    HDF5(#[from] HDF5Error),
     #[error("Numeric Error: {0}")]
     Numeric(#[from] NexusNumericError),
 }
@@ -109,9 +151,7 @@ pub(crate) enum NexusDatasetError {
 #[derive(Debug, Error)]
 pub(crate) enum NexusNumericError {
     #[error("HDF5 Error {0}")]
-    HDF5(#[from] hdf5::Error),
-    #[error("HDF5 String Error: {0}")]
-    HDF5String(#[from] hdf5::types::StringError),
+    HDF5(#[from] HDF5Error),
     #[error("Invalid Run Log Type of Value: {0:?}", value.variant_name())]
     InvalidRunLogType { value: Value },
     #[error("Invalid Selog Type of Value: {0:?}", value.variant_name())]
@@ -128,30 +168,11 @@ pub(crate) enum NexusNumericError {
 #[derive(Debug, Error)]
 pub(crate) enum NexusGroupError {
     #[error("HDF5 Error {0}")]
-    HDF5(#[from] hdf5::Error),
-    #[error("HDF5 String Error: {0}")]
-    HDF5String(#[from] hdf5::types::StringError),
-    #[error("Dataset Error: {source}")]
-    Dataset {
-        source: NexusDatasetError,
-        path: String,
-    },
+    HDF5(#[from] HDF5Error),
 }
 
 #[derive(Debug, Error)]
 pub(crate) enum NexusAttributeError {
     #[error("HDF5 Error {0}")]
-    HDF5(#[from] hdf5::Error),
-    #[error("HDF5 String Error: {0}")]
-    HDF5String(#[from] hdf5::types::StringError),
-}
-
-#[derive(Debug, Error)]
-pub(crate) enum NexusError {
-    #[error("Error")]
-    Unknown,
-    #[error("Dataset Error: {0}")]
-    Group(#[from] NexusGroupError),
-    #[error("Group Error: {0}")]
-    Dataset(#[from] NexusDatasetError),
+    HDF5(#[from] HDF5Error),
 }

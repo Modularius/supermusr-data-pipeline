@@ -4,19 +4,17 @@ use chrono::{DateTime, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    ecs_pl72_run_start_generated::RunStart,
+    ecs_pl72_run_start_generated::RunStart, frame_metadata_v2_generated::GpsTime,
 };
 
 use crate::{
-    error::{NexusMissingError, NexusMissingEventlistError, NexusPushError},
+    error::{NexusConversionError, NexusMissingError, NexusMissingEventlistError, NexusPushError},
     nexus::NexusSettings,
     schematic::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetResize},
-            traits::{NexusH5CreatableDataHolder, NexusAppendableDataHolder,
-                NexusDataHolderScalarMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef,
-                NexusHandleMessage, NexusPushMessage}, NexusUnits,
+            traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage}, NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -53,6 +51,23 @@ struct EventTimeZeroAttributesMessage<'a> {
     has_offset: bool,
 }
 
+impl<'a> EventTimeZeroAttributesMessage<'a> {
+    fn get_timestamp(&self) -> Result<DateTime<Utc>,NexusPushError> {
+        (*self.frame_assembled_event_list
+            .metadata()
+            .timestamp()
+            .ok_or(NexusMissingEventlistError::Timestamp)
+            .map_err(NexusMissingError::Eventlist)?
+        ).try_into()
+        .map_err(NexusConversionError::GpsTimeConversion)
+        .map_err(NexusPushError::Conversion)
+    }
+}
+
+fn get_time_zero(has_offset: bool, ) {
+
+}
+
 impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
     for EventTimeZeroAttributes
 {
@@ -61,27 +76,22 @@ impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
         message: &EventTimeZeroAttributesMessage<'a>,
         _dataset: &Dataset,
     ) -> Result<u64, NexusPushError> {
-        let timestamp: DateTime<Utc> = (*message
-            .frame_assembled_event_list
-            .metadata()
-            .timestamp()
-            .ok_or(NexusMissingEventlistError::Timestamp)
-            .map_err(NexusMissingError::Eventlist)?)
-        .try_into()?;
+        let timestamp: DateTime<Utc> = message.get_timestamp()?;
 
         let time_zero = {
             if message.has_offset {
                 let offset =
-                    DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())?;
+                    DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
+                        .map_err(NexusConversionError::ChronoParse)?;
 
                 (timestamp - offset)
                     .num_nanoseconds()
-                    .ok_or(NexusPushError::NanosecondError(timestamp - offset))?
+                    .ok_or(NexusConversionError::NanosecondError(timestamp - offset))?
                     .try_into()
-                    .map_err(NexusPushError::TimeDeltaNegative)?
+                    .map_err(NexusConversionError::TimeDeltaNegative)?
             } else {
                 self.offset
-                    .write_scalar(_dataset, timestamp.to_rfc3339().parse()?)?;
+                    .write_string(_dataset, &timestamp.to_rfc3339())?;
 
                 u64::default()
             }
@@ -105,22 +115,22 @@ impl NexusGroupDef for Data {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            event_id: NexusDataset::new("event_id",
+            event_id: NexusDataset::new_appendable_with_default("event_id",
                 settings.eventlist_chunk_size,
             ),
-            event_index: NexusDataset::new("event_index",
+            event_index: NexusDataset::new_appendable_with_default("event_index",
                 settings.framelist_chunk_size,
             ),
-            event_time_offset: NexusDataset::new("event_time_offset",
+            event_time_offset: NexusDataset::new_appendable_with_default("event_time_offset",
                 settings.eventlist_chunk_size,
             ),
-            event_time_zero: NexusDataset::new("event_time_zero", 
+            event_time_zero: NexusDataset::new_appendable_with_default("event_time_zero", 
                 settings.framelist_chunk_size,
             ),
-            event_period_number: NexusDataset::new("event_period_number",
+            event_period_number: NexusDataset::new_appendable_with_default("event_period_number",
                 settings.framelist_chunk_size,
             ),
-            event_pulse_height: NexusDataset::new("event_pulse_height",
+            event_pulse_height: NexusDataset::new_appendable_with_default("event_pulse_height",
                 settings.eventlist_chunk_size,
             ),
         }
