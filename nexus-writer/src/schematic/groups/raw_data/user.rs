@@ -22,7 +22,7 @@ struct NameAttributes {
 impl NexusDatasetDef for NameAttributes {
     fn new() -> Self {
         Self {
-            role: NexusAttribute::new_with_auto_default("role"),
+            role: NexusAttribute::new_with_default("role"),
         }
     }
 }
@@ -43,13 +43,13 @@ impl NexusGroupDef for User {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_auto_default("name"),
-            affiliation: NexusDataset::new_with_auto_default("affiliation"),
-            address: NexusDataset::new_with_auto_default("address"),
-            telephone_number: NexusDataset::new_with_auto_default("telephone_number"),
-            fax_number: NexusDataset::new_with_auto_default("fax_number"),
-            email: NexusDataset::new_with_auto_default("email"),
-            facility_user_id: NexusDataset::new_with_auto_default("facility_user_id"),
+            name: NexusDataset::new_with_default("name"),
+            affiliation: NexusDataset::new_with_default("affiliation"),
+            address: NexusDataset::new_with_default("address"),
+            telephone_number: NexusDataset::new_with_default("telephone_number"),
+            fax_number: NexusDataset::new_with_default("fax_number"),
+            email: NexusDataset::new_with_default("email"),
+            facility_user_id: NexusDataset::new_with_default("facility_user_id"),
         }
     }
 }

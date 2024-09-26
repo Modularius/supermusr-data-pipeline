@@ -50,14 +50,14 @@ impl NexusGroupDef for Sample {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_auto_default("name"),
-            chemical_formula: NexusDataset::new_with_auto_default("chemical_formula"),
-            description: NexusDataset::new_with_auto_default("description"),
-            sample_type: NexusDataset::new_with_auto_default("sample_type"),
-            situation: NexusDataset::new_with_auto_default("situation"),
-            shape: NexusDataset::new_with_auto_default("shape"),
-            preparation_date: NexusDataset::new_with_auto_default("preparation_date"),
-            sample_holder: NexusDataset::new_with_auto_default("sample_holder"),
+            name: NexusDataset::new_with_default("name"),
+            chemical_formula: NexusDataset::new_with_default("chemical_formula"),
+            description: NexusDataset::new_with_default("description"),
+            sample_type: NexusDataset::new_with_default("sample_type"),
+            situation: NexusDataset::new_with_default("situation"),
+            shape: NexusDataset::new_with_default("shape"),
+            preparation_date: NexusDataset::new_with_default("preparation_date"),
+            sample_holder: NexusDataset::new_with_default("sample_holder"),
             /*flypast: NexusDataset::begin().finish("flypast"),
             geometry: NexusGroup::new("geometry"),
             sample_component: NexusDataset::begin().finish("sample_component"),

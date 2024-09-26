@@ -28,7 +28,7 @@ impl NexusGroupDef for Instrument {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_auto_default("name"),
+            name: NexusDataset::new_with_default("name"),
             source: NexusGroup::new("source", settings),
         }
     }

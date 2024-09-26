@@ -31,17 +31,17 @@ impl NexusGroupDef for Source {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_auto_default("name"),
-            source_type: NexusDataset::new_with_auto_default("source_type"),
-            probe: NexusDataset::new_with_auto_default("probe"),
-            source_frequency: NexusDataset::new_with_auto_default("source_frequency"),
-            source_frame_pattern: NexusDataset::new_with_auto_default("source_frame_pattern"),
-            source_energy: NexusDataset::new_with_auto_default("source_energy"),
-            source_current: NexusDataset::new_with_auto_default("tarsource_currentget_thickness"),
+            name: NexusDataset::new_with_default("name"),
+            source_type: NexusDataset::new_with_default("source_type"),
+            probe: NexusDataset::new_with_default("probe"),
+            source_frequency: NexusDataset::new_with_default("source_frequency"),
+            source_frame_pattern: NexusDataset::new_with_default("source_frame_pattern"),
+            source_energy: NexusDataset::new_with_default("source_energy"),
+            source_current: NexusDataset::new_with_default("tarsource_currentget_thickness"),
             source_current_log: NexusGroup::new("source_current_log", settings),
-            source_pulse_width: NexusDataset::new_with_auto_default("source_pulse_width"),
-            target_material: NexusDataset::new_with_auto_default("target_material"),
-            target_thickness: NexusDataset::new_with_auto_default("target_thickness"),
+            source_pulse_width: NexusDataset::new_with_default("source_pulse_width"),
+            target_material: NexusDataset::new_with_default("target_material"),
+            target_thickness: NexusDataset::new_with_default("target_thickness"),
         }
     }
 }

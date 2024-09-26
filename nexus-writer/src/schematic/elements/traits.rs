@@ -1,6 +1,6 @@
 use super::log_value::NumericVector;
 use super::NexusUnits;
-use hdf5::{types::{StringError, TypeDescriptor}, Group, H5Type};
+use hdf5::{types::TypeDescriptor, Group, H5Type};
 
 use crate::{error::{HDF5Error, NexusPushError}, schematic::H5String};
 
@@ -65,7 +65,7 @@ pub(crate) trait NexusDataHolderScalarMutable:
 {
     fn new_with_initial(name: &str, default: Self::DataType) -> Self;
     
-    fn new_with_auto_default(name: &str) -> Self {
+    fn new_with_default(name: &str) -> Self {
         Self::new_with_initial(name, Default::default())
     }
     

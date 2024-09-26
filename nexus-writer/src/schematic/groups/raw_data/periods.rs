@@ -24,7 +24,7 @@ struct FramesRequestedAttributes {
 impl NexusDatasetDef for FramesRequestedAttributes {
     fn new() -> Self {
         Self {
-            frame_type: NexusAttribute::new_with_auto_default("frame_type"),
+            frame_type: NexusAttribute::new_with_default("frame_type"),
         }
     }
 }
@@ -37,7 +37,7 @@ struct LabelsAttributes {
 impl NexusDatasetDef for LabelsAttributes {
     fn new() -> Self {
         Self {
-            separator: NexusAttribute::new_with_auto_default("separator"),
+            separator: NexusAttribute::new_with_default("separator"),
         }
     }
 }
@@ -60,14 +60,14 @@ impl NexusGroupDef for Periods {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            number: NexusDataset::new_with_auto_default("number"),
-            period_types: NexusDataset::new_with_auto_default("type"),
-            frames_requested: NexusDataset::new_with_auto_default("frames_requested"),
-            output: NexusDataset::new_with_auto_default("output"),
-            labels: NexusDataset::new_with_auto_default("labels"),
-            raw_frames: NexusDataset::new_with_auto_default("raw_frames"),
-            good_frames: NexusDataset::new_with_auto_default("good_frames"),
-            sequences: NexusDataset::new_with_auto_default("sequences"),
+            number: NexusDataset::new_with_default("number"),
+            period_types: NexusDataset::new_with_default("type"),
+            frames_requested: NexusDataset::new_with_default("frames_requested"),
+            output: NexusDataset::new_with_default("output"),
+            labels: NexusDataset::new_with_default("labels"),
+            raw_frames: NexusDataset::new_with_default("raw_frames"),
+            good_frames: NexusDataset::new_with_default("good_frames"),
+            sequences: NexusDataset::new_with_default("sequences"),
             counts: NexusGroup::new("counts", settings),
         }
     }

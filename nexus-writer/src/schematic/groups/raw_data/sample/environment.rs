@@ -26,11 +26,11 @@ impl NexusGroupDef for Environment {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_auto_default("name"),
-            short_name: NexusDataset::new_with_auto_default("short_name"),
-            env_type: NexusDataset::new_with_auto_default("env_type"),
-            description: NexusDataset::new_with_auto_default("description"),
-            program: NexusDataset::new_with_auto_default("program"),
+            name: NexusDataset::new_with_default("name"),
+            short_name: NexusDataset::new_with_default("short_name"),
+            env_type: NexusDataset::new_with_default("env_type"),
+            description: NexusDataset::new_with_default("description"),
+            program: NexusDataset::new_with_default("program"),
             hardware_log: NexusGroup::new("hardware_log", settings),
         }
     }

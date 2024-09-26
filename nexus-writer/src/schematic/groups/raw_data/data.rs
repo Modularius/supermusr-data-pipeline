@@ -41,7 +41,7 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
 
     fn new() -> Self {
         Self {
-            offset: NexusAttribute::new_with_auto_default("offset"),
+            offset: NexusAttribute::new_with_default("offset"),
         }
     }
 }

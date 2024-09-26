@@ -34,8 +34,8 @@ struct RawData1Attributes {
 impl NexusDatasetDef for RawData1Attributes {
     fn new() -> Self {
         Self {
-            file_name: NexusAttribute::new_with_auto_default("file_name"),
-            file_time: NexusAttribute::new_with_auto_default("file_time"),
+            file_name: NexusAttribute::new_with_default("file_name"),
+            file_time: NexusAttribute::new_with_default("file_time"),
             initial_file_format: NexusAttribute::new_with_fixed_value("initial_file_format", "TODO".parse().expect("")),
             nexus_version: NexusAttribute::new_with_fixed_value("nexus_version", "TODO".parse().expect("")),
             hdf_version: NexusAttribute::new_with_fixed_value("hdf_version", "TODO".parse().expect("")),

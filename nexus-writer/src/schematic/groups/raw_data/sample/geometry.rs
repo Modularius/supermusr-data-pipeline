@@ -19,7 +19,7 @@ impl NexusGroupDef for Geometry {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_auto_default("name"),
+            name: NexusDataset::new_with_default("name"),
         }
     }
 }
