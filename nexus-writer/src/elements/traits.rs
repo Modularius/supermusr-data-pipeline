@@ -50,7 +50,7 @@ pub(crate) trait NexusH5InstanceCreatableDataHolder: NexusDataHolder {
 
 /// Implemented for objects which can hold data
 /// i.e. NexusBuilder with FINISHED = true
-pub(in crate::schematic) trait NexusH5CreatableDataHolder:
+pub(crate) trait NexusH5CreatableDataHolder:
     NexusH5InstanceCreatableDataHolder
 {
     fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError>;

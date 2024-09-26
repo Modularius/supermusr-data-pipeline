@@ -1,9 +1,8 @@
-pub(crate) mod elements;
 pub(crate) mod groups;
 
 use hdf5::types::VarLenUnicode;
 
-type H5String = VarLenUnicode;
+pub(crate) type H5String = VarLenUnicode;
 
 pub(crate) mod nexus_class {
     pub(crate) const DETECTOR: &str = "NXdetector";

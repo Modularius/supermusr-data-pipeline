@@ -1,6 +1,7 @@
 use crate::{
     error::{NexusConversionError, NexusMissingError, NexusMissingEventlistError, NexusPushError},
-    schematic::{elements::traits::NexusHandleMessage, groups::NXRoot},
+    schematic::groups::NXRoot,
+    elements::traits::NexusHandleMessage
 };
 
 use super::Run;

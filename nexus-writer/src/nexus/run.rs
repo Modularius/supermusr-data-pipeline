@@ -1,12 +1,11 @@
 use crate::{
     error::{HDF5Error, NexusPushError, RunError},
-    schematic::{
-        elements::{
-            group::NexusGroup,
-            traits::{NexusHandleMessage, NexusPushMessage},
-        },
+    schematic::
         groups::NXRoot,
-    },
+    elements::{
+        group::NexusGroup,
+        traits::{NexusHandleMessage, NexusPushMessage},
+    }
 };
 
 use super::{NexusSettings, RunParameters};
