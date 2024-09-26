@@ -1,9 +1,9 @@
-mod engine;
+mod run_engine;
 //mod hdf5_file;
 mod run;
 mod run_parameters;
 
-pub(crate) use engine::{NexusEngine, NexusSettings};
+pub(crate) use run_engine::{NexusEngine, NexusSettings};
 pub(crate) use run::Run;
 pub(crate) use run_parameters::{RunParameters,RunStarted,RunBounded};
 
