@@ -113,8 +113,7 @@ impl<'a> TryFrom<&f144_LogData<'a>> for NumericVector {
             Value::ArrayDouble => {
                 Self::F8(get_vec(get_value(value.value_as_array_double())?.value())?)
             }
-            value => Err(NexusNumericError::InvalidRunLogType { value })
-                .map_err(NexusDatasetError::Numeric)?,
+            value => Err(NexusDatasetError::Numeric(NexusNumericError::InvalidRunLogType { value }))?,
         })
     }
 }
@@ -231,8 +230,7 @@ impl<'a> TryFrom<&se00_SampleEnvironmentData<'a>> for NumericVector {
                     .iter()
                     .collect(),
             ),
-            value => Err(NexusNumericError::InvalidSelogType { value })
-                .map_err(NexusDatasetError::Numeric)?,
+            value => Err(NexusDatasetError::Numeric(NexusNumericError::InvalidSelogType { value }))?,
         };
         Ok(values)
     }

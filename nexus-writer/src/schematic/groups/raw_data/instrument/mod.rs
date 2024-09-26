@@ -16,8 +16,8 @@ use crate::{
 mod source;
 
 pub(super) struct Instrument {
-    name: NexusDatasetMut<H5String>,
-    source: NexusGroup<Source>,
+    _name: NexusDatasetMut<H5String>,
+    _source: NexusGroup<Source>,
 }
 
 impl NexusGroupDef for Instrument {
@@ -26,8 +26,8 @@ impl NexusGroupDef for Instrument {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_default("name"),
-            source: NexusGroup::new("source", settings),
+            _name: NexusDataset::new_with_default("name"),
+            _source: NexusGroup::new("source", settings),
         }
     }
 }

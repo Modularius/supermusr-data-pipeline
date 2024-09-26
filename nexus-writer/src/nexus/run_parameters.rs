@@ -20,7 +20,7 @@ pub(crate) struct RunStarted {
 }
 
 impl RunStarted {
-    pub(crate) fn new<'a>(message: &RunStart<'a>) -> Result<Self, RunStartError> {
+    pub(crate) fn new(message: &RunStart<'_>) -> Result<Self, RunStartError> {
         let collect_from = DateTime::<Utc>::from_timestamp_millis(
             message
                 .start_time()
@@ -41,11 +41,11 @@ impl RunStarted {
 }
 
 pub(crate) trait RunBounded: Sized {
-    fn new<'a>(message: &RunStop<'a>) -> Result<Self, RunStopError>;
+    fn new(message: &RunStop<'_>) -> Result<Self, RunStopError>;
 }
 
 impl RunBounded for DateTime<Utc> {
-    fn new<'a>(message: &RunStop<'a>) -> Result<Self, RunStopError> {
+    fn new(message: &RunStop<'_>) -> Result<Self, RunStopError> {
         DateTime::<Utc>::from_timestamp_millis(
             message
                 .stop_time()
