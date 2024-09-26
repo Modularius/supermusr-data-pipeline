@@ -10,7 +10,9 @@ use super::{
         NexusClassDataHolder, NexusClassFixedDataHolder, NexusClassMutableDataHolder,
     },
     traits::{
-        NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder
+        NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable,
+        NexusDataHolderStringMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder,
+        NexusH5InstanceCreatableDataHolder,
     },
 };
 

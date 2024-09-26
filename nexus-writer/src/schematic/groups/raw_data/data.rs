@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    ecs_pl72_run_start_generated::RunStart, frame_metadata_v2_generated::GpsTime,
+    ecs_pl72_run_start_generated::RunStart,
 };
 
 use crate::{
@@ -12,7 +12,9 @@ use crate::{
         attribute::{NexusAttribute, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetResize},
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderDateTimeMutable, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder,
+            NexusHandleMessage, NexusPushMessage,
         },
         NexusUnits,
     },
@@ -66,7 +68,10 @@ impl<'a> EventTimeZeroAttributesMessage<'a> {
     }
 }
 
-fn datetime_diff_to_u64(timestamp : DateTime<Utc>, offset : DateTime<Utc>) -> Result<u64,NexusConversionError> {
+fn datetime_diff_to_u64(
+    timestamp: DateTime<Utc>,
+    offset: DateTime<Utc>,
+) -> Result<u64, NexusConversionError> {
     (timestamp - offset)
         .num_nanoseconds()
         .ok_or(NexusConversionError::NanosecondError(timestamp - offset))?
@@ -91,7 +96,8 @@ impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
 
                 datetime_diff_to_u64(timestamp, offset)?
             } else {
-                self.offset.write_datetime(_dataset, &timestamp)?;
+                self.offset
+                    .write_string(_dataset, &timestamp.to_rfc3339())?;
 
                 u64::default()
             }
@@ -211,6 +217,7 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
             frame_assembled_event_list: message,
             has_offset: current_index != 0,
         };
+
         let time_zero = self
             .event_time_zero
             .push_message(&event_time_zero_attributes_message, parent)?;

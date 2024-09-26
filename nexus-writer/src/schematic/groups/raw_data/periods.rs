@@ -17,40 +17,40 @@ use crate::{
 
 #[derive(Clone)]
 struct FramesRequestedAttributes {
-    frame_type: NexusAttributeMut<H5String>,
+    _frame_type: NexusAttributeMut<H5String>,
 }
 
 impl NexusDatasetDef for FramesRequestedAttributes {
     fn new() -> Self {
         Self {
-            frame_type: NexusAttribute::new_with_default("frame_type"),
+            _frame_type: NexusAttribute::new_with_default("frame_type"),
         }
     }
 }
 
 #[derive(Clone)]
 struct LabelsAttributes {
-    separator: NexusAttributeMut<H5String>,
+    _separator: NexusAttributeMut<H5String>,
 }
 
 impl NexusDatasetDef for LabelsAttributes {
     fn new() -> Self {
         Self {
-            separator: NexusAttribute::new_with_default("separator"),
+            _separator: NexusAttribute::new_with_default("separator"),
         }
     }
 }
 
 pub(super) struct Periods {
-    number: NexusDatasetMut<u32>,
-    period_types: NexusDatasetMut<u32>,
-    frames_requested: NexusDatasetMut<u32, FramesRequestedAttributes>,
-    output: NexusDatasetMut<u32>,
-    labels: NexusDatasetMut<H5String, LabelsAttributes>,
-    raw_frames: NexusDatasetMut<u32>,
-    good_frames: NexusDatasetMut<u32>,
-    sequences: NexusDatasetMut<u32>,
-    counts: NexusGroup<Log>,
+    _number: NexusDatasetMut<u32>,
+    _period_types: NexusDatasetMut<u32>,
+    _frames_requested: NexusDatasetMut<u32, FramesRequestedAttributes>,
+    _output: NexusDatasetMut<u32>,
+    _labels: NexusDatasetMut<H5String, LabelsAttributes>,
+    _raw_frames: NexusDatasetMut<u32>,
+    _good_frames: NexusDatasetMut<u32>,
+    _sequences: NexusDatasetMut<u32>,
+    _counts: NexusGroup<Log>,
 }
 
 impl NexusGroupDef for Periods {
@@ -59,15 +59,15 @@ impl NexusGroupDef for Periods {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            number: NexusDataset::new_with_default("number"),
-            period_types: NexusDataset::new_with_default("type"),
-            frames_requested: NexusDataset::new_with_default("frames_requested"),
-            output: NexusDataset::new_with_default("output"),
-            labels: NexusDataset::new_with_default("labels"),
-            raw_frames: NexusDataset::new_with_default("raw_frames"),
-            good_frames: NexusDataset::new_with_default("good_frames"),
-            sequences: NexusDataset::new_with_default("sequences"),
-            counts: NexusGroup::new("counts", settings),
+            _number: NexusDataset::new_with_default("number"),
+            _period_types: NexusDataset::new_with_default("type"),
+            _frames_requested: NexusDataset::new_with_default("frames_requested"),
+            _output: NexusDataset::new_with_default("output"),
+            _labels: NexusDataset::new_with_default("labels"),
+            _raw_frames: NexusDataset::new_with_default("raw_frames"),
+            _good_frames: NexusDataset::new_with_default("good_frames"),
+            _sequences: NexusDataset::new_with_default("sequences"),
+            _counts: NexusGroup::new("counts", settings),
         }
     }
 }

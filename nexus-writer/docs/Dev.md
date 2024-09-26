@@ -162,7 +162,6 @@ As with `NexusDataset` the function to initialise `NexusAttribute` depends on th
 
    - `NexusAttribute::new_with_fixed(name: &str, fixed_value : T)`
 
-
 ## Schematic
 
 ### Example

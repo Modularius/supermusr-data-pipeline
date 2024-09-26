@@ -21,8 +21,8 @@ use crate::{
         HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError,
         NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError,
     },
-    nexus::{nexus_class, NexusSettings},
-    schematic::H5String,
+    nexus::NexusSettings,
+    schematic::{nexus_class, H5String},
 };
 
 #[derive(Clone)]

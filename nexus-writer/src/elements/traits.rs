@@ -10,14 +10,6 @@ use crate::{
     schematic::{H5DateTimeString, H5String},
 };
 
-trait NexusType : Default + Clone + Into<Self::HDF5Type> {
-    type HDF5Type;
-}
-
-impl<T : H5Type + Default + Clone> NexusType for T {
-    type HDF5Type = T;
-}
-
 /// Implemented for objects who are constructed by a builder
 /// i.e. NexusDataset and NexusAttribute instances
 pub(crate) trait NexusBuildable: Sized {
@@ -120,15 +112,20 @@ where
         parent: &Self::HDF5Container,
         value: &DateTime<Utc>,
     ) -> Result<(), Self::ThisError> {
-        self.write_scalar(parent, value.to_rfc3339().parse().map_err(HDF5Error::HDF5String)?)?;
+        self.write_scalar(
+            parent,
+            value.to_rfc3339().parse().map_err(HDF5Error::HDF5String)?,
+        )?;
         Ok(())
     }
 
     fn read_datetime(
         &self,
-        parent: &Self::HDF5Container
+        parent: &Self::HDF5Container,
     ) -> Result<DateTime<Utc>, Self::ThisError> {
-        Ok(DateTime::<Utc>::from_str(self.read_scalar(parent)?.as_str())?)
+        Ok(DateTime::<Utc>::from_str(
+            self.read_scalar(parent)?.as_str(),
+        )?)
     }
 }
 

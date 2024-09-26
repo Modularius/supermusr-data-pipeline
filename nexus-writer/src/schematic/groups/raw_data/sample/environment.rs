@@ -9,12 +9,12 @@ use crate::{
 };
 
 pub(super) struct Environment {
-    name: NexusDatasetMut<H5String>,
-    short_name: NexusDatasetMut<H5String>,
-    env_type: NexusDatasetMut<H5String>,
-    description: NexusDatasetMut<H5String>,
-    program: NexusDatasetMut<H5String>,
-    hardware_log: NexusGroup<Log>,
+    _name: NexusDatasetMut<H5String>,
+    _short_name: NexusDatasetMut<H5String>,
+    _env_type: NexusDatasetMut<H5String>,
+    _description: NexusDatasetMut<H5String>,
+    _program: NexusDatasetMut<H5String>,
+    _hardware_log: NexusGroup<Log>,
 }
 
 impl NexusGroupDef for Environment {
@@ -23,12 +23,12 @@ impl NexusGroupDef for Environment {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_default("name"),
-            short_name: NexusDataset::new_with_default("short_name"),
-            env_type: NexusDataset::new_with_default("env_type"),
-            description: NexusDataset::new_with_default("description"),
-            program: NexusDataset::new_with_default("program"),
-            hardware_log: NexusGroup::new("hardware_log", settings),
+            _name: NexusDataset::new_with_default("name"),
+            _short_name: NexusDataset::new_with_default("short_name"),
+            _env_type: NexusDataset::new_with_default("env_type"),
+            _description: NexusDataset::new_with_default("description"),
+            _program: NexusDataset::new_with_default("program"),
+            _hardware_log: NexusGroup::new("hardware_log", settings),
         }
     }
 }

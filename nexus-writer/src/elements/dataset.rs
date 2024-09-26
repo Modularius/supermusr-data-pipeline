@@ -16,7 +16,11 @@ use super::{
     },
     log_value::{DatasetBuilderNumericExt, DatasetNumericExt, NumericVector},
     traits::{
-        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
+        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed,
+        NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize,
+        NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder,
+        NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder,
+        NexusPushMessage,
     },
 };
 

@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub(super) struct Geometry {
-    name: NexusDatasetMut<H5String>,
+    _name: NexusDatasetMut<H5String>,
 }
 
 impl NexusGroupDef for Geometry {
@@ -17,7 +17,7 @@ impl NexusGroupDef for Geometry {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            name: NexusDataset::new_with_default("name"),
+            _name: NexusDataset::new_with_default("name"),
         }
     }
 }

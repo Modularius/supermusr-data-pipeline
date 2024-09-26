@@ -25,10 +25,7 @@ use crate::{
         },
         NexusUnits,
     },
-    error::{
-        NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError,
-        RunStartError, RunStopError,
-    },
+    error::NexusPushError,
     nexus::{NexusSettings, RunBounded, RunStarted},
     schematic::{nexus_class, H5String},
 };
@@ -43,15 +40,15 @@ mod user;
 
 #[derive(Clone)]
 struct DefinitionAttributes {
-    version: NexusAttributeFixed<H5String>,
-    url: NexusAttributeFixed<H5String>,
+    _version: NexusAttributeFixed<H5String>,
+    _url: NexusAttributeFixed<H5String>,
 }
 
 impl NexusDatasetDef for DefinitionAttributes {
     fn new() -> Self {
         Self {
-            version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
-            url: NexusAttribute::new_with_fixed_value("URL", "TODO".parse().expect("")),
+            _version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
+            _url: NexusAttribute::new_with_fixed_value("URL", "TODO".parse().expect("")),
         }
     }
 }
@@ -78,9 +75,9 @@ impl NexusDatasetDef for ProtonChargeAttributes {
 }
 
 pub(super) struct RawData {
-    idf_version: NexusDatasetFixed<u32>,
-    definition: NexusDatasetFixed<H5String, DefinitionAttributes>,
-    definition_local: NexusDatasetFixed<H5String, DefinitionAttributes>,
+    _idf_version: NexusDatasetFixed<u32>,
+    _definition: NexusDatasetFixed<H5String, DefinitionAttributes>,
+    _definition_local: NexusDatasetFixed<H5String, DefinitionAttributes>,
     program_name: NexusDatasetMut<H5String>,
     run_number: NexusDatasetMut<u32>,
     title: NexusDatasetMut<H5String>,
@@ -110,12 +107,12 @@ impl NexusGroupDef for RawData {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            idf_version: NexusDataset::new_with_fixed_value("idf_version", 2),
-            definition: NexusDataset::new_with_fixed_value(
+            _idf_version: NexusDataset::new_with_fixed_value("idf_version", 2),
+            _definition: NexusDataset::new_with_fixed_value(
                 "definition",
                 "muonTD".parse().expect(""),
             ),
-            definition_local: NexusDataset::new_with_fixed_value(
+            _definition_local: NexusDataset::new_with_fixed_value(
                 "definition_local",
                 "muonTD".parse().expect(""),
             ),
