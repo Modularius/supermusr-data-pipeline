@@ -1,10 +1,10 @@
+mod elements;
 mod error;
 mod nexus;
 mod schematic;
 
 use chrono::Duration;
 use clap::Parser;
-use error::NexusPushError;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use nexus::{NexusEngine, NexusSettings};
@@ -362,10 +362,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 }
 
 #[tracing::instrument(skip_all)]
-fn process_sample_environment_message(
-    nexus_engine: &mut NexusEngine,
-    payload: &[u8],
-) {
+fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(
@@ -391,10 +388,7 @@ fn process_sample_environment_message(
 }
 
 #[tracing::instrument(skip_all)]
-fn process_alarm_message(
-    nexus_engine: &mut NexusEngine,
-    payload: &[u8],
-) {
+fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Alarm)]

@@ -2,16 +2,13 @@ use hdf5::Group;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 
 use crate::{
+    elements::{
+        group::NexusGroup,
+        traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+    },
     error::NexusPushError,
     nexus::NexusSettings,
-    schematic::{
-        elements::{
-            group::NexusGroup,
-            traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage},
-        },
-        groups::log::Log,
-        nexus_class,
-    },
+    schematic::{groups::log::Log, nexus_class},
 };
 
 pub(super) struct RunLog {

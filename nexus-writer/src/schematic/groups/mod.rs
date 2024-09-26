@@ -2,20 +2,17 @@ use hdf5::Group;
 use raw_data::RawData;
 
 use crate::{
-    error::NexusPushError,
-    nexus::NexusSettings,
-    schematic::elements::{attribute::NexusAttribute, group::NexusGroup},
-};
-
-use super::{
     elements::{
-        attribute::{NexusAttributeFixed, NexusAttributeMut},
+        attribute::{NexusAttribute, NexusAttributeFixed, NexusAttributeMut},
+        group::NexusGroup,
         traits::{
             NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef,
             NexusHandleMessage, NexusPushMessage,
         },
     },
-    nexus_class, H5String,
+    error::NexusPushError,
+    nexus::NexusSettings,
+    schematic::{nexus_class, H5String},
 };
 
 pub(super) mod log;

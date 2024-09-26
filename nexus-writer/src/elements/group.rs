@@ -26,10 +26,7 @@ impl<D: NexusGroupDef> NexusGroup<D> {
         &self.name
     }
 
-    pub(in crate::schematic) fn create_hdf5(
-        &mut self,
-        parent: &Group,
-    ) -> Result<Group, NexusGroupError> {
+    pub(crate) fn create_hdf5(&mut self, parent: &Group) -> Result<Group, NexusGroupError> {
         let group = parent.group(&self.name).or_else(|_| {
             let group = parent
                 .create_group(self.name.as_str())
@@ -47,7 +44,7 @@ impl<D: NexusGroupDef> NexusGroup<D> {
         Ok(group)
     }
 
-    pub(in crate::schematic) fn close_hdf5(&mut self) {
+    pub(crate) fn close_hdf5(&mut self) {
         self.group = None;
     }
 }

@@ -10,9 +10,9 @@ The Nexus Writer crate is designed to adhere to 3 goals:
 
 To this end the source code is split between the folders `nexus`, `elements` and `schematic`.
 
-# Elements
+## Elements
 
-## NexusGroup
+### NexusGroup
 
 The `NexusGroup` object is a generic structure (i.e. a structure which depends on one or more generic types).
 In particular `NexusGroup<G>` is the concrete structure where `G` implements the `NexusGroupDef` trait.
@@ -55,7 +55,7 @@ then calling `my_group.new("MyGroup")` initialises `my_group` to create a `HDF5`
 
 Note that the actual HDF5 objects are not created by `new` but created lazily during calls to `NexusGroup::<G>::push_message`.
 
-## NexusDataset
+### NexusDataset
 
 The `NexusDataset` object is a generic structure depending on a type implementing the `NexusDatasetDef` trait. This is analagous to `NexusGroup` and types implementing `NexusGroupDef`. In addition however, `NexusDataset` depends on a type implementing the trait `NexusClassDataHolder`.
 This specifies what kind of dataset to create, (e.g. scalar mutable, fixed value, appendable array, etc ).
@@ -71,7 +71,6 @@ pub(crate) trait NexusDatasetDef: Sized {
 Structures implementing `NexusDatasetDef` define a `HDF5` dataset in the nexus file. There is an optional constant `UNITS` which, if present results in an attribute named `units` specifying the units of the value in the dataset. Many Nexus datasets have this attribute, and if used it should be defined here rather than as a separate attribute.
 
 The purpose of implementing `NexusGroupDef` is to define any attributes the dataset. For instance
-
 
 ```rust
 struct MyDataset {
@@ -92,10 +91,14 @@ impl NexusDatasetDef for MyGroup {
 As many Nexus datasets have no attributes, or just a `units` attribute, the unit type `()` also implements `NexusDatasetDef` with `UNITS = None`, and `new()` doing nothing.
 So a dataset with no units and other attributes can be specified by `MyDataset : NexusDataset<(),C>` where `C : NexusClassDataHolder`.
 
-### NexusClassDataHolder
+#### NexusClassDataHolder
 
 The signature of `NexusDatset` is `NexusDatset<D,C>` where `D : NexusDatasetDef` and `C : NexusClassDataHolder`.
 The choice of `D` defines the structure, whilst `C` defines the behavior. The choices of `C` are:
+
+|Term|Definition|
+|---|---|
+|`NexusClassMutableDataHolder<T>`|use this for a statically typed scalar value that can be set and changed at runtime (note: an initial value must be hard-coded).|
 
 - `NexusClassMutableDataHolder<T>`: use this for a statically typed scalar value that can be set and changed at runtime (note: an initial value must be hard-coded).
 - `NexusClassFixedDataHolder<T>`: use this for a statically typed scalar value whose value is hard-coded and immutable (e.g. strings with file specifications)
@@ -108,25 +111,58 @@ The choice of `C : NexusClassDataHolder` in the signature of `NexusDatset` ensur
 (such as trying to write to a fixed dataset, or treating an array as a scalar).
 The limitation to four types also assists analysis by aiding predictability.
 
+When defining `NexusDatset` instances, several helper types are defined:
+
+- Use `NexusDatasetMut<D>` for `NexusDataset<D,NexusClassMutableDataHolder>`
+- Use `NexusDatasetFixed<D>` for `NexusDataset<D,NexusClassFixedDataHolder>`
+- Use `NexusDatasetAppendable<D>` for `NexusDataset<D,NexusClassAppendableDataHolder>`
+- Use `NexusDatasetNumericAppendable<D>` for `NexusDataset<D,NexusClassNumericAppendableDataHolder>`.
+
+Note in each case, if `D` is ommited the default of `D = ()` is used
+
 When initialising `NexusDatset` the function to initialise depends on the choice of `C`, as diffent classes expect different initialisation arguments.
 
 - `NexusClassMutableDataHolder`, use either:
-  - `NexusDatset::new_with_initial(name: &str, initial : T)`
-  - `NexusDatset::new_with_default(name: &str)`
-- `NexusClassFixedDataHolder`, use
-  - `NexusDatset::new_with_fixed(name: &str, fixed_value : T)`
-- `NexusClassAppendableDataHolder`, use either:
-  - `NexusDatset::new_with_initial_size(name: &str, default_value: Self::DataType, default_size: usize, chunk_size: usize)`
-  - `NexusDatset::new_appendable_with_default(name: &str, chunk_size: usize)`
-- `NexusClassNumericAppendableDataHolder`, use
-  - `NexusDatset::new(name: &str, chunk_size: usize)`
 
-## NexusAttribute
+   - `NexusDatset::new_with_initial(name: &str, initial : T)`
+   - `NexusDatset::new_with_default(name: &str)`
+
+- `NexusClassFixedDataHolder`, use
+
+   - `NexusDatset::new_with_fixed(name: &str, fixed_value : T)`
+
+- `NexusClassAppendableDataHolder`, use either:
+
+   - `NexusDatset::new_with_initial_size(name: &str, default_value: Self::DataType, default_size: usize, chunk_size: usize)`
+   - `NexusDatset::new_appendable_with_default(name: &str, chunk_size: usize)`
+
+- `NexusClassNumericAppendableDataHolder`, use
+
+   - `NexusDatset::new(name: &str, chunk_size: usize)`
+
+### NexusAttribute
 
 This is similar to `NexusDataset` except attributes have no internal structure, so there is **no** `NexusAttributeDef` trait.
 The signature of `NexusAttribute` is `NexusAttribute<C>` where `C : NexusClassDataHolder`.
 Unlike `NexusDataset` however, only `NexusClassMutableDataHolder` and `NexusClassFixedDataHolder` can be chosen.
 
-# Schematic
+When defining `NexusAttribute` instances, several helper types are defined:
 
-## Example
+- Use `NexusAttributeMut<D>` for `NexusAttribute<D,NexusClassMutableDataHolder>`
+- Use `NexusAttributeFixed<D>` for `NexusAttribute<D,NexusClassFixedDataHolder>`
+
+As with `NexusDataset` the function to initialise `NexusAttribute` depends on the choice of `C`.
+
+- `NexusClassMutableDataHolder`, use either:
+
+   - `NexusAttribute::new_with_initial(name: &str, initial : T)`
+   - `NexusAttribute::new_with_default(name: &str)`
+
+- `NexusClassFixedDataHolder`, use
+
+   - `NexusAttribute::new_with_fixed(name: &str, fixed_value : T)`
+
+
+## Schematic
+
+### Example

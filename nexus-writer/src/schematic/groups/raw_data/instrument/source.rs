@@ -1,14 +1,11 @@
 use crate::{
-    nexus::NexusSettings,
-    schematic::{
-        elements::{
-            dataset::{NexusDataset, NexusDatasetMut},
-            group::NexusGroup,
-            traits::{NexusDataHolderScalarMutable, NexusGroupDef},
-        },
-        groups::log::Log,
-        nexus_class, H5String,
+    elements::{
+        dataset::{NexusDataset, NexusDatasetMut},
+        group::NexusGroup,
+        traits::{NexusDataHolderScalarMutable, NexusGroupDef},
     },
+    nexus::NexusSettings,
+    schematic::{groups::log::Log, nexus_class, H5String},
 };
 
 pub(super) struct Source {

@@ -4,16 +4,13 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
+    elements::{
+        group::NexusGroup,
+        traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+    },
     error::NexusPushError,
     nexus::NexusSettings,
-    schematic::{
-        elements::{
-            group::NexusGroup,
-            traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage},
-        },
-        groups::log::ValueLog,
-        nexus_class,
-    },
+    schematic::{groups::log::ValueLog, nexus_class},
 };
 
 pub(super) struct Selog {

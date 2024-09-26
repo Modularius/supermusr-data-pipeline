@@ -1,12 +1,10 @@
 use crate::{
-    nexus::NexusSettings,
-    schematic::{
-        elements::{
-            dataset::{NexusDataset, NexusDatasetMut},
-            traits::{NexusDataHolderScalarMutable, NexusGroupDef},
-        },
-        nexus_class, H5String,
+    elements::{
+        dataset::{NexusDataset, NexusDatasetMut},
+        traits::{NexusDataHolderScalarMutable, NexusGroupDef},
     },
+    nexus::NexusSettings,
+    schematic::{nexus_class, H5String},
 };
 
 pub(super) struct Geometry {

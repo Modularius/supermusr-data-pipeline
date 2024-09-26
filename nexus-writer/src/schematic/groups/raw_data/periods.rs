@@ -2,20 +2,17 @@ use hdf5::Group;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
+    elements::{
+        attribute::{NexusAttribute, NexusAttributeMut},
+        dataset::{NexusDataset, NexusDatasetMut},
+        group::NexusGroup,
+        traits::{
+            NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+        },
+    },
     error::NexusPushError,
     nexus::NexusSettings,
-    schematic::{
-        elements::{
-            attribute::{NexusAttribute, NexusAttributeMut},
-            dataset::{NexusDataset, NexusDatasetMut},
-            group::NexusGroup,
-            traits::{
-                NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
-            },
-        },
-        groups::log::Log,
-        nexus_class, H5String,
-    },
+    schematic::{groups::log::Log, nexus_class, H5String},
 };
 
 #[derive(Clone)]

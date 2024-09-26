@@ -1,4 +1,4 @@
-use hdf5::{types::StringError, Attribute, Dataset, H5Type};
+use hdf5::{Attribute, Dataset, H5Type};
 
 use crate::{
     error::{HDF5Error, NexusAttributeError},

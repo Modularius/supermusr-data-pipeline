@@ -15,24 +15,22 @@ use supermusr_streaming_types::{
 use user::User;
 
 use crate::{
+    elements::{
+        attribute::{NexusAttribute, NexusAttributeFixed},
+        dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
+        group::NexusGroup,
+        traits::{
+            NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+        },
+        NexusUnits,
+    },
     error::{
         NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError,
         RunStartError, RunStopError,
     },
     nexus::{NexusSettings, RunBounded, RunStarted},
-    schematic::{
-        elements::{
-            attribute::{NexusAttribute, NexusAttributeFixed},
-            dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
-            group::NexusGroup,
-            traits::{
-                NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
-                NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
-            },
-            NexusUnits,
-        },
-        nexus_class, H5String,
-    },
+    schematic::{nexus_class, H5String},
 };
 
 mod data;

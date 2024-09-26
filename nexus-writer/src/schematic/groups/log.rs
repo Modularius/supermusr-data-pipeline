@@ -6,25 +6,23 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
+    elements::{
+        attribute::{NexusAttribute, NexusAttributeMut},
+        dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
+        log_value::NumericVector,
+        traits::{
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef,
+            NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage,
+            NexusNumericAppendableDataHolder,
+        },
+        NexusUnits,
+    },
     error::{
         HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError,
         NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError,
     },
     nexus::{nexus_class, NexusSettings},
-    schematic::{
-        elements::{
-            attribute::{NexusAttribute, NexusAttributeMut},
-            dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
-            log_value::NumericVector,
-            traits::{
-                NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef,
-                NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage,
-                NexusNumericAppendableDataHolder,
-            },
-            NexusUnits,
-        },
-        H5String,
-    },
+    schematic::H5String,
 };
 
 #[derive(Clone)]
