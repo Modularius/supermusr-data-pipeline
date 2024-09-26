@@ -2,7 +2,7 @@ use hdf5::{Attribute, Dataset, H5Type};
 
 use crate::{
     error::{HDF5Error, NexusAttributeError},
-    schematic::H5String,
+    schematic::{H5DateTimeString, H5String},
 };
 
 use super::{
@@ -10,9 +10,7 @@ use super::{
         NexusClassDataHolder, NexusClassFixedDataHolder, NexusClassMutableDataHolder,
     },
     traits::{
-        NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable,
-        NexusDataHolderStringMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder,
-        NexusH5InstanceCreatableDataHolder,
+        NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder
     },
 };
 

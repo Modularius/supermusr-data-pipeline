@@ -4,6 +4,8 @@ use hdf5::types::VarLenUnicode;
 
 pub(crate) type H5String = VarLenUnicode;
 
+pub(crate) type H5DateTimeString = VarLenUnicode;
+
 pub(crate) mod nexus_class {
     pub(crate) const DETECTOR: &str = "NXdetector";
     pub(crate) const ENTRY: &str = "NXentry";

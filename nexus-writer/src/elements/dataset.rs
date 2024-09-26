@@ -6,7 +6,7 @@ use ndarray::s;
 
 use crate::{
     error::{HDF5Error, NexusDatasetError, NexusNumericError, NexusPushError},
-    schematic::H5String,
+    schematic::{H5DateTimeString, H5String},
 };
 
 use super::{
@@ -16,11 +16,7 @@ use super::{
     },
     log_value::{DatasetBuilderNumericExt, DatasetNumericExt, NumericVector},
     traits::{
-        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed,
-        NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize,
-        NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder,
-        NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder,
-        NexusPushMessage,
+        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
     },
 };
 

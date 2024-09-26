@@ -171,4 +171,6 @@ pub(crate) enum NexusGroupError {
 pub(crate) enum NexusAttributeError {
     #[error("HDF5 Error {0}")]
     HDF5(#[from] HDF5Error),
+    #[error("Chrono Parse Error: {0}")]
+    ChronoParse(#[from] chrono::ParseError),
 }

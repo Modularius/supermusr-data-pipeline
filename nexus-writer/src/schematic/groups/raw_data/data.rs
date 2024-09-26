@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -12,9 +12,7 @@ use crate::{
         attribute::{NexusAttribute, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetResize},
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
-            NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder,
-            NexusHandleMessage, NexusPushMessage,
+            NexusAppendableDataHolder, NexusDataHolderDateTimeMutable, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage
         },
         NexusUnits,
     },
@@ -68,7 +66,13 @@ impl<'a> EventTimeZeroAttributesMessage<'a> {
     }
 }
 
-fn get_time_zero(has_offset: bool) {}
+fn datetime_diff_to_u64(timestamp : DateTime<Utc>, offset : DateTime<Utc>) -> Result<u64,NexusConversionError> {
+    (timestamp - offset)
+        .num_nanoseconds()
+        .ok_or(NexusConversionError::NanosecondError(timestamp - offset))?
+        .try_into()
+        .map_err(NexusConversionError::TimeDeltaNegative)
+}
 
 impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
     for EventTimeZeroAttributes
@@ -85,14 +89,9 @@ impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
                 let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
                     .map_err(NexusConversionError::ChronoParse)?;
 
-                (timestamp - offset)
-                    .num_nanoseconds()
-                    .ok_or(NexusConversionError::NanosecondError(timestamp - offset))?
-                    .try_into()
-                    .map_err(NexusConversionError::TimeDeltaNegative)?
+                datetime_diff_to_u64(timestamp, offset)?
             } else {
-                self.offset
-                    .write_string(_dataset, &timestamp.to_rfc3339())?;
+                self.offset.write_datetime(_dataset, &timestamp)?;
 
                 u64::default()
             }
