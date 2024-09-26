@@ -31,13 +31,15 @@ impl<D: NexusGroupDef> NexusGroup<D> {
         parent: &Group,
     ) -> Result<Group, NexusGroupError> {
         let group = parent.group(&self.name).or_else(|_| {
-            let group = parent.create_group(self.name.as_str())
-            .map_err(HDF5Error::HDF5)?;
+            let group = parent
+                .create_group(self.name.as_str())
+                .map_err(HDF5Error::HDF5)?;
 
             group
                 .new_attr_builder()
                 .with_data(&VarLenUnicode::from_str(D::CLASS_NAME).map_err(HDF5Error::HDF5String)?)
-                .create("NXclass").map_err(HDF5Error::HDF5)?;
+                .create("NXclass")
+                .map_err(HDF5Error::HDF5)?;
 
             Ok::<_, NexusGroupError>(group)
         })?;

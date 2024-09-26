@@ -2,7 +2,10 @@ use super::log_value::NumericVector;
 use super::NexusUnits;
 use hdf5::{types::TypeDescriptor, Group, H5Type};
 
-use crate::{error::{HDF5Error, NexusPushError}, schematic::H5String};
+use crate::{
+    error::{HDF5Error, NexusPushError},
+    schematic::H5String,
+};
 
 /// Implemented for objects who are constructed by a builder
 /// i.e. NexusDataset and NexusAttribute instances
@@ -47,7 +50,9 @@ pub(crate) trait NexusH5InstanceCreatableDataHolder: NexusDataHolder {
 
 /// Implemented for objects which can hold data
 /// i.e. NexusBuilder with FINISHED = true
-pub(in crate::schematic) trait NexusH5CreatableDataHolder: NexusH5InstanceCreatableDataHolder {
+pub(in crate::schematic) trait NexusH5CreatableDataHolder:
+    NexusH5InstanceCreatableDataHolder
+{
     fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError>;
     fn close_hdf5(&mut self);
 }
@@ -64,11 +69,11 @@ pub(crate) trait NexusDataHolderScalarMutable:
     NexusDataHolderWithStaticType + Sized
 {
     fn new_with_initial(name: &str, default: Self::DataType) -> Self;
-    
+
     fn new_with_default(name: &str) -> Self {
         Self::new_with_initial(name, Default::default())
     }
-    
+
     fn write_scalar(
         &self,
         parent: &Self::HDF5Container,
@@ -78,13 +83,15 @@ pub(crate) trait NexusDataHolderScalarMutable:
     fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, Self::ThisError>;
 }
 
-pub(crate) trait NexusDataHolderFixed : NexusDataHolderWithStaticType {
-    fn new_with_fixed_value(name: &str, fixed_value : Self::DataType) -> Self;
+pub(crate) trait NexusDataHolderFixed: NexusDataHolderWithStaticType {
+    fn new_with_fixed_value(name: &str, fixed_value: Self::DataType) -> Self;
 }
 
-pub(crate) trait NexusDataHolderStringMutable : NexusDataHolderScalarMutable + NexusDataHolderWithStaticType<DataType = H5String>
-    where Self::ThisError : From<HDF5Error>
-    {
+pub(crate) trait NexusDataHolderStringMutable:
+    NexusDataHolderScalarMutable + NexusDataHolderWithStaticType<DataType = H5String>
+where
+    Self::ThisError: From<HDF5Error>,
+{
     fn write_string(
         &self,
         parent: &Self::HDF5Container,
@@ -96,8 +103,7 @@ pub(crate) trait NexusDataHolderStringMutable : NexusDataHolderScalarMutable + N
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(crate) trait NexusDataHolderWithSize: NexusDataHolder
-{
+pub(crate) trait NexusDataHolderWithSize: NexusDataHolder {
     fn get_size(&self, parent: &Self::HDF5Container) -> Result<usize, Self::ThisError>;
 }
 
@@ -106,15 +112,14 @@ pub(crate) trait NexusDataHolderWithSize: NexusDataHolder
 pub(crate) trait NexusAppendableDataHolder:
     NexusDataHolderWithStaticType + NexusDataHolderWithSize + Sized
 {
-    fn new_with_initial_size (name: &str,
+    fn new_with_initial_size(
+        name: &str,
         default_value: Self::DataType,
         default_size: usize,
-        chunk_size: usize
+        chunk_size: usize,
     ) -> Self;
 
-    fn new_appendable_with_default(name: &str,
-        chunk_size: usize
-    ) -> Self {
+    fn new_appendable_with_default(name: &str, chunk_size: usize) -> Self {
         Self::new_with_initial_size(name, Default::default(), Default::default(), chunk_size)
     }
 
@@ -127,15 +132,11 @@ pub(crate) trait NexusAppendableDataHolder:
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(crate) trait NexusNumericAppendableDataHolder:
-    NexusDataHolderWithSize
-{
-    fn new(name: &str,
-        chunk_size: usize
-    ) -> Self;
+pub(crate) trait NexusNumericAppendableDataHolder: NexusDataHolderWithSize {
+    fn new(name: &str, chunk_size: usize) -> Self;
 
     fn try_set_type(&mut self, type_desc: TypeDescriptor) -> Result<(), Self::ThisError>;
-    
+
     fn append_numerics(
         &self,
         parent: &Self::HDF5Container,

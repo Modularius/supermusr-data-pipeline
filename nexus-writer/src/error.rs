@@ -36,8 +36,6 @@ pub(crate) enum NexusMissingRunlogError {
     Message,
 }
 
-
-
 #[derive(Debug, Error)]
 pub(crate) enum NexusMissingRunStartError {
     #[error("Runstart Run Name Missing")]
@@ -67,7 +65,7 @@ pub(crate) enum NexusMissingError {
     #[error("Eventlist {0}")]
     Eventlist(NexusMissingEventlistError),
     #[error("RunStart {0}")]
-    RunStart(NexusMissingRunStartError)
+    RunStart(NexusMissingRunStartError),
 }
 
 #[derive(Debug, Error)]
@@ -81,7 +79,7 @@ pub(crate) enum NexusConversionError {
     #[error("Parse Error: {0}")]
     GpsTimeConversion(#[from] GpsTimeConversionError),
     #[error("TryFromInt Error {0}")]
-    TryFromInt(#[from] TryFromIntError)
+    TryFromInt(#[from] TryFromIntError),
 }
 
 #[derive(Debug, Error)]
@@ -93,8 +91,7 @@ pub(crate) enum RunError {
     #[error("Start SWMR Write Error: {0}")]
     StartSWMRWriterError(i32),
     #[error("File Name Error")]
-    FileNameError
-    
+    FileNameError,
 }
 
 #[derive(Debug, Error)]
@@ -127,7 +124,6 @@ pub(crate) enum RunStartError {
     CollectFrom,
 }
 
-
 #[derive(Debug, Error)]
 pub(crate) enum RunStopError {
     #[error("Unexpected Run Stop")]
@@ -137,7 +133,7 @@ pub(crate) enum RunStopError {
     #[error("Conversion: {0}")]
     Conversion(#[from] NexusConversionError),
     #[error("Run Stop before Run Start")]
-    RunStopBeforeRunStart
+    RunStopBeforeRunStart,
 }
 
 #[derive(Debug, Error)]

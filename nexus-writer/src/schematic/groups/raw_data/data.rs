@@ -14,7 +14,12 @@ use crate::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetResize},
-            traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage}, NexusUnits,
+            traits::{
+                NexusAppendableDataHolder, NexusDataHolderScalarMutable,
+                NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef,
+                NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage,
+            },
+            NexusUnits,
         },
         nexus_class, H5String,
     },
@@ -52,21 +57,20 @@ struct EventTimeZeroAttributesMessage<'a> {
 }
 
 impl<'a> EventTimeZeroAttributesMessage<'a> {
-    fn get_timestamp(&self) -> Result<DateTime<Utc>,NexusPushError> {
-        (*self.frame_assembled_event_list
+    fn get_timestamp(&self) -> Result<DateTime<Utc>, NexusPushError> {
+        (*self
+            .frame_assembled_event_list
             .metadata()
             .timestamp()
             .ok_or(NexusMissingEventlistError::Timestamp)
-            .map_err(NexusMissingError::Eventlist)?
-        ).try_into()
+            .map_err(NexusMissingError::Eventlist)?)
+        .try_into()
         .map_err(NexusConversionError::GpsTimeConversion)
         .map_err(NexusPushError::Conversion)
     }
 }
 
-fn get_time_zero(has_offset: bool, ) {
-
-}
+fn get_time_zero(has_offset: bool) {}
 
 impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
     for EventTimeZeroAttributes
@@ -80,9 +84,8 @@ impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
 
         let time_zero = {
             if message.has_offset {
-                let offset =
-                    DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
-                        .map_err(NexusConversionError::ChronoParse)?;
+                let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
+                    .map_err(NexusConversionError::ChronoParse)?;
 
                 (timestamp - offset)
                     .num_nanoseconds()
@@ -115,22 +118,28 @@ impl NexusGroupDef for Data {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            event_id: NexusDataset::new_appendable_with_default("event_id",
+            event_id: NexusDataset::new_appendable_with_default(
+                "event_id",
                 settings.eventlist_chunk_size,
             ),
-            event_index: NexusDataset::new_appendable_with_default("event_index",
+            event_index: NexusDataset::new_appendable_with_default(
+                "event_index",
                 settings.framelist_chunk_size,
             ),
-            event_time_offset: NexusDataset::new_appendable_with_default("event_time_offset",
+            event_time_offset: NexusDataset::new_appendable_with_default(
+                "event_time_offset",
                 settings.eventlist_chunk_size,
             ),
-            event_time_zero: NexusDataset::new_appendable_with_default("event_time_zero", 
+            event_time_zero: NexusDataset::new_appendable_with_default(
+                "event_time_zero",
                 settings.framelist_chunk_size,
             ),
-            event_period_number: NexusDataset::new_appendable_with_default("event_period_number",
+            event_period_number: NexusDataset::new_appendable_with_default(
+                "event_period_number",
                 settings.framelist_chunk_size,
             ),
-            event_pulse_height: NexusDataset::new_appendable_with_default("event_pulse_height",
+            event_pulse_height: NexusDataset::new_appendable_with_default(
+                "event_pulse_height",
                 settings.eventlist_chunk_size,
             ),
         }
@@ -203,7 +212,7 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
         //  event_time_zero
         let event_time_zero_attributes_message = EventTimeZeroAttributesMessage {
             frame_assembled_event_list: message,
-            has_offset: current_index != 0
+            has_offset: current_index != 0,
         };
         let time_zero = self
             .event_time_zero

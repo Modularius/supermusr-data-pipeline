@@ -9,7 +9,9 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage},
+            traits::{
+                NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            },
         },
         groups::log::Log,
         nexus_class, H5String,

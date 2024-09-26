@@ -1,16 +1,26 @@
-use hdf5::{types::{StringError, TypeDescriptor}, Dataset, Group, H5Type, SimpleExtents};
+use hdf5::{
+    types::{StringError, TypeDescriptor},
+    Dataset, Group, H5Type, SimpleExtents,
+};
 use ndarray::s;
 
-use crate::{error::{HDF5Error, NexusDatasetError, NexusNumericError, NexusPushError}, schematic::H5String};
+use crate::{
+    error::{HDF5Error, NexusDatasetError, NexusNumericError, NexusPushError},
+    schematic::H5String,
+};
 
 use super::{
     dataholder_class::{
         NexusClassAppendableDataHolder, NexusClassDataHolder, NexusClassFixedDataHolder,
-        NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder, NexusClassWithSize
+        NexusClassMutableDataHolder, NexusClassNumericAppendableDataHolder, NexusClassWithSize,
     },
     log_value::{DatasetBuilderNumericExt, DatasetNumericExt, NumericVector},
     traits::{
-        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
+        NexusAppendableDataHolder, NexusDataHolder, NexusDataHolderFixed,
+        NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize,
+        NexusDataHolderWithStaticType, NexusDatasetDef, NexusH5CreatableDataHolder,
+        NexusH5InstanceCreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder,
+        NexusPushMessage,
     },
 };
 
@@ -22,21 +32,18 @@ pub(crate) struct NexusDataset<D: NexusDatasetDef, C: NexusClassDataHolder> {
     definition: D,
 }
 
-pub(crate) type NexusDatasetMut<T, D = ()> =
-    NexusDataset<D, NexusClassMutableDataHolder<T>>;
+pub(crate) type NexusDatasetMut<T, D = ()> = NexusDataset<D, NexusClassMutableDataHolder<T>>;
 
-pub(crate) type NexusDatasetFixed<T, D = ()> =
-    NexusDataset<D, NexusClassFixedDataHolder<T>>;
+pub(crate) type NexusDatasetFixed<T, D = ()> = NexusDataset<D, NexusClassFixedDataHolder<T>>;
 
-pub(crate) type NexusDatasetResize<T, D = ()> =
-    NexusDataset<D, NexusClassAppendableDataHolder<T>>;
+pub(crate) type NexusDatasetResize<T, D = ()> = NexusDataset<D, NexusClassAppendableDataHolder<T>>;
 
 pub(crate) type NexusLogValueDatasetResize<D = ()> =
     NexusDataset<D, NexusClassNumericAppendableDataHolder>;
 
 /*
-    Generic Traits
-        */
+Generic Traits
+    */
 impl<D, C> NexusDataHolder for NexusDataset<D, C>
 where
     D: NexusDatasetDef,
@@ -51,7 +58,8 @@ impl<D, C> NexusH5CreatableDataHolder for NexusDataset<D, C>
 where
     D: NexusDatasetDef,
     C: NexusClassDataHolder,
-    NexusDataset<D, C>: NexusH5InstanceCreatableDataHolder<HDF5Type = Dataset, ThisError = NexusDatasetError>,
+    NexusDataset<D, C>:
+        NexusH5InstanceCreatableDataHolder<HDF5Type = Dataset, ThisError = NexusDatasetError>,
 {
     fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusDatasetError> {
         let dataset = self.create_hdf5_instance(parent)?;
@@ -76,20 +84,25 @@ where
 }
 
 /*
-    NexusClassMutableDataHolder
-        */
+NexusClassMutableDataHolder
+    */
 
 impl<T, D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassMutableDataHolder<T>>
-where T: H5Type + Clone + Default, D: NexusDatasetDef
+where
+    T: H5Type + Clone + Default,
+    D: NexusDatasetDef,
 {
     fn create_hdf5_instance(
         &self,
         parent: &Self::HDF5Container,
     ) -> Result<hdf5::Dataset, NexusDatasetError> {
         parent.dataset(&self.name).or_else(|_| {
-            let dataset = parent.new_dataset::<T>().create(self.name.as_str())
+            let dataset = parent
+                .new_dataset::<T>()
+                .create(self.name.as_str())
                 .map_err(HDF5Error::HDF5)?;
-            dataset.write_scalar(&self.class.default_value)
+            dataset
+                .write_scalar(&self.class.default_value)
                 .map_err(HDF5Error::HDF5)?;
             Ok::<_, NexusDatasetError>(dataset)
         })
@@ -136,13 +149,13 @@ where
 impl<D> NexusDataHolderStringMutable for NexusDataset<D, NexusClassMutableDataHolder<H5String>>
 where
     D: NexusDatasetDef,
-    Self::ThisError : From<HDF5Error>
-{}
-
+    Self::ThisError: From<HDF5Error>,
+{
+}
 
 /*
-    NexusClassFixedDataHolder
-        */
+NexusClassFixedDataHolder
+    */
 
 impl<T, D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassFixedDataHolder<T>>
 where
@@ -157,8 +170,13 @@ where
             Ok(dataset.clone())
         } else {
             parent.dataset(&self.name).or_else(|_| {
-                let dataset = parent.new_dataset::<T>().create(self.name.as_str()).map_err(HDF5Error::HDF5)?;
-                dataset.write_scalar(&self.class.fixed_value).map_err(HDF5Error::HDF5)?;
+                let dataset = parent
+                    .new_dataset::<T>()
+                    .create(self.name.as_str())
+                    .map_err(HDF5Error::HDF5)?;
+                dataset
+                    .write_scalar(&self.class.fixed_value)
+                    .map_err(HDF5Error::HDF5)?;
                 Ok::<_, NexusDatasetError>(dataset)
             })
         }
@@ -170,7 +188,7 @@ where
     T: H5Type + Clone + Default,
     D: NexusDatasetDef,
 {
-    fn new_with_fixed_value(name: &str, fixed_value : Self::DataType) -> Self {
+    fn new_with_fixed_value(name: &str, fixed_value: Self::DataType) -> Self {
         Self {
             name: name.to_string(),
             class: NexusClassFixedDataHolder { fixed_value },
@@ -189,8 +207,8 @@ where
 }
 
 /*
-    NexusClassAppendableDataHolder
-        */
+NexusClassAppendableDataHolder
+    */
 
 impl<T, D> NexusH5InstanceCreatableDataHolder for NexusDataset<D, NexusClassAppendableDataHolder<T>>
 where
@@ -209,11 +227,14 @@ where
                     .new_dataset::<T>()
                     .shape(SimpleExtents::resizable(vec![self.class.default_size]))
                     .chunk(vec![self.class.chunk_size])
-                    .create(self.name.as_str()).map_err(HDF5Error::HDF5)?;
-                dataset.write_slice(
-                    &vec![self.class.default_value.clone(); self.class.default_size],
-                    s![0..self.class.default_size],
-                ).map_err(HDF5Error::HDF5)?;
+                    .create(self.name.as_str())
+                    .map_err(HDF5Error::HDF5)?;
+                dataset
+                    .write_slice(
+                        &vec![self.class.default_value.clone(); self.class.default_size],
+                        s![0..self.class.default_size],
+                    )
+                    .map_err(HDF5Error::HDF5)?;
                 Ok::<_, NexusDatasetError>(dataset)
             })
         }
@@ -231,10 +252,11 @@ where
 impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusAppendableDataHolder
     for NexusDataset<D, NexusClassAppendableDataHolder<T>>
 {
-    fn new_with_initial_size (name: &str,
+    fn new_with_initial_size(
+        name: &str,
         default_value: Self::DataType,
         default_size: usize,
-        chunk_size: usize
+        chunk_size: usize,
     ) -> Self {
         Self {
             name: name.to_string(),
@@ -256,14 +278,18 @@ impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusAppendableDataHolder
         let dataset = self.create_hdf5_instance(parent)?;
         let size = dataset.size();
         let next_values_slice = s![size..(size + values.len())];
-        dataset.resize(size + values.len()).map_err(HDF5Error::HDF5)?;
-        Ok(dataset.write_slice(values, next_values_slice).map_err(HDF5Error::HDF5)?)
+        dataset
+            .resize(size + values.len())
+            .map_err(HDF5Error::HDF5)?;
+        Ok(dataset
+            .write_slice(values, next_values_slice)
+            .map_err(HDF5Error::HDF5)?)
     }
 }
 
 /*
-    NexusNumericAppendableDataHolder
-        */
+NexusNumericAppendableDataHolder
+    */
 
 impl<D> NexusH5InstanceCreatableDataHolder
     for NexusDataset<D, NexusClassNumericAppendableDataHolder>
@@ -294,9 +320,7 @@ where
 impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
     for NexusDataset<D, NexusClassNumericAppendableDataHolder>
 {
-    fn new (name: &str,
-        chunk_size: usize
-    ) -> Self {
+    fn new(name: &str, chunk_size: usize) -> Self {
         Self {
             name: name.to_string(),
             class: NexusClassNumericAppendableDataHolder {
@@ -321,7 +345,7 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
         }
         Ok(())
     }
-    
+
     /// This function assumes values is of the correct type (i.e. that try_set_type has successfully been called).
     fn append_numerics(
         &self,
@@ -330,21 +354,23 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
     ) -> Result<(), NexusDatasetError> {
         let dataset = self.create_hdf5_instance(parent)?;
         let size = dataset.size();
-        dataset.resize(size + values.len()).map_err(HDF5Error::HDF5)?;
+        dataset
+            .resize(size + values.len())
+            .map_err(HDF5Error::HDF5)?;
         dataset.write_numeric_slice(values, s![size..(size + values.len())])
     }
 }
 
 /*
-    NexusPushMessage
-        */
+NexusPushMessage
+    */
 
 impl<D, C, M, R> NexusPushMessage<M, Group, R> for NexusDataset<D, C>
 where
     D: NexusDatasetDef + NexusHandleMessage<M, Dataset, R>,
     C: NexusClassDataHolder,
     Self: NexusH5InstanceCreatableDataHolder<HDF5Container = Group, HDF5Type = Dataset>,
-    NexusPushError : From<<Self as NexusDataHolder>::ThisError>
+    NexusPushError: From<<Self as NexusDataHolder>::ThisError>,
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         let dataset = self.create_hdf5_instance(parent)?;

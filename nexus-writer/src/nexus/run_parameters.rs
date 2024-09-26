@@ -3,7 +3,10 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use crate::error::{NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError, RunStartError, RunStopError};
+use crate::error::{
+    NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError,
+    RunStartError, RunStopError,
+};
 
 /*#[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
@@ -18,48 +21,62 @@ pub(crate) struct RunStarted {
 }
 
 impl RunStarted {
-    pub(crate) fn new<'a>(message: &RunStart<'a>) -> Result<Self,RunStartError> {
-        let collect_from = DateTime::<Utc>::from_timestamp_millis(message.start_time()
+    pub(crate) fn new<'a>(message: &RunStart<'a>) -> Result<Self, RunStartError> {
+        let collect_from = DateTime::<Utc>::from_timestamp_millis(
+            message
+                .start_time()
                 .try_into()
-                .map_err(NexusConversionError::TryFromInt)?
-            ).ok_or(RunStartError::CollectFrom)?;
-        let run_name = message.run_name()
+                .map_err(NexusConversionError::TryFromInt)?,
+        )
+        .ok_or(RunStartError::CollectFrom)?;
+        let run_name = message
+            .run_name()
             .ok_or(NexusMissingRunStartError::RunName)
             .map_err(NexusMissingError::RunStart)?
             .to_owned();
-        Ok(Self { collect_from, run_name })
+        Ok(Self {
+            collect_from,
+            run_name,
+        })
     }
 }
 
-pub(crate) trait RunBounded : Sized {
-    fn new<'a>(message: &RunStop<'a>) -> Result<Self,RunStopError>;
+pub(crate) trait RunBounded: Sized {
+    fn new<'a>(message: &RunStop<'a>) -> Result<Self, RunStopError>;
 }
 
 impl RunBounded for DateTime<Utc> {
-    fn new<'a>(message: &RunStop<'a>) -> Result<Self,RunStopError> {
+    fn new<'a>(message: &RunStop<'a>) -> Result<Self, RunStopError> {
         DateTime::<Utc>::from_timestamp_millis(
-            message.stop_time()
+            message
+                .stop_time()
                 .try_into()
-                .map_err(NexusConversionError::TryFromInt)?
-        ).ok_or(RunStopError::CollectUntil)
+                .map_err(NexusConversionError::TryFromInt)?,
+        )
+        .ok_or(RunStopError::CollectUntil)
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct RunParameters {
-    pub(crate) started : RunStarted,
-    pub(crate) collect_until : Option<DateTime<Utc>>,
+    pub(crate) started: RunStarted,
+    pub(crate) collect_until: Option<DateTime<Utc>>,
     pub(crate) last_modified: DateTime<Utc>,
-    pub(crate) num_frames: usize,   // Do we actually need this?
+    pub(crate) num_frames: usize, // Do we actually need this?
 }
 
 impl RunParameters {
     pub(super) fn new(started: RunStarted) -> Self {
-        Self { started, collect_until: None, last_modified: Utc::now(), num_frames: 0 }
+        Self {
+            started,
+            collect_until: None,
+            last_modified: Utc::now(),
+            num_frames: 0,
+        }
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn bound(&mut self, collect_until : DateTime<Utc>) -> Result<(), RunStopError> {
+    pub(crate) fn bound(&mut self, collect_until: DateTime<Utc>) -> Result<(), RunStopError> {
         if self.collect_until.is_some() {
             Err(RunStopError::UnexpectedRunStop)
         } else {
@@ -78,7 +95,7 @@ impl RunParameters {
         self.num_frames += 1;
         self.update_last_modified();
     }
-    
+
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn update_last_modified(&mut self) {
         self.last_modified = Utc::now();

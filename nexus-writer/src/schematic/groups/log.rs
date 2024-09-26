@@ -7,7 +7,8 @@ use supermusr_streaming_types::{
 
 use crate::{
     error::{
-        HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError, NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError
+        HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError,
+        NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError,
     },
     nexus::{nexus_class, NexusSettings},
     schematic::{
@@ -15,7 +16,11 @@ use crate::{
             attribute::{NexusAttribute, NexusAttributeMut},
             dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
             log_value::NumericVector,
-            traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder},
+            traits::{
+                NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef,
+                NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage,
+                NexusNumericAppendableDataHolder,
+            },
             NexusUnits,
         },
         H5String,
@@ -39,7 +44,7 @@ impl NexusDatasetDef for TimeAttributes {
 
 pub(super) struct Log {
     time: NexusDatasetResize<i64, TimeAttributes>,
-    value: NexusLogValueDatasetResize
+    value: NexusLogValueDatasetResize,
 }
 
 impl NexusGroupDef for Log {
@@ -48,10 +53,11 @@ impl NexusGroupDef for Log {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            time: NexusDatasetResize::new_appendable_with_default("time", 
+            time: NexusDatasetResize::new_appendable_with_default(
+                "time",
                 settings.runloglist_chunk_size,
             ),
-            value: NexusLogValueDatasetResize::new("value", settings.runloglist_chunk_size)
+            value: NexusLogValueDatasetResize::new("value", settings.runloglist_chunk_size),
         }
     }
 }
@@ -61,9 +67,13 @@ fn get_value<T>(val: Option<T>) -> Result<T, NexusMissingError> {
         .map_err(NexusMissingError::Runlog)
 }
 
-fn get_vec<'a, T : supermusr_streaming_types::flatbuffers::Follow<'a>>(val: Option<supermusr_streaming_types::flatbuffers::Vector<'a, T>>) -> Result<Vec<T>, NexusMissingError>
-where Vec<T>: FromIterator<<T as supermusr_streaming_types::flatbuffers::Follow<'a>>::Inner> {
-    val.map(|vec|vec.iter().collect())
+fn get_vec<'a, T: supermusr_streaming_types::flatbuffers::Follow<'a>>(
+    val: Option<supermusr_streaming_types::flatbuffers::Vector<'a, T>>,
+) -> Result<Vec<T>, NexusMissingError>
+where
+    Vec<T>: FromIterator<<T as supermusr_streaming_types::flatbuffers::Follow<'a>>::Inner>,
+{
+    val.map(|vec| vec.iter().collect())
         .ok_or(NexusMissingRunlogError::Message)
         .map_err(NexusMissingError::Runlog)
 }
@@ -84,15 +94,27 @@ impl<'a> TryFrom<&f144_LogData<'a>> for NumericVector {
             Value::Float => Self::F4(vec![get_value(value.value_as_float())?.value()]),
             Value::Double => Self::F8(vec![get_value(value.value_as_double())?.value()]),
             Value::ArrayByte => Self::I1(get_vec(get_value(value.value_as_array_byte())?.value())?),
-            Value::ArrayShort => Self::I2(get_vec(get_value(value.value_as_array_short())?.value())?),
+            Value::ArrayShort => {
+                Self::I2(get_vec(get_value(value.value_as_array_short())?.value())?)
+            }
             Value::ArrayInt => Self::I4(get_vec(get_value(value.value_as_array_int())?.value())?),
             Value::ArrayLong => Self::I8(get_vec(get_value(value.value_as_array_long())?.value())?),
-            Value::ArrayUByte => Self::U1(get_vec(get_value(value.value_as_array_ubyte())?.value())?),
-            Value::ArrayUShort => Self::U2(get_vec(get_value(value.value_as_array_ushort())?.value())?),
+            Value::ArrayUByte => {
+                Self::U1(get_vec(get_value(value.value_as_array_ubyte())?.value())?)
+            }
+            Value::ArrayUShort => {
+                Self::U2(get_vec(get_value(value.value_as_array_ushort())?.value())?)
+            }
             Value::ArrayUInt => Self::U4(get_vec(get_value(value.value_as_array_uint())?.value())?),
-            Value::ArrayULong => Self::U8(get_vec(get_value(value.value_as_array_ulong())?.value())?),
-            Value::ArrayFloat => Self::F4(get_vec(get_value(value.value_as_array_float())?.value())?),
-            Value::ArrayDouble => Self::F8(get_vec(get_value(value.value_as_array_double())?.value())?),
+            Value::ArrayULong => {
+                Self::U8(get_vec(get_value(value.value_as_array_ulong())?.value())?)
+            }
+            Value::ArrayFloat => {
+                Self::F4(get_vec(get_value(value.value_as_array_float())?.value())?)
+            }
+            Value::ArrayDouble => {
+                Self::F8(get_vec(get_value(value.value_as_array_double())?.value())?)
+            }
             value => Err(NexusNumericError::InvalidRunLogType { value })
                 .map_err(NexusDatasetError::Numeric)?,
         })
@@ -128,18 +150,19 @@ impl NexusGroupDef for ValueLog {
 
     fn new(settings: &Self::Settings) -> Self {
         Self {
-            alarm_severity: NexusDataset::new_appendable_with_default("alarm_severity",
+            alarm_severity: NexusDataset::new_appendable_with_default(
+                "alarm_severity",
                 settings.seloglist_chunk_size,
             ),
-            alarm_status: NexusDataset::new_appendable_with_default("alarm_status",
+            alarm_status: NexusDataset::new_appendable_with_default(
+                "alarm_status",
                 settings.seloglist_chunk_size,
             ),
-            alarm_time: NexusDataset::new_appendable_with_default("alarm_time",
+            alarm_time: NexusDataset::new_appendable_with_default(
+                "alarm_time",
                 settings.seloglist_chunk_size,
             ),
-            time: NexusDataset::new_appendable_with_default("time", 
-                settings.seloglist_chunk_size,
-            ),
+            time: NexusDataset::new_appendable_with_default("time", settings.seloglist_chunk_size),
             value: NexusLogValueDatasetResize::new("value", settings.seloglist_chunk_size),
         }
     }

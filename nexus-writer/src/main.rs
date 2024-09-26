@@ -4,6 +4,7 @@ mod schematic;
 
 use chrono::Duration;
 use clap::Parser;
+use error::NexusPushError;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use nexus::{NexusEngine, NexusSettings};
@@ -278,32 +279,8 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                     record_metadata_fields_to_span!(metadata, tracing::Span::current());
                 })
                 .ok();
-            match nexus_engine.process_event_list(&data) {
-                Ok(run) => {
-                    if let Some(run) = run {
-                        if let Err(e) = run.link_current_span(|| {
-                            let span = info_span!(target: "otel",
-                                "Frame Event List",
-                                "metadata_timestamp" = tracing::field::Empty,
-                                "metadata_frame_number" = tracing::field::Empty,
-                                "metadata_period_number" = tracing::field::Empty,
-                                "metadata_veto_flags" = tracing::field::Empty,
-                                "metadata_protons_per_pulse" = tracing::field::Empty,
-                                "metadata_running" = tracing::field::Empty,
-                            );
-                            data.metadata()
-                                .try_into()
-                                .map(|metadata: FrameMetadata| {
-                                    record_metadata_fields_to_span!(metadata, span);
-                                })
-                                .ok();
-                            span
-                        }) {
-                            warn!("Run span linking failed {e}")
-                        }
-                    }
-                }
-                Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
+            if let Err(e) = nexus_engine.process_event_list(&data) {
+                warn!("Failed to save frame assembled event list to file: {}", e);
             }
         }
         Err(e) => {
@@ -385,7 +362,10 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 }
 
 #[tracing::instrument(skip_all)]
-fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+fn process_sample_environment_message(
+    nexus_engine: &mut NexusEngine,
+    payload: &[u8],
+) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(
@@ -394,18 +374,11 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
     )
     .increment(1);
     match spanned_root_as(root_as_se_00_sample_environment_data, payload) {
-        Ok(data) => match nexus_engine.sample_envionment(data) {
-            Ok(run) => {
-                if let Some(run) = run {
-                    if let Err(e) = run
-                        .link_current_span(|| info_span!(target: "otel", "Sample Environment Log"))
-                    {
-                        warn!("Run span linking failed {e}")
-                    }
-                }
+        Ok(data) => {
+            if let Err(e) = nexus_engine.sample_envionment(data) {
+                warn!("Failed to save sample environment data to file: {}", e);
             }
-            Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
-        },
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(
@@ -418,23 +391,21 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
 }
 
 #[tracing::instrument(skip_all)]
-fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+fn process_alarm_message(
+    nexus_engine: &mut NexusEngine,
+    payload: &[u8],
+) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Alarm)]
     )
     .increment(1);
     match spanned_root_as(root_as_alarm, payload) {
-        Ok(data) => match nexus_engine.alarm(data) {
-            Ok(run) => {
-                if let Some(run) = run {
-                    if let Err(e) = run.link_current_span(|| info_span!(target: "otel", "Alarm")) {
-                        warn!("Run span linking failed {e}")
-                    }
-                }
+        Ok(data) => {
+            if let Err(e) = nexus_engine.alarm(data) {
+                warn!("Failed to save alarm data to file: {}", e);
             }
-            Err(e) => warn!("Alarm ({data:?}) failed {e}"),
-        },
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(
@@ -454,18 +425,11 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     )
     .increment(1);
     match spanned_root_as(root_as_f_144_log_data, payload) {
-        Ok(data) => match nexus_engine.logdata(&data) {
-            Ok(run) => {
-                if let Some(run) = run {
-                    if let Err(e) =
-                        run.link_current_span(|| info_span!(target: "otel", "Run Log Data"))
-                    {
-                        warn!("Run span linking failed {e}")
-                    }
-                }
+        Ok(data) => {
+            if let Err(e) = nexus_engine.logdata(data) {
+                warn!("Failed to save log data to file: {}", e);
             }
-            Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
-        },
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(

@@ -15,14 +15,20 @@ use supermusr_streaming_types::{
 use user::User;
 
 use crate::{
-    error::{NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError, RunStartError, RunStopError},
+    error::{
+        NexusConversionError, NexusMissingError, NexusMissingRunStartError, NexusPushError,
+        RunStartError, RunStopError,
+    },
     nexus::{NexusSettings, RunBounded, RunStarted},
     schematic::{
         elements::{
             attribute::{NexusAttribute, NexusAttributeFixed},
             dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
             group::NexusGroup,
-            traits::{NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+            traits::{
+                NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+                NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            },
             NexusUnits,
         },
         nexus_class, H5String,
@@ -107,8 +113,14 @@ impl NexusGroupDef for RawData {
     fn new(settings: &NexusSettings) -> Self {
         Self {
             idf_version: NexusDataset::new_with_fixed_value("idf_version", 2),
-            definition: NexusDataset::new_with_fixed_value("definition", "muonTD".parse().expect("")),
-            definition_local: NexusDataset::new_with_fixed_value("definition_local", "muonTD".parse().expect("")),
+            definition: NexusDataset::new_with_fixed_value(
+                "definition",
+                "muonTD".parse().expect(""),
+            ),
+            definition_local: NexusDataset::new_with_fixed_value(
+                "definition_local",
+                "muonTD".parse().expect(""),
+            ),
             program_name: NexusDataset::new_with_default("program_name"),
             run_number: NexusDataset::new_with_default("run_number"),
             title: NexusDataset::new_with_default("title"),
@@ -143,8 +155,7 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for RawData {
         message: &FrameAssembledEventListMessage<'a>,
         location: &Group,
     ) -> Result<(), NexusPushError> {
-        self.detector_1
-            .push_message(message, location)
+        self.detector_1.push_message(message, location)
     }
 }
 
@@ -161,8 +172,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.sample.push_message(message, parent)?;
         self.instrument.push_message(message, parent)?;
 
-        self.program_name
-            .write_string(parent, "The Program")?;
+        self.program_name.write_string(parent, "The Program")?;
         self.run_number.write_scalar(parent, 0)?;
         self.title.write_string(parent, "The Title")?;
         self.notes
@@ -175,8 +185,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.good_frames.write_scalar(parent, 1)?;
         self.raw_frames.write_scalar(parent, 1)?;
         self.proton_charge.write_scalar(parent, 1.0)?;
-        self.experiment_identifier
-            .write_string(parent, "POAS35")?;
+        self.experiment_identifier.write_string(parent, "POAS35")?;
         self.run_cycle.write_string(parent, "This")?;
 
         self.detector_1.push_message(message, parent)?;
@@ -185,7 +194,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
     }
 }
 
-impl<'a> NexusHandleMessage<RunStop<'a>,Group, DateTime<Utc>> for RawData {
+impl<'a> NexusHandleMessage<RunStop<'a>, Group, DateTime<Utc>> for RawData {
     fn handle_message(
         &mut self,
         message: &RunStop<'a>,

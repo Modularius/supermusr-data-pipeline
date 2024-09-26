@@ -5,7 +5,10 @@ use crate::{
     error::NexusPushError,
     nexus::NexusSettings,
     schematic::{
-        elements::{group::NexusGroup, traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage}},
+        elements::{
+            group::NexusGroup,
+            traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+        },
         groups::log::Log,
         nexus_class,
     },

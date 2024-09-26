@@ -1,13 +1,17 @@
 use crate::{
-    error::{HDF5Error, NexusPushError, RunError}, schematic::{
-        elements::{group::NexusGroup, traits::NexusPushMessage},
+    error::{HDF5Error, NexusPushError, RunError},
+    schematic::{
+        elements::{
+            group::NexusGroup,
+            traits::{NexusHandleMessage, NexusPushMessage},
+        },
         groups::NXRoot,
-    }
+    },
 };
 
 use super::{NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
-use hdf5::{File, FileBuilder};
+use hdf5::{File, FileBuilder, Group};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
@@ -16,7 +20,7 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{info_span, Span};
+use tracing::{info_span, warn, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -80,39 +84,12 @@ impl Run {
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_logdata_to_run(&mut self, logdata: &f144_LogData) -> anyhow::Result<()> {
-        self.nx_root.push_message(logdata, &self.file)?;
-
+    pub(crate) fn push_message<M>(&mut self, message: &M) -> Result<(), NexusPushError>
+    where
+        NXRoot: NexusHandleMessage<M>,
+    {
+        self.nx_root.push_message(message, &self.file)?;
         self.parameters.update_last_modified();
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_alarm_to_run(&mut self, alarm: Alarm) -> anyhow::Result<()> {
-        self.nx_root.push_message(&alarm, &self.file)?;
-        self.parameters.update_last_modified();
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_selogdata(
-        &mut self,
-        selogdata: se00_SampleEnvironmentData,
-    ) -> anyhow::Result<()> {
-        self.nx_root.push_message(&selogdata, &self.file)?;
-
-        self.parameters.update_last_modified();
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_message(
-        &mut self,
-        message: &FrameAssembledEventListMessage,
-    ) -> anyhow::Result<()> {
-        self.nx_root
-            .push_message(message, &self.file)?;
-        self.parameters.new_frame();
         Ok(())
     }
 
@@ -168,15 +145,13 @@ impl SpannedAggregator for Run {
         &self,
         aggregated_span_fn: F,
     ) -> Result<(), SpanOnceError> {
-        self.span()
-            .get()?
-            .in_scope(aggregated_span_fn)
-            .follows_from(tracing::Span::current());
-        Ok(())
+        self.span().get().map(|span| {
+            span.in_scope(aggregated_span_fn)
+                .follows_from(tracing::Span::current());
+        })
     }
 
     fn end_span(&self) -> Result<(), SpanOnceError> {
-        //let span_once = ;//.take().expect("SpanOnce should be takeable");
         self.span()
             .get()?
             .record("run_has_run_stop", self.has_run_stop());
