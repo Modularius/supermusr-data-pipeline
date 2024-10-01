@@ -1,4 +1,4 @@
-use super::app::App;
+use super::{app::App, data::{ChannelData, DigitiserData, TableHeaders}};
 use ratatui::{
     prelude::{Alignment, Backend, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -6,9 +6,6 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
-
-const NUM_COLUMNS: usize = 7;
-const NUM_COLUMNS2: usize = 6;
 
 /// Draws the ui based on the current app state.
 pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App, app2: &mut App) {
@@ -19,8 +16,12 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App, app2: &mut App) {
         .split(frame.size());
 
     // Draw all widgets.
-    draw_table(frame, app, chunks[0]);
-    draw_table2(frame, app2, chunks[1]);
+    draw_table(frame, app, 
+        &[Constraint::Percentage(100 / DigitiserData::TABLE_HEADERS.len() as u16); DigitiserData::TABLE_HEADERS.len()],
+        chunks[0]);
+    draw_table(frame, app2,
+        &[Constraint::Percentage(100 / ChannelData::TABLE_HEADERS.len() as u16); ChannelData::TABLE_HEADERS.len()],
+        chunks[1]);
     draw_help(frame, chunks[2]);
 }
 
@@ -42,55 +43,7 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 }
 
 /// Draws the main table in a given chunk.
-fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
-    let widths = [Constraint::Percentage(100 / NUM_COLUMNS as u16); NUM_COLUMNS];
-    let table = Table::new(
-        // Turn table data into rows with given formatting.
-        app.table_body.iter().map(|item| {
-            // Calculate height based on line count.
-            let height = item
-                .iter()
-                .map(|content| content.chars().filter(|c| *c == '\n').count())
-                .max()
-                .unwrap_or(0)
-                + 1;
-            // Apply formatting to each cell.
-            let cells = item.iter().map(|c| Cell::from(c.clone()));
-            Row::new(cells).height(height as u16).bottom_margin(1)
-        }),
-    )
-    // Add table headers with given formatting.
-    .header(
-        Row::new(
-            app.table_headers
-                .iter()
-                .map(|h| Cell::from(h.clone().replace(' ', "\n"))),
-        )
-        .style(
-            Style::default()
-                .add_modifier(Modifier::BOLD)
-                .add_modifier(Modifier::REVERSED),
-        )
-        .height(3)
-        .bottom_margin(2),
-    )
-    // Modify table style.
-    .widths(&widths)
-    .column_spacing(1)
-    .highlight_style(
-        Style::default()
-            .fg(Color::LightMagenta)
-            .add_modifier(Modifier::BOLD),
-    )
-    .block(Block::default().borders(Borders::ALL));
-
-    frame.render_stateful_widget(table, chunk, &mut app.table_state);
-}
-
-
-/// Draws the secondary table in a given chunk.
-fn draw_table2<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
-    let widths = [Constraint::Percentage(100 / NUM_COLUMNS2 as u16); NUM_COLUMNS];
+fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, widths: &[Constraint], chunk: Rect) {
     let table = Table::new(
         // Turn table data into rows with given formatting.
         app.table_body.iter().map(|item| {

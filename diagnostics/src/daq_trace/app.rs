@@ -66,14 +66,6 @@ impl App {
             self.table_body.push(vec![
                 // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
-                // 8. Has the number of channels changed?
-                format!(
-                    "{}",
-                    match digitiser_data.has_num_channels_changed {
-                        true => "Yes",
-                        false => "No",
-                    }
-                ),
                 // 9. Number of samples in the first channel.
                 format!("{}", digitiser_data.num_samples_in_first_channel),
                 // 10. Is the number of samples identical?
@@ -92,17 +84,10 @@ impl App {
                         false => "No",
                     }
                 ),
-                // 12. Number of Bad Frames
-                format!("{}", digitiser_data.bad_frame_count),
                 // 13. Min mean value
                 format!("{:.2}", digitiser_data.mean_value.min().unwrap_or(-1.0)),
                 // 14. Max mean value
-                format!("{:.2}", digitiser_data.mean_value.max().unwrap_or(-1.0)),
-                // 15. Max mean value
-                digitiser_data.channels_present
-                    .as_ref()
-                    .map(|channels_present|channels_present.iter().fold(String::default(),|a, b|format!("{a} {b}")))
-                    .unwrap_or_default()
+                format!("{:.2}", digitiser_data.mean_value.max().unwrap_or(-1.0))
             ])
         }
     }
