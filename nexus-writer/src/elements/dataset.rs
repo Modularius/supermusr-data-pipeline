@@ -1,7 +1,4 @@
-use hdf5::{
-    types::TypeDescriptor,
-    Dataset, Group, H5Type, SimpleExtents,
-};
+use hdf5::{types::TypeDescriptor, Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
 
 use crate::{
@@ -195,6 +192,11 @@ where
             dataset: None,
             definition: D::new(),
         }
+    }
+
+    fn write(&self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError> {
+        self.create_hdf5_instance(parent)?;
+        Ok(())
     }
 }
 

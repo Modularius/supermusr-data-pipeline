@@ -83,6 +83,8 @@ pub(crate) trait NexusDataHolderScalarMutable:
 
 pub(crate) trait NexusDataHolderFixed: NexusDataHolderWithStaticType {
     fn new_with_fixed_value(name: &str, fixed_value: Self::DataType) -> Self;
+
+    fn write(&self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError>;
 }
 
 pub(crate) trait NexusDataHolderStringMutable:

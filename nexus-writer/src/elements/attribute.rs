@@ -164,4 +164,9 @@ where
             attribute: None,
         }
     }
+
+    fn write(&self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError> {
+        self.create_hdf5_instance(parent)?;
+        Ok(())
+    }
 }

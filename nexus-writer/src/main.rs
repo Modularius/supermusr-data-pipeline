@@ -21,7 +21,6 @@ use supermusr_common::{
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
-    spanned::SpannedAggregator,
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
 };
@@ -41,7 +40,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::time;
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, instrument, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -302,9 +301,11 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     )
     .increment(1);
     match spanned_root_as(root_as_run_start, payload) {
-        Ok(data) => if let Err(e) = nexus_engine.start_command(data) {
-            warn!("Start command ({data:?}) failed {e}");
-        },
+        Ok(data) => {
+            if let Err(e) = nexus_engine.start_command(data) {
+                warn!("Start command ({data:?}) failed {e}");
+            }
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(
@@ -324,9 +325,11 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     )
     .increment(1);
     match spanned_root_as(root_as_run_stop, payload) {
-        Ok(data) => if let Err(e) = nexus_engine.stop_command(data) {
-            warn!("Stop command ({data:?}) failed {e}")
-        },
+        Ok(data) => {
+            if let Err(e) = nexus_engine.stop_command(data) {
+                warn!("Stop command ({data:?}) failed {e}")
+            }
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(

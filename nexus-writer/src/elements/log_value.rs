@@ -1,4 +1,4 @@
-use hdf5::{types::TypeDescriptor, Dataset, DatasetBuilder, H5Type};
+use hdf5::{types::TypeDescriptor, Dataset, DatasetBuilder, H5Type, SimpleExtents};
 
 use crate::error::{HDF5Error, NexusDatasetError};
 
@@ -61,22 +61,23 @@ impl DatasetBuilderNumericExt for DatasetBuilder {
         name: &str,
         type_desc: &TypeDescriptor,
     ) -> Result<Dataset, NexusDatasetError> {
+        let shape = SimpleExtents::resizable(vec![0]);
         let dataset = match type_desc {
             TypeDescriptor::Integer(int_size) => match int_size {
-                hdf5::types::IntSize::U1 => self.with_data(&[i8::default(); 0]).create(name),
-                hdf5::types::IntSize::U2 => self.with_data(&[i16::default(); 0]).create(name),
-                hdf5::types::IntSize::U4 => self.with_data(&[i32::default(); 0]).create(name),
-                hdf5::types::IntSize::U8 => self.with_data(&[i64::default(); 0]).create(name),
+                hdf5::types::IntSize::U1 => self.empty::<i8>().shape(shape).create(name),
+                hdf5::types::IntSize::U2 => self.empty::<i16>().shape(shape).create(name),
+                hdf5::types::IntSize::U4 => self.empty::<i32>().shape(shape).create(name),
+                hdf5::types::IntSize::U8 => self.empty::<i64>().shape(shape).create(name),
             },
             TypeDescriptor::Unsigned(int_size) => match int_size {
-                hdf5::types::IntSize::U1 => self.with_data(&[u8::default(); 0]).create(name),
-                hdf5::types::IntSize::U2 => self.with_data(&[u16::default(); 0]).create(name),
-                hdf5::types::IntSize::U4 => self.with_data(&[u32::default(); 0]).create(name),
-                hdf5::types::IntSize::U8 => self.with_data(&[u64::default(); 0]).create(name),
+                hdf5::types::IntSize::U1 => self.empty::<u8>().shape(shape).create(name),
+                hdf5::types::IntSize::U2 => self.empty::<u16>().shape(shape).create(name),
+                hdf5::types::IntSize::U4 => self.empty::<u32>().shape(shape).create(name),
+                hdf5::types::IntSize::U8 => self.empty::<u64>().shape(shape).create(name),
             },
             TypeDescriptor::Float(float_size) => match float_size {
-                hdf5::types::FloatSize::U4 => self.with_data(&[f32::default(); 0]).create(name),
-                hdf5::types::FloatSize::U8 => self.with_data(&[f64::default(); 0]).create(name),
+                hdf5::types::FloatSize::U4 => self.empty::<f32>().shape(shape).create(name),
+                hdf5::types::FloatSize::U8 => self.empty::<f64>().shape(shape).create(name),
             },
             _ => Err(hdf5::Error::Internal(Default::default())),
         }
