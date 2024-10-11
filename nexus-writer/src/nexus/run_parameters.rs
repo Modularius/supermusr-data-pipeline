@@ -78,14 +78,12 @@ impl RunParameters {
     pub(crate) fn bound(&mut self, collect_until: DateTime<Utc>) -> Result<(), RunStopError> {
         if self.collect_until.is_some() {
             Err(RunStopError::UnexpectedRunStop)
+        } else if self.started.collect_from < collect_until {
+            self.collect_until = Some(collect_until);
+            self.update_last_modified();
+            Ok(())
         } else {
-            if self.started.collect_from < collect_until {
-                self.collect_until = Some(collect_until);
-                self.update_last_modified();
-                Ok(())
-            } else {
-                Err(RunStopError::RunStopBeforeRunStart)
-            }
+            Err(RunStopError::RunStopBeforeRunStart)
         }
     }
 

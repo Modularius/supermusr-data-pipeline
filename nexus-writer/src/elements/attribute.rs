@@ -2,7 +2,7 @@ use hdf5::{Attribute, Dataset, H5Type};
 
 use crate::{
     error::{HDF5Error, NexusAttributeError},
-    schematic::{H5DateTimeString, H5String},
+    schematic::H5String,
 };
 
 use super::{

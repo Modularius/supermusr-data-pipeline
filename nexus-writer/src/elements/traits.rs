@@ -1,13 +1,10 @@
-use std::str::FromStr;
-
 use super::log_value::NumericVector;
 use super::NexusUnits;
-use chrono::{DateTime, Utc};
 use hdf5::{types::TypeDescriptor, Group, H5Type};
 
 use crate::{
     error::{HDF5Error, NexusPushError},
-    schematic::{H5DateTimeString, H5String},
+    schematic::H5String,
 };
 
 /// Implemented for objects who are constructed by a builder
@@ -99,33 +96,6 @@ where
         value: &str,
     ) -> Result<(), Self::ThisError> {
         self.write_scalar(parent, value.parse().map_err(HDF5Error::HDF5String)?)
-    }
-}
-
-pub(crate) trait NexusDataHolderDateTimeMutable:
-    NexusDataHolderScalarMutable + NexusDataHolderWithStaticType<DataType = H5DateTimeString>
-where
-    Self::ThisError: From<chrono::ParseError> + From<HDF5Error>,
-{
-    fn write_datetime(
-        &self,
-        parent: &Self::HDF5Container,
-        value: &DateTime<Utc>,
-    ) -> Result<(), Self::ThisError> {
-        self.write_scalar(
-            parent,
-            value.to_rfc3339().parse().map_err(HDF5Error::HDF5String)?,
-        )?;
-        Ok(())
-    }
-
-    fn read_datetime(
-        &self,
-        parent: &Self::HDF5Container,
-    ) -> Result<DateTime<Utc>, Self::ThisError> {
-        Ok(DateTime::<Utc>::from_str(
-            self.read_scalar(parent)?.as_str(),
-        )?)
     }
 }
 

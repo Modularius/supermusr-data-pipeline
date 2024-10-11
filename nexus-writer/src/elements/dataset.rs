@@ -1,12 +1,12 @@
 use hdf5::{
-    types::{StringError, TypeDescriptor},
+    types::TypeDescriptor,
     Dataset, Group, H5Type, SimpleExtents,
 };
 use ndarray::s;
 
 use crate::{
     error::{HDF5Error, NexusDatasetError, NexusNumericError, NexusPushError},
-    schematic::{H5DateTimeString, H5String},
+    schematic::H5String,
 };
 
 use super::{

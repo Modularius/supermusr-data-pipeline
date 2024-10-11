@@ -1,7 +1,5 @@
 use hdf5::{types::TypeDescriptor, H5Type};
 
-use crate::error::NexusNumericError;
-
 /// Implemented for objects in `builder.rs` which serve as classes for `NexusDataHolder` objects
 /// i.e. `NexusDataMutable`, `NexusDataHolderConstant` and `NexusDataHolderResizable`
 pub(crate) trait NexusClassDataHolder: Default + Clone {}
@@ -61,7 +59,7 @@ pub(crate) struct NexusClassNumericAppendableDataHolder {
     pub(super) type_desc: Option<TypeDescriptor>,
     pub(super) chunk_size: usize,
 }
-
+/*
 impl NexusClassNumericAppendableDataHolder {
     pub(crate) fn try_set_type(
         &mut self,
@@ -80,7 +78,7 @@ impl NexusClassNumericAppendableDataHolder {
         Ok(())
     }
 }
-
+ */
 impl NexusClassDataHolder for NexusClassNumericAppendableDataHolder {}
 
 impl NexusClassWithSize for NexusClassNumericAppendableDataHolder {}
