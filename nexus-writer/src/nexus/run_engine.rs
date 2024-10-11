@@ -111,7 +111,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn start_command(&mut self, message: RunStart<'_>) -> anyhow::Result<&mut Run> {
+    pub(crate) fn start_command(&mut self, message: RunStart<'_>) -> anyhow::Result<()> {
         // Check that the last run has already had its stop command
         // TODO: In the future, this check will not result in an error, but only emit a warning.
         if self
@@ -132,18 +132,32 @@ impl NexusEngine {
             .expect("Run should have span, this should never happen");
 
             self.run_cache.push_back(run);
-            
-            Ok(self.run_cache.back_mut().expect("Run exists"))
+
+            Ok(())
         } else {
             Err(anyhow::anyhow!("Unexpected RunStart Command."))
         }
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<()> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(data)?;
-            Ok(last_run)
+
+            if let Err(e) = last_run.link_current_span(|| {
+                info_span!(target: "otel",
+                    "Run Stop Command",
+                    "Stop" = last_run.parameters()
+                        .collect_until
+                        .as_ref()
+                        .map(|collect_until|collect_until.to_rfc3339())
+                        .unwrap_or_default()
+                )
+            }) {
+                warn!("Run span linking failed {e}")
+            }
+
+            Ok(())
         } else {
             Err(anyhow::anyhow!("Unexpected RunStop Command"))
         }

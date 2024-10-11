@@ -302,17 +302,8 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     )
     .increment(1);
     match spanned_root_as(root_as_run_start, payload) {
-        Ok(data) => match nexus_engine.start_command(data) {
-            Ok(run) => {
-                if let Err(e) = run.link_current_span(|| {
-                    info_span!(target: "otel",
-                    "Run Start Command",
-                    "Start" = run.parameters().started.collect_from.to_string())
-                }) {
-                    warn!("Run span linking failed {e}")
-                }
-            }
-            Err(e) => warn!("Start command ({data:?}) failed {e}"),
+        Ok(data) => if let Err(e) = nexus_engine.start_command(data) {
+            warn!("Start command ({data:?}) failed {e}");
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
@@ -333,22 +324,8 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     )
     .increment(1);
     match spanned_root_as(root_as_run_stop, payload) {
-        Ok(data) => match nexus_engine.stop_command(data) {
-            Ok(run) => {
-                if let Err(e) = run.link_current_span(|| {
-                    info_span!(target: "otel",
-                        "Run Stop Command",
-                        "Stop" = run.parameters()
-                            .collect_until
-                            .as_ref()
-                            .map(|collect_until|collect_until.to_rfc3339())
-                            .unwrap_or_default()
-                    )
-                }) {
-                    warn!("Run span linking failed {e}")
-                }
-            }
-            Err(e) => warn!("Stop command ({data:?}) failed {e}"),
+        Ok(data) => if let Err(e) = nexus_engine.stop_command(data) {
+            warn!("Stop command ({data:?}) failed {e}")
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
