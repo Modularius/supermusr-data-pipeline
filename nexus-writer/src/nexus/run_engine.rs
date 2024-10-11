@@ -131,6 +131,8 @@ impl NexusEngine {
             })
             .expect("Run should have span, this should never happen");
 
+            self.run_cache.push_back(run);
+            
             Ok(self.run_cache.back_mut().expect("Run exists"))
         } else {
             Err(anyhow::anyhow!("Unexpected RunStart Command."))
