@@ -1,4 +1,5 @@
-use hdf5::Group;
+use chrono::{DateTime, Utc};
+use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::{f144_LogData, Value},
@@ -11,9 +12,7 @@ use crate::{
         dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
         log_value::NumericVector,
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef,
-            NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage,
-            NexusNumericAppendableDataHolder,
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
         },
         NexusUnits,
     },
@@ -39,6 +38,21 @@ impl NexusDatasetDef for TimeAttributes {
         }
     }
 }
+
+impl NexusHandleMessage<i64, Dataset> for TimeAttributes {
+    fn handle_message(
+        &mut self,
+        message: &i64,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        let datetime = DateTime::<Utc>::from_timestamp_nanos(*message);
+        self.offset.write_string(parent, &datetime.to_rfc3339())?;
+        Ok(())
+    }
+}
+
+
+
 
 pub(super) struct Log {
     time: NexusDatasetResize<i64, TimeAttributes>,
@@ -126,6 +140,9 @@ impl<'a> NexusHandleMessage<f144_LogData<'a>> for Log {
         message: &f144_LogData<'a>,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
+        if self.time.get_size(parent)? == 0 {
+            self.time.push_message(&message.timestamp(), parent)?;
+        }
         self.time.append(parent, &[message.timestamp()])?;
 
         let value: NumericVector = message.try_into()?;
@@ -246,18 +263,24 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
         message: &se00_SampleEnvironmentData<'a>,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
+        let values : NumericVector = message.try_into()?;
+        let timestamps : Vec<_> = {
+            if let Some(timestamps) = message.timestamps() {
+                timestamps.iter().collect()
+            } else if message.time_delta() > 0.0 {
+                (0..values.len()).map(|i| (i as f64 * message.time_delta()) as i64).collect()
+            } else {
+                Err(NexusMissingError::Selog(NexusMissingSelogError::Times))?
+            }
+        };
+
         self.time.append(
             parent,
-            &message
-                .timestamps()
-                .ok_or(NexusMissingSelogError::Times)
-                .map_err(NexusMissingError::Selog)?
-                .iter()
-                .collect::<Vec<_>>(),
+            &timestamps,
         )?;
         self.time.close_hdf5();
 
-        self.value.append_numerics(parent, &message.try_into()?)?;
+        self.value.append_numerics(parent, &values)?;
         Ok(())
     }
 }

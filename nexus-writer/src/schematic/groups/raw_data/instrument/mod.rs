@@ -14,6 +14,7 @@ use crate::{
 };
 
 mod source;
+mod detector;
 
 pub(super) struct Instrument {
     _name: NexusDatasetMut<H5String>,
