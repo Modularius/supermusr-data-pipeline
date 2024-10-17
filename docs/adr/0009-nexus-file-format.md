@@ -6,8 +6,6 @@ Date: 2024-10-15
 
 Accepted
 
-
-
 ## Context
 
 A format .
@@ -16,107 +14,262 @@ A format .
 
 The Nexus File created by the Nexus Writer will adhere to the following format. The group structure is given in the next diagram.
 
+- {filename} [`NXclass = NXroot`]
 
-```mermaid
-mindmap
-  ((raw_data_1))
-      detector_1
-      instrument
-        source
-        beamline
-        detector_1
-        dae
-      periods
-      runlog
-      sample
-        geometry
-        environment
-      selog
-      user_1
-```
+   - Attribute: `file_name: float64`
+   - Attribute: `file_time: ISO 8601`
+   - Attribute: `HDF_version: string`
+   - Attribute: `HDF5_version: string`
+   - Attribute: `XML_version: string`
 
-|Group|NXclass|Description|
-|-----|-------|-----------|
-|raw_data_1|NXentry|The high level container for the file.|
+   - `raw_data_1` [`NXclass = NXentry`]
 
-### Group: filename.nxs/raw_data_1
+      - Dataset: `collection_time: float64` [`Units = seconds`]
 
-|Group|NXclass|Description|
-|-----|-------|-----------|
-|detector_1|NXevent_data| |
-|instrument|NXinstrument| |
-|periods|NXperiods| |
-|runlog|NXrunlog| |
-|sample|NXsample| |
-|selog|NXselog| |
-|user_1|NXuser| |
+         - Duration of data collection, taking out periods when collection was suspended (e.g. because of a beam off or run control veto)
 
+      - Dataset: `definition: string`
 
-|Dataset|Type|Description|Units|
-|-------|----|-----------|-----|
-|collection_time|float64| |
-|definition|string| |
-|definition_local|string| |
-|duration|uint32| |
-|end_time|string| |
-|experiment_identifier|string| |
-|good_frames|uint32| |
-|idf_version|uint32| |
-|notes|string| |
-|program_name|string| |
-|proton_charge|float64| |
-|raw_frames|uint32| |
-|run_cycle|string| |
-|run_number|uint32| |
-|start_time|string| |
-|title|string| |
-|total_counts|uint32| |
+         - A template (DTD name) on which an extension to the base definition is based
 
+         - Attribute: `version: string`
 
-### Group: filename.nxs/raw_data_1/detector_1
+            - DTD version number
 
-|Dataset|Type|Description|Units|
-|-------|----|-----------|-----|
-|event_id|uint32| |
-|event_index|uint64| |
-|event_period_number|uint64| |
-|event_pulse_height|float64| |
-|event_time_offset|uint32| |
-|event_time_zero|uint64| |
+         - Attribute: `url: string`
 
-|Attribute for Dataset|Attribute|Type|Description|
-|-------|---------|----|-----------|
-|event_time_zero| | | |
-| |offset|string| |
+            - URL of XML DTD or schema appropriate for file
 
-### Group: filename.nxs/raw_data_1/runlog
+      - Dataset: `definition_local: string`
 
-Subgroups of this group have names defined by the runlog message, and NXclass `NXlog`. 
+         - A template (DTD name) on which an extension to the base definition is based
 
-|Group|NXclass|Description|
-|-----|-------|-----------|
-|{runlog message name}|NXlog| |
+      - Dataset: `duration: uint32` (`Units = ?`)
 
-The structure of `NXlog` groups is given below.
+         - Duration of measurement i.e. (end-start)
 
-### Group: filename.nxs/raw_data_1/runlog{runlog message name}
+      - Dataset: `end_time: ISO 8601`
 
-|Dataset|Type|Description|Units|
-|-------|----|-----------|-----|
-|time|uint32| |
-|value|{variable}| |
+      - Dataset: `experiment_identifier: string`
 
-|Attribute for Dataset|Attribute|Type|Description|
-|-------|---------|----|-----------|
-|time| | | |
-| |offset|string| |
+         - Experiment number, for ISIS, the RB number
 
+      - Dataset: `good_frames: uint32`
 
-### Group: filename.nxs/raw_data_1/runlog{runlog message name}
+         - Number of proton pulses used (not vetoed)
 
+      - Dataset: `idf_version: uint32`
 
+         - Version of IDF that NeXus file confirms to
+
+      - Dataset: `notes: string`
+
+         - log of useful stuff about the experiment, supplied by the user
+
+      - Dataset: `program_name: string = SECI | MCS | CONVERT_NEXUS | SUPERMUSR_NEXUS_WRITER`
+
+         - Name of creating program
+
+      - Dataset: `proton_charge: float64`
+
+         - Attribute: `Units = uA/hr`
+
+      - Dataset: `raw_frames: uint32`
+
+         - Number of proton pulses to target
+
+      - Dataset: `run_cycle: string`
+
+         - ISIS cycle
+
+      - Dataset: `run_number: uint32`
+
+         - Run number
+
+      - Dataset: `start_time: ISO 8601`
+
+      - Dataset: `title : string`
+
+         - Extended title for the entry, e.g. string containing sample, temperature and field
+
+      - Dataset: `total_counts: uint32`
+
+         - Total number of detector events
+
+   - `detector_1` [`NXclass = NXevent_data`]
+
+      - Dataset: `event_id: uint32`
+      - Dataset: `event_index: uint64`
+      - Dataset: `event_period_number: uint64`
+      - Dataset: `event_pulse_height: float64`
+      - Dataset: `event_time_offset: uint32` [`Units = ns`]
+      - Dataset: `event_time_zero: uint64` [`Units = ns`]
+
+         - Offset of each frame
+         - Attribute: `Start: ISO 8601`
+
+            - The date/time of the first entry of `event_time_zero`
+
+   - `instrument`
+
+      - `source`
+      - `beamline`
+      - `detector_1`
+      - `dae`
+
+   - `periods` [`NXclass = NXperiod`]
+
+      - `number: uint32`
+      - `type: uint32[period] = 1|2`
+
+         - function of `period`: `1: DAQ`, `2: DWELL`
+
+      - `good_frames: uint32[period]`
+
+         - function of `period`: number of good frames for that period
+
+      - `raw_frames: uint32[period]`
+
+         - function of `period`: number of total frames for that period
+
+   - `runlog` [`NXclass = NXrunlog`]
+
+     This group contains an arbitrary
+
+   - `sample` [`NXclass = NXsample`]
+
+      - `geometry` [`NXclass = NXgeometry`]
+
+      - `environment` [`NXclass = NXenvironment`]
+
+   - `selog` [`NXclass = NXselog`]
+
+   - `user_1` [`NXclass = NXuser`]
+
+|NXclass|
+|-------|
+|NXroot|
+
+|Attribute|Type|Description|
+|-------|----|-----------|
+|file_name|float64| |
+|file_time|ISO 8601 string| |
+|HDF_version|string| |
+|HDF5_version|string| |
+|XML_version|string| |
+
+- `raw_data_1`
+
+  |NXclass|
+  |-------|
+  |NXentry|
+
+  |Dataset|Type|Description|Units|
+  |-------|----|-----------|-----|
+  |collection_time|float64|Duration of data collection, taking out periods when collection was suspended (e.g. because of a beam off or run control veto)|seconds|
+  |definition|string|A template (DTD name) on which an extension to the base definition is based|
+  |definition_local|string|A template (DTD name) on which an extension to the base definition is based|
+  |duration|uint32|Duration of measurement i.e. (end-start)|?|
+  |end_time|ISO 8601| |
+  |experiment_identifier|string|Experiment number, for ISIS, the RB number|
+  |good_frames|uint32|Number of proton pulses used (not vetoed)|
+  |idf_version|uint32|Version of IDF that NeXus file confirms to|
+  |notes|string|log of useful stuff about the experiment, supplied by the user|
+  |program_name|string|Name of creating program (`SECI` \| `MCS` \| `CONVERT_NEXUS`)|
+  |proton_charge|float64| |uA/hr|
+  |raw_frames|uint32|Number of proton pulses to target|
+  |run_cycle|string|ISIS cycle|
+  |run_number|uint32|Run number|
+  |start_time|ISO 8601| |
+  |title|string|extended title for the entry, e.g. string containing sample, temperature and field|
+  |total_counts|uint32|Total number of detector events| |
+
+  |For Dataset|Attribute|Type|Description|
+  |-----------|---------|----|-----------|
+  |definition|version|string|DTD version number|
+  |definition|url|string|URL of XML DTD or schema appropriate for file|
+  |definition_local|version|string|DTD version number|
+  |definition_local|url|string|URL of XML DTD or schema appropriate for file|
+  |program_name|version|string|version of creating program|
+  |program_name|configuration|string|Configuration of software e.g. SECI configuration|
+
+   - `detector_1`
+
+     |NXclass|
+     |-------|
+     |NXevent_data|
+
+     |Dataset|Type|Description|Units|
+     |-------|----|-----------|-----|
+     |event_id|uint32| |
+     |event_index|uint64| |
+     |event_period_number|uint64| |
+     |event_pulse_height|float64| |
+     |event_time_offset|uint32| |ns|
+     |event_time_zero|uint64| |ns|
+
+     |For Dataset|Attribute|Type|Description|
+     |-----------|---------|----|-----------|
+     |event_time_zero|Start|string| |
+
+   - `instrument`
+
+      - `source`
+      - `beamline`
+      - `detector_1`
+      - `dae`
+
+   - `periods`
+
+     |NXclass|
+     |-------|
+     |NXperiod|
+
+     |Dataset|Type|Description|Units|
+     |-------|----|-----------|-----|
+     |number|uint32| |
+     |type|uint32[`period`]|function of `period`: `1: DAQ`, `2: DWELL`|
+     |good_frames|uint32[`period`]|function of `period`: number of good frames for that period|
+     |raw_frames|uint32[`period`]|function of `period`: number of total frames for that period|
+
+   - `runlog`
+
+     |NXclass|
+     |-------|
+     |NXrunlog|
+
+     This group contains an arbitrary
+
+   - `sample`
+
+     |NXclass|
+     |-------|
+     |NXsample|
+
+      - `geometry`
+
+        |NXclass|
+        |-------|
+        |NXgeometry|
+
+      - `environment`
+
+        |NXclass|
+        |-------|
+        |NXenvironment|
+
+   - `selog`
+
+     |NXclass|
+     |-------|
+     |NXselog|
+
+   - `user_1`
+
+     |NXclass|
+     |-------|
+     |NXuser|
 
 ## Consequences
 
 What becomes easier or more difficult to do and any risks introduced by the change that will need to be mitigated.
-
