@@ -17,9 +17,17 @@ use supermusr_streaming_types::{
 };
 use tracing::{info_span, Span};
 
+struct RunPeriods {
+    period_type: usize,
+    number: usize,
+    raw_frames: usize,
+    good_frames: usize,
+}
+
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
+    period: Vec<RunPeriods>,
     file: File,
     nx_root: NexusGroup<NXRoot>,
 }
@@ -70,6 +78,7 @@ impl Run {
             parameters: RunParameters::new(run_started),
             file,
             nx_root,
+            period: Default::default()
         })
     }
 

@@ -1,9 +1,9 @@
 use super::log_value::NumericVector;
 use super::NexusUnits;
-use hdf5::{types::TypeDescriptor, Group, H5Type};
+use hdf5::{types::TypeDescriptor, Attribute, Group, H5Type};
 
 use crate::{
-    error::{HDF5Error, NexusPushError},
+    error::{HDF5Error, NexusAttributeError, NexusPushError},
     schematic::H5String,
 };
 
@@ -142,6 +142,11 @@ pub(crate) trait NexusNumericAppendableDataHolder: NexusDataHolderWithSize {
         parent: &Self::HDF5Container,
         values: &NumericVector,
     ) -> Result<(), Self::ThisError>;
+}
+
+/// Implemented for types which can possess attributes (i.e. Group and Dataset)
+pub(crate) trait NexusContainerWithAttribute {
+    fn attribute<T: H5Type>(&self, name: &str) -> Result<Attribute,NexusAttributeError>;
 }
 
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure

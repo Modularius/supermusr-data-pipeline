@@ -38,6 +38,21 @@ pub(crate) type NexusDatasetResize<T, D = ()> = NexusDataset<D, NexusClassAppend
 pub(crate) type NexusLogValueDatasetResize<D = ()> =
     NexusDataset<D, NexusClassNumericAppendableDataHolder>;
 
+impl<D, C> NexusDataset<D, C>
+where
+    D: NexusDatasetDef,
+    C: NexusClassDataHolder
+{
+    fn create_units(&self, dataset: &Dataset) -> Result<(),HDF5Error> {
+        if let Some(units) = D::UNITS {
+            let attribute = dataset.new_attr::<H5String>().create("units")?;
+            attribute.write_scalar(&units.to_string().parse::<H5String>().expect(""))?;
+        }
+        Ok(())
+    }
+}
+
+
 /*
 Generic Traits
     */
@@ -101,6 +116,7 @@ where
             dataset
                 .write_scalar(&self.class.default_value)
                 .map_err(HDF5Error::HDF5)?;
+            self.create_units(&dataset)?;
             Ok::<_, NexusDatasetError>(dataset)
         })
     }
@@ -174,6 +190,7 @@ where
                 dataset
                     .write_scalar(&self.class.fixed_value)
                     .map_err(HDF5Error::HDF5)?;
+                self.create_units(&dataset)?;
                 Ok::<_, NexusDatasetError>(dataset)
             })
         }
@@ -195,7 +212,8 @@ where
     }
 
     fn write(&self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError> {
-        self.create_hdf5_instance(parent)?;
+        let dataset = self.create_hdf5_instance(parent)?;
+        self.create_units(&dataset)?;
         Ok(())
     }
 }
@@ -237,6 +255,7 @@ where
                         s![0..self.class.default_size],
                     )
                     .map_err(HDF5Error::HDF5)?;
+                self.create_units(&dataset)?;
                 Ok::<_, NexusDatasetError>(dataset)
             })
         }
@@ -306,12 +325,14 @@ where
             if let Some(ref dataset) = self.dataset {
                 Ok(dataset.clone())
             } else {
-                parent.dataset(&self.name).or_else(|_| {
+                let dataset = parent.dataset(&self.name).or_else(|_| {
                     parent
                         .new_dataset_builder()
                         .chunk(vec![self.class.chunk_size])
                         .create_numeric(self.name.as_str(), type_desc)
-                })
+                })?;
+                self.create_units(&dataset)?;
+                Ok(dataset)
             }
         } else {
             Err(NexusNumericError::NumericTypeNotSet)?

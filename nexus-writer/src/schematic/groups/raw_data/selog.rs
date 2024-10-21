@@ -43,11 +43,11 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for Selog {
             .find(|selog_block| selog_block.get_name() == message.name())
         {
             //let group = selog_block.create_hdf5(parent)?;
-            selog_block.push_message(message, &parent)?;
+            selog_block.push_message(message, parent)?;
         } else {
             let mut selog_block = NexusGroup::<SelogBlock>::new(message.name(), &self.settings);
             //let group = selog_block.create_hdf5(location)?;
-            selog_block.push_message(message, &parent)?;
+            selog_block.push_message(message, parent)?;
             self.selogs.push(selog_block);
         }
         Ok(())

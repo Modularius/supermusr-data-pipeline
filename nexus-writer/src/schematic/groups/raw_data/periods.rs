@@ -1,13 +1,13 @@
 use hdf5::Group;
-use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
+use supermusr_streaming_types::{aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, ecs_pl72_run_start_generated::RunStart};
 
 use crate::{
     elements::{
         attribute::{NexusAttribute, NexusAttributeMut},
-        dataset::{NexusDataset, NexusDatasetMut},
+        dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize},
         group::NexusGroup,
         traits::{
-            NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage
         },
     },
     error::NexusPushError,
@@ -17,40 +17,40 @@ use crate::{
 
 #[derive(Clone)]
 struct FramesRequestedAttributes {
-    _frame_type: NexusAttributeMut<H5String>,
+    frame_type: NexusAttributeMut<H5String>,
 }
 
 impl NexusDatasetDef for FramesRequestedAttributes {
     fn new() -> Self {
         Self {
-            _frame_type: NexusAttribute::new_with_default("frame_type"),
+            frame_type: NexusAttribute::new_with_default("frame_type"),
         }
     }
 }
 
 #[derive(Clone)]
 struct LabelsAttributes {
-    _separator: NexusAttributeMut<H5String>,
+    separator: NexusAttributeMut<H5String>,
 }
 
 impl NexusDatasetDef for LabelsAttributes {
     fn new() -> Self {
         Self {
-            _separator: NexusAttribute::new_with_default("separator"),
+            separator: NexusAttribute::new_with_default("separator"),
         }
     }
 }
 
 pub(super) struct Periods {
-    _number: NexusDatasetMut<u32>,
-    _period_types: NexusDatasetMut<u32>,
-    _frames_requested: NexusDatasetMut<u32, FramesRequestedAttributes>,
-    _output: NexusDatasetMut<u32>,
-    _labels: NexusDatasetMut<H5String, LabelsAttributes>,
-    _raw_frames: NexusDatasetMut<u32>,
-    _good_frames: NexusDatasetMut<u32>,
-    _sequences: NexusDatasetMut<u32>,
-    _counts: NexusGroup<Log>,
+    number: NexusDatasetMut<u32>,
+    period_types: NexusDatasetResize<u32>,
+    frames_requested: NexusDatasetResize<u32, FramesRequestedAttributes>,
+    output: NexusDatasetResize<u32>,
+    labels: NexusDatasetMut<H5String, LabelsAttributes>,
+    raw_frames: NexusDatasetResize<u32>,
+    good_frames: NexusDatasetResize<u32>,
+    sequences: NexusDatasetResize<u32>,
+    counts: NexusGroup<Log>,
 }
 
 impl NexusGroupDef for Periods {
@@ -59,15 +59,15 @@ impl NexusGroupDef for Periods {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            _number: NexusDataset::new_with_default("number"),
-            _period_types: NexusDataset::new_with_default("type"),
-            _frames_requested: NexusDataset::new_with_default("frames_requested"),
-            _output: NexusDataset::new_with_default("output"),
-            _labels: NexusDataset::new_with_default("labels"),
-            _raw_frames: NexusDataset::new_with_default("raw_frames"),
-            _good_frames: NexusDataset::new_with_default("good_frames"),
-            _sequences: NexusDataset::new_with_default("sequences"),
-            _counts: NexusGroup::new("counts", settings),
+            number: NexusDataset::new_with_default("number"),
+            period_types: NexusDataset::new_appendable_with_default("type", settings.periodlist_chunk_size),
+            frames_requested: NexusDataset::new_appendable_with_default("frames_requested", settings.periodlist_chunk_size),
+            output: NexusDataset::new_appendable_with_default("output", settings.periodlist_chunk_size),
+            labels: NexusDataset::new_with_default("labels"),
+            raw_frames: NexusDataset::new_appendable_with_default("raw_frames", settings.periodlist_chunk_size),
+            good_frames: NexusDataset::new_appendable_with_default("good_frames", settings.periodlist_chunk_size),
+            sequences: NexusDataset::new_appendable_with_default("sequences", settings.periodlist_chunk_size),
+            counts: NexusGroup::new("counts", settings),
         }
     }
 }
@@ -75,9 +75,21 @@ impl NexusGroupDef for Periods {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Periods {
     fn handle_message(
         &mut self,
-        _message: &RunStart<'a>,
-        _location: &Group,
+        message: &RunStart<'a>,
+        parent: &Group,
     ) -> Result<(), NexusPushError> {
+        Ok(())
+    }
+}
+
+impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Periods {
+    fn handle_message(
+        &mut self,
+        message: &FrameAssembledEventListMessage<'a>,
+        parent: &Group,
+    ) -> Result<(), NexusPushError> {
+        let p = message.metadata().period_number();
+
         Ok(())
     }
 }

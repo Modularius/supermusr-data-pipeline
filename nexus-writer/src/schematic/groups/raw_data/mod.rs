@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use data::Data;
-use hdf5::Group;
+use hdf5::{Dataset, Group};
 use instrument::Instrument;
 use periods::Periods;
 use runlog::RunLog;
@@ -40,16 +40,24 @@ mod user;
 
 #[derive(Clone)]
 struct DefinitionAttributes {
-    _version: NexusAttributeFixed<H5String>,
-    _url: NexusAttributeFixed<H5String>,
+    version: NexusAttributeFixed<H5String>,
+    url: NexusAttributeFixed<H5String>,
 }
 
 impl NexusDatasetDef for DefinitionAttributes {
     fn new() -> Self {
         Self {
-            _version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
-            _url: NexusAttribute::new_with_fixed_value("URL", "TODO".parse().expect("")),
+            version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
+            url: NexusAttribute::new_with_fixed_value("URL", "TODO".parse().expect("")),
         }
+    }
+}
+
+impl<'a> NexusHandleMessage<RunStart<'a>, Dataset> for DefinitionAttributes {
+    fn handle_message(&mut self, _: &RunStart<'a>, parent: &Dataset) -> Result<(), NexusPushError> {
+        self.version.write(parent)?;
+        self.url.write(parent)?;
+        Ok(())
     }
 }
 
@@ -163,9 +171,8 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         parent: &Group,
     ) -> Result<RunStarted, NexusPushError> {
         self.idf_version.write(parent)?;
-        self.definition.write(parent)?;
-        self.definition_local.write(parent)?;
-
+        self.definition.push_message(message, parent)?;
+        self.definition_local.push_message(message, parent)?;
         self.user_1.push_message(message, parent)?;
         self.periods.push_message(message, parent)?;
         self.sample.push_message(message, parent)?;
