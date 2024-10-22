@@ -16,7 +16,7 @@ use crate::{
         }
     },
     error::NexusPushError,
-    nexus::NexusSettings,
+    nexus::{NexusConfiguration, NexusSettings},
     schematic::{nexus_class, H5String},
 };
 
@@ -24,14 +24,24 @@ pub(super) mod log;
 pub(crate) mod raw_data;
 
 pub(crate) struct NXRoot {
+    /// file name of original data file to assist identification if the external name has been changed
     file_name: NexusAttributeMut<H5String, Group>,
+    /// date and time of file creation
     file_time: NexusAttributeMut<H5String, Group>,
+    /// Format used when creating initial NeXus file
     initial_file_format: NexusAttributeFixed<H5String, Group>,
+    /// version of nexus API used in writing the file
     nexus_version: NexusAttributeFixed<H5String, Group>,
+    /// version of HDF library used by nexus to create file
     hdf_version: NexusAttributeFixed<H5String, Group>,
+    /// version of HDF5 library used by nexus to create file
     hdf5_version: NexusAttributeFixed<H5String, Group>,
+    /// version of XML library used to create file
     xml_version: NexusAttributeFixed<H5String, Group>,
+    /// facility or program where file originated
     creator: NexusAttributeFixed<H5String, Group>,
+    /// Entries holding the raw data should follow the defined naming convention and be numbered;
+    /// entries may also be written containing analysed data etc using a locally defined naming scheme.
     raw_data_1: NexusGroup<raw_data::RawData>,
 }
 
@@ -46,7 +56,7 @@ impl NexusGroupDef for NXRoot {
             file_time: NexusAttribute::new_with_default("file_time"),
             initial_file_format: NexusAttribute::new_with_fixed_value(
                 "initial_file_format",
-                "TODO".parse().expect(""),
+                "HDF5".parse().expect(""),
             ),
             nexus_version: NexusAttribute::new_with_fixed_value(
                 "nexus_version",
@@ -62,10 +72,17 @@ impl NexusGroupDef for NXRoot {
             ),
             xml_version: NexusAttribute::new_with_fixed_value(
                 "xml_version",
-                "TODO".parse().expect(""),
+                "N/A".parse().expect(""),
             ),
-            creator: NexusAttribute::new_with_fixed_value("creator", "TODO".parse().expect("")),
+            creator: NexusAttribute::new_with_fixed_value("creator", "SuperMuSR Data Pipeline Nexus Writer".parse().expect("")),
         }
+    }
+}
+
+impl NexusHandleMessage<NexusConfiguration> for NXRoot
+{
+    fn handle_message(&mut self, message: &NexusConfiguration, parent: &Group) -> Result<(), NexusPushError> {
+        self.raw_data_1.push_message(message, parent)
     }
 }
 
@@ -133,13 +150,3 @@ where
         self.raw_data_1.push_message(message, parent)
     }
 }
-/*
-impl<M, R> NexusHandleMessage<M, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<M, Group, R>,
-{
-    fn handle_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
-        self.raw_data_1.push_message(message, parent)
-    }
-}
- */

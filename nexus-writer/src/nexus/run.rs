@@ -1,13 +1,12 @@
 use crate::{
     elements::{
-        group::NexusGroup,
-        traits::{NexusHandleMessage, NexusPushMessage},
+        dataholder_class::NexusClassAppendableDataHolder, group::NexusGroup, traits::{NexusHandleMessage, NexusPushMessage}
     },
     error::{HDF5Error, NexusPushError, RunError},
     schematic::groups::NXRoot,
 };
 
-use super::{NexusSettings, RunParameters};
+use super::{NexusConfiguration, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{File, FileBuilder};
 use std::path::Path;
@@ -30,6 +29,7 @@ impl Run {
         filename: Option<&Path>,
         run_start: RunStart<'_>,
         nexus_settings: &NexusSettings,
+        nexus_configuration: &NexusConfiguration,
     ) -> Result<Self, RunError> {
         let filename = {
             let mut filename = filename.expect("").to_owned();
@@ -64,7 +64,8 @@ impl Run {
             nexus_settings,
         );
 
-        let run_started = nx_root.push_message(&run_start, &file).unwrap();
+        let run_started = nx_root.push_message(&run_start, &file).expect("RunStart should be handled by nx_root");
+        nx_root.push_message(nexus_configuration, &file).expect("NexusConfiguration should be handled by nx_root");
         Ok(Self {
             span: Default::default(),
             parameters: RunParameters::new(run_started),

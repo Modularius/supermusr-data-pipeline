@@ -7,7 +7,7 @@ use chrono::Duration;
 use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use nexus::{NexusEngine, NexusSettings};
+use nexus::{NexusConfiguration, NexusEngine, NexusSettings};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
@@ -104,10 +104,15 @@ struct Cli {
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
 
+    /// Optional configuration options to include in the nexus file
+    #[clap(long)]
+    configuration_options: Option<String>,
+
     /// Specifies whether to activate "Single Writer Multiple Reader" mode
     #[clap(long)]
     use_hdf5_swmr: bool,
 }
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -151,7 +156,8 @@ async fn main() -> anyhow::Result<()> {
         args.event_list_chunk_size,
         args.use_hdf5_swmr,
     );
-    let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
+    let nexus_configuration = NexusConfiguration::new(args.configuration_options);
+    let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings, nexus_configuration);
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

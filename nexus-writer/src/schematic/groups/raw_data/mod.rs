@@ -16,17 +16,16 @@ use user::User;
 
 use crate::{
     elements::{
-        attribute::{NexusAttribute, NexusAttributeFixed},
+        attribute::{NexusAttribute, NexusAttributeFixed, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
         group::NexusGroup,
         traits::{
-            NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
-            NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage,
+            NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage, NexusPushMessage
         },
         NexusUnits,
     },
     error::NexusPushError,
-    nexus::{NexusSettings, RunBounded, RunStarted},
+    nexus::{NexusConfiguration, NexusSettings, RunBounded, RunStarted},
     schematic::{nexus_class, H5String},
 };
 
@@ -40,7 +39,9 @@ mod user;
 
 #[derive(Clone)]
 struct DefinitionAttributes {
+    /// DTD version number
     version: NexusAttributeFixed<H5String>,
+    /// URL of XML DTD or schema appropriate for file
     url: NexusAttributeFixed<H5String>,
 }
 
@@ -61,51 +62,102 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Dataset> for DefinitionAttributes {
     }
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 struct DurationAttributes;
-impl NexusDatasetDef for DurationAttributes {
-    const UNITS: Option<NexusUnits> = Some(NexusUnits::Seconds);
-
-    fn new() -> Self {
-        Self
-    }
+impl NexusDatasetDefUnitsOnly for DurationAttributes {
+    const UNITS: NexusUnits = NexusUnits::Seconds;
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 struct ProtonChargeAttributes;
 
-impl NexusDatasetDef for ProtonChargeAttributes {
+impl NexusDatasetDefUnitsOnly for ProtonChargeAttributes {
+    const UNITS: NexusUnits = NexusUnits::MicroAmpHours;
+}
+
+
+#[derive(Clone)]
+struct ProgramNameAttributes {
+    /// version of creating program
+    version: NexusAttributeFixed<H5String>,
+    /// onfiguration of software e.g. SECI configuration
+    configuration: NexusAttributeMut<H5String>,
+}
+
+impl NexusDatasetDef for ProgramNameAttributes {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::MicroAmpHours);
 
     fn new() -> Self {
-        Self
+        Self {
+            version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
+            configuration: NexusAttribute::new_with_default("URL")
+        }
+    }
+}
+
+impl NexusHandleMessage<NexusConfiguration,Dataset> for ProgramNameAttributes {
+    fn handle_message(
+        &mut self,
+        message: &NexusConfiguration,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        self.version.write(parent)?;
+        self.configuration.write_string(parent, message.configuration.as_str())?;
+        Ok(())
     }
 }
 
 pub(super) struct RawData {
+    /// version of IDF that NeXus file confirms to
     idf_version: NexusDatasetFixed<u32>,
+    /// the template (DTD name) on which the entry was based, e.g.`muonTD`` (muon, time differential).
+    /// It’s suggested that muon definitions always use the prefix ‘muon’, with a subsequent sequence
+    /// of capitals defining the unique function of the definition.
     definition: NexusDatasetFixed<H5String, DefinitionAttributes>,
+    /// a template (DTD name) on which an extension to the base definition is based
     definition_local: NexusDatasetFixed<H5String, DefinitionAttributes>,
-    program_name: NexusDatasetMut<H5String>,
+    /// Name of creating program
+    program_name: NexusDatasetFixed<H5String,ProgramNameAttributes>,
+    /// Run number
     run_number: NexusDatasetMut<u32>,
+    /// extended title for the entry, e.g. string containing sample, temperature and field
     title: NexusDatasetMut<H5String>,
+    /// log of useful stuff about the experiment, supplied by the user
     notes: NexusDatasetMut<H5String>,
+    /// start time and date of measurement
     start_time: NexusDatasetMut<H5String>,
+    /// end time and date of measurement
     end_time: NexusDatasetMut<H5String>,
+    /// duration of measurement i.e. (end - start)
     duration: NexusDatasetMut<u32, DurationAttributes>,
+    /// duration of data collection, taking out periods when collection was suspended
+    /// (e.g. because of a beam off or run control veto)
     collection_time: NexusDatasetMut<f64>,
+    /// total number of detector events
     total_counts: NexusDatasetMut<u32>,
+    /// number of proton pulses used (not vetoed)    
     good_frames: NexusDatasetMut<u32>,
+    /// number of proton pulses to target
     raw_frames: NexusDatasetMut<u32>,
+    /// experiment number, for ISIS, the RB number
     proton_charge: NexusDatasetMut<f64, ProtonChargeAttributes>,
+    /// experiment number, for ISIS, the RB number
     experiment_identifier: NexusDatasetMut<H5String>,
+    /// ISIS cycle
     run_cycle: NexusDatasetMut<H5String>,
+    /// details of representative user
     user_1: NexusGroup<User>,
+    /// 
     run_log: NexusGroup<RunLog>,
+    /// 
     selog: NexusGroup<Selog>,
+    /// 
     periods: NexusGroup<Periods>,
+    /// details of the sample under investigation
     sample: NexusGroup<Sample>,
+    /// details of the instrument used
     instrument: NexusGroup<Instrument>,
+    /// the data collected
     detector_1: NexusGroup<Data>,
 }
 
@@ -124,7 +176,7 @@ impl NexusGroupDef for RawData {
                 "definition_local",
                 "muonTD".parse().expect(""),
             ),
-            program_name: NexusDataset::new_with_default("program_name"),
+            program_name: NexusDataset::new_with_fixed_value("program_name", "SuperMuSR Data Pipeline Nexus Writer".parse().expect("")),
             run_number: NexusDataset::new_with_default("run_number"),
             title: NexusDataset::new_with_default("title"),
             notes: NexusDataset::new_with_default("notes"),
@@ -158,11 +210,23 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for RawData {
         message: &FrameAssembledEventListMessage<'a>,
         location: &Group,
     ) -> Result<(), NexusPushError> {
-        self.detector_1.push_message(message, location)
+        self.periods.push_message(message, location)?;
+        self.detector_1.push_message(message, location)?;
+        Ok(())
     }
 }
 
 /* Here we handle the start/stop messages */
+
+impl NexusHandleMessage<NexusConfiguration> for RawData {
+    fn handle_message(
+        &mut self,
+        message: &NexusConfiguration,
+        parent: &Group,
+    ) -> Result<(), NexusPushError> {
+        self.program_name.push_message(message, parent)
+    }
+}
 
 impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
     fn handle_message(
@@ -174,11 +238,9 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.definition.push_message(message, parent)?;
         self.definition_local.push_message(message, parent)?;
         self.user_1.push_message(message, parent)?;
-        self.periods.push_message(message, parent)?;
         self.sample.push_message(message, parent)?;
         self.instrument.push_message(message, parent)?;
 
-        self.program_name.write_string(parent, "The Program")?;
         self.run_number.write_scalar(parent, 0)?;
         self.title.write_string(parent, "The Title")?;
         self.notes

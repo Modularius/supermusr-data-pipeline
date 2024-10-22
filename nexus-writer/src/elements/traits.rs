@@ -194,6 +194,19 @@ pub(crate) trait NexusDatasetDef: Sized {
     fn new() -> Self;
 }
 
+/// Helper trait for datasets which are assigned units but no other attributes
+pub(crate) trait NexusDatasetDefUnitsOnly: Default {
+    const UNITS: NexusUnits;
+}
+
+impl<D> NexusDatasetDef for D where D : NexusDatasetDefUnitsOnly {
+    const UNITS: Option<NexusUnits> = Some(<D as NexusDatasetDefUnitsOnly>::UNITS);
+
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl NexusDatasetDef for () {
     fn new() -> Self {}
 }

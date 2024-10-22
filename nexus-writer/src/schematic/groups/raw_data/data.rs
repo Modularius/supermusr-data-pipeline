@@ -12,9 +12,7 @@ use crate::{
         attribute::{NexusAttribute, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetResize},
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
-            NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder,
-            NexusHandleMessage, NexusPushMessage,
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage
         },
         NexusUnits,
     },
@@ -23,23 +21,27 @@ use crate::{
     schematic::{nexus_class, H5String},
 };
 
-#[derive(Clone)]
-struct EventTimeOffsetAttributes {}
+/*
+    Dataset: EventTimeOffset
+*/
+#[derive(Default, Clone)]
+struct EventTimeOffset {}
 
-impl NexusDatasetDef for EventTimeOffsetAttributes {
-    const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
-
-    fn new() -> Self {
-        Self {}
-    }
+impl NexusDatasetDefUnitsOnly for EventTimeOffset {
+    const UNITS: NexusUnits = NexusUnits::Nanoseconds;
 }
 
+
+
+/*
+    Dataset: EventTimeZero
+*/
 #[derive(Clone)]
-struct EventTimeZeroAttributes {
+struct EventTimeZero {
     offset: NexusAttributeMut<H5String>,
 }
 
-impl NexusDatasetDef for EventTimeZeroAttributes {
+impl NexusDatasetDef for EventTimeZero {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Nanoseconds);
 
     fn new() -> Self {
@@ -49,12 +51,12 @@ impl NexusDatasetDef for EventTimeZeroAttributes {
     }
 }
 
-struct EventTimeZeroAttributesMessage<'a> {
+struct EventTimeZeroMessage<'a> {
     frame_assembled_event_list: &'a FrameAssembledEventListMessage<'a>,
     has_offset: bool,
 }
 
-impl<'a> EventTimeZeroAttributesMessage<'a> {
+impl<'a> EventTimeZeroMessage<'a> {
     fn get_timestamp(&self) -> Result<DateTime<Utc>, NexusPushError> {
         (*self
             .frame_assembled_event_list
@@ -79,12 +81,12 @@ fn datetime_diff_to_u64(
         .map_err(NexusConversionError::TimeDeltaNegative)
 }
 
-impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
-    for EventTimeZeroAttributes
+impl<'a> NexusHandleMessage<EventTimeZeroMessage<'a>, Dataset, u64>
+    for EventTimeZero
 {
     fn handle_message(
         &mut self,
-        message: &EventTimeZeroAttributesMessage<'a>,
+        message: &EventTimeZeroMessage<'a>,
         _dataset: &Dataset,
     ) -> Result<u64, NexusPushError> {
         let timestamp: DateTime<Utc> = message.get_timestamp()?;
@@ -106,12 +108,21 @@ impl<'a> NexusHandleMessage<EventTimeZeroAttributesMessage<'a>, Dataset, u64>
     }
 }
 
+/*
+    Group: Data
+*/
 pub(super) struct Data {
+    /// list of channels attributed to each detection event
     event_id: NexusDatasetResize<u32>,
+    /// list of indices of the first detection event in a frame
     event_index: NexusDatasetResize<usize>,
-    event_time_offset: NexusDatasetResize<u32, EventTimeOffsetAttributes>,
-    event_time_zero: NexusDatasetResize<u64, EventTimeZeroAttributes>,
+    /// list of times attributed to each detection event relative to the start of the frame
+    event_time_offset: NexusDatasetResize<u32, EventTimeOffset>,
+    /// list of times each frame
+    event_time_zero: NexusDatasetResize<u64, EventTimeZero>,
+    /// list of periods of each frame
     event_period_number: NexusDatasetResize<u64>,
+    /// list of intensities attributed to each detection event
     event_pulse_height: NexusDatasetResize<f64>,
 }
 
@@ -213,7 +224,7 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
             .append(parent, &[message.metadata().period_number()])?;
 
         //  event_time_zero
-        let event_time_zero_attributes_message = EventTimeZeroAttributesMessage {
+        let event_time_zero_attributes_message = EventTimeZeroMessage {
             frame_assembled_event_list: message,
             has_offset: current_index != 0,
         };

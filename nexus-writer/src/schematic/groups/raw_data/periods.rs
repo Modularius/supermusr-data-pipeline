@@ -1,5 +1,5 @@
 use hdf5::Group;
-use supermusr_streaming_types::{aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, ecs_pl72_run_start_generated::RunStart};
+use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::{
     elements::{
@@ -7,7 +7,7 @@ use crate::{
         dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusDatasetResizeMut},
         group::NexusGroup,
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderVectorMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderVectorMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder
         },
     },
     error::NexusPushError,
@@ -44,7 +44,7 @@ impl NexusDatasetDef for LabelsAttributes {
 pub(super) struct Periods {
     /// number of periods used
     number: NexusDatasetMut<u32>,
-    /// unction of period: ‘1’ – DAQ, ‘2’ – DWELL
+    /// function of period: ‘1’ – DAQ, ‘2’ – DWELL
     period_types: NexusDatasetResizeMut<u32>,
     /// frames collected in each period before switching, ‘0’ for unlimited frames
     frames_requested: NexusDatasetResizeMut<u32, FramesRequestedAttributes>,
@@ -78,16 +78,6 @@ impl NexusGroupDef for Periods {
             sequences: NexusDataset::new_appendable_with_default("sequences", settings.periodlist_chunk_size),
             _counts: NexusGroup::new("counts", settings),
         }
-    }
-}
-
-impl<'a> NexusHandleMessage<RunStart<'a>> for Periods {
-    fn handle_message(
-        &mut self,
-        message: &RunStart<'a>,
-        parent: &Group,
-    ) -> Result<(), NexusPushError> {
-        Ok(())
     }
 }
 
