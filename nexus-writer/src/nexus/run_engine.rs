@@ -417,6 +417,8 @@ pub(crate) struct NexusSettings {
     pub(crate) runloglist_chunk_size: usize,
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
+    pub(crate) dimensional_chunk_size: usize,
+    pub(crate) components_chunk_size: usize,
     pub(crate) use_swmr: bool,
 }
 
@@ -433,6 +435,8 @@ impl NexusSettings {
             runloglist_chunk_size: 64,
             seloglist_chunk_size: 1024,
             alarmlist_chunk_size: 32,
+            dimensional_chunk_size: 4,
+            components_chunk_size: 16,
             use_swmr,
         }
     }

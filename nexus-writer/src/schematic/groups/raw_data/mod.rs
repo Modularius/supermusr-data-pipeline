@@ -224,6 +224,8 @@ impl NexusHandleMessage<NexusConfiguration> for RawData {
         message: &NexusConfiguration,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
+        self.title.write_string(parent, "The Title")?;
+        self.experiment_identifier.write_string(parent, "POAS35")?;
         self.program_name.push_message(message, parent)
     }
 }
@@ -237,12 +239,8 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.idf_version.write(parent)?;
         self.definition.push_message(message, parent)?;
         self.definition_local.push_message(message, parent)?;
-        self.user_1.push_message(message, parent)?;
-        self.sample.push_message(message, parent)?;
-        self.instrument.push_message(message, parent)?;
-
+        
         self.run_number.write_scalar(parent, 0)?;
-        self.title.write_string(parent, "The Title")?;
         self.notes
             .write_string(parent, message.metadata().unwrap_or_default())?;
         self.start_time.write_string(parent, "Now")?;
@@ -253,8 +251,11 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.good_frames.write_scalar(parent, 1)?;
         self.raw_frames.write_scalar(parent, 1)?;
         self.proton_charge.write_scalar(parent, 1.0)?;
-        self.experiment_identifier.write_string(parent, "POAS35")?;
         self.run_cycle.write_string(parent, "This")?;
+        
+        self.user_1.push_message(message, parent)?;
+        self.sample.push_message(message, parent)?;
+        self.instrument.push_message(message, parent)?;
 
         self.detector_1.push_message(message, parent)?;
 

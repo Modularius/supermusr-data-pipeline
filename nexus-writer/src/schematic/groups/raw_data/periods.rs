@@ -3,11 +3,11 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 
 use crate::{
     elements::{
-        attribute::{NexusAttribute, NexusAttributeMut},
+        attribute::{NexusAttribute, NexusAttributeFixed, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusDatasetResizeMut},
         group::NexusGroup,
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderVectorMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder
+            NexusAppendableDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderVectorMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder
         },
     },
     error::NexusPushError,
@@ -15,12 +15,18 @@ use crate::{
     schematic::{groups::log::Log, nexus_class, H5String},
 };
 
+
+/*
+    Dataset: FramesRequested
+*/
+
 #[derive(Clone)]
-struct FramesRequestedAttributes {
+struct FramesRequested {
+    /// type of frame for period switching
     frame_type: NexusAttributeMut<H5String>,
 }
 
-impl NexusDatasetDef for FramesRequestedAttributes {
+impl NexusDatasetDef for FramesRequested {
     fn new() -> Self {
         Self {
             frame_type: NexusAttribute::new_with_default("frame_type"),
@@ -28,18 +34,29 @@ impl NexusDatasetDef for FramesRequestedAttributes {
     }
 }
 
+/*
+    Dataset: Labels
+*/
+
 #[derive(Clone)]
-struct LabelsAttributes {
-    separator: NexusAttributeMut<H5String>,
+struct Labels {
+    /// separator character for label list
+    separator: NexusAttributeFixed<H5String>,
 }
 
-impl NexusDatasetDef for LabelsAttributes {
+impl NexusDatasetDef for Labels {
     fn new() -> Self {
         Self {
-            separator: NexusAttribute::new_with_default("separator"),
+            separator: NexusAttribute::new_with_fixed_value("separator",",".parse().expect("String should parse")),
         }
     }
 }
+
+
+
+/*
+    Group: Periods
+*/
 
 pub(super) struct Periods {
     /// number of periods used
@@ -47,11 +64,11 @@ pub(super) struct Periods {
     /// function of period: ‘1’ – DAQ, ‘2’ – DWELL
     period_types: NexusDatasetResizeMut<u32>,
     /// frames collected in each period before switching, ‘0’ for unlimited frames
-    frames_requested: NexusDatasetResizeMut<u32, FramesRequestedAttributes>,
+    frames_requested: NexusDatasetResizeMut<u32, FramesRequested>,
     /// output bit pattern on period card. If not known, write '0' ... `np` - 1 into array
     output: NexusDatasetResize<u64>,
     /// list of period names, separated by character given as attribute.May use a 2D array of NX_CHAR - TBC
-    labels: NexusDatasetMut<H5String, LabelsAttributes>,
+    labels: NexusDatasetMut<H5String, Labels>,
     /// raw frames collected for each period
     raw_frames: NexusDatasetResizeMut<u32>,
     /// good frames collected for each period
@@ -97,10 +114,12 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Periods {
             self.frames_requested.mutate_in_place(parent, index, |x|x + 1)?;
         } else {
             self.output.append(parent, &[period_number])?;
+            self.labels.mutate(parent, |labels| format!("{0},{1}", labels.as_str(), period_number).parse().expect("String should parse"))?;
             self.raw_frames.append(parent, &[1])?;
             self.good_frames.append(parent, &[if message.metadata().veto_flags() == 0 {1} else {0}])?;
             self.period_types.append(parent, &[0])?;
             self.frames_requested.append(parent, &[0])?;
+            self.sequences.append(parent, &[0])?;
             self.number.mutate(parent, |x|x + 1)?;
         };
         

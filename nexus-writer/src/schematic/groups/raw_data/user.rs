@@ -1,4 +1,4 @@
-use hdf5::Group;
+use hdf5::{Dataset, Group};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
         attribute::{NexusAttribute, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetMut},
         traits::{
-            NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage,
+            NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage
         },
     },
     error::NexusPushError,
@@ -15,26 +15,38 @@ use crate::{
 };
 
 #[derive(Clone)]
-struct NameAttributes {
-    _role: NexusAttributeMut<H5String>,
+struct Name {
+    /// role of user e.g. `PI``, `Contact` etc, multiple roles are allowed.
+    role: NexusAttributeMut<H5String>,
 }
 
-impl NexusDatasetDef for NameAttributes {
+impl NexusDatasetDef for Name {
     fn new() -> Self {
         Self {
-            _role: NexusAttribute::new_with_default("role"),
+            role: NexusAttribute::new_with_default("role"),
         }
     }
 }
+impl<'a> NexusHandleMessage<RunStart<'a>, Dataset> for Name {
+    fn handle_message(
+        &mut self,
+        message: &RunStart<'a>,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        self.role.write_string(parent, "User's Role")?;
+        Ok(())
+    }
+}
+
 
 pub(super) struct User {
-    _name: NexusDatasetMut<H5String, NameAttributes>,
-    _affiliation: NexusDatasetMut<H5String>,
-    _address: NexusDatasetMut<H5String>,
-    _telephone_number: NexusDatasetMut<H5String>,
-    _fax_number: NexusDatasetMut<H5String>,
-    _email: NexusDatasetMut<H5String>,
-    _facility_user_id: NexusDatasetMut<H5String>,
+    name: NexusDatasetMut<H5String, Name>,
+    affiliation: NexusDatasetMut<H5String>,
+    address: NexusDatasetMut<H5String>,
+    telephone_number: NexusDatasetMut<H5String>,
+    fax_number: NexusDatasetMut<H5String>,
+    email: NexusDatasetMut<H5String>,
+    facility_user_id: NexusDatasetMut<H5String>,
 }
 
 impl NexusGroupDef for User {
@@ -43,13 +55,13 @@ impl NexusGroupDef for User {
 
     fn new(_settings: &NexusSettings) -> Self {
         Self {
-            _name: NexusDataset::new_with_default("name"),
-            _affiliation: NexusDataset::new_with_default("affiliation"),
-            _address: NexusDataset::new_with_default("address"),
-            _telephone_number: NexusDataset::new_with_default("telephone_number"),
-            _fax_number: NexusDataset::new_with_default("fax_number"),
-            _email: NexusDataset::new_with_default("email"),
-            _facility_user_id: NexusDataset::new_with_default("facility_user_id"),
+            name: NexusDataset::new_with_default("name"),
+            affiliation: NexusDataset::new_with_default("affiliation"),
+            address: NexusDataset::new_with_default("address"),
+            telephone_number: NexusDataset::new_with_default("telephone_number"),
+            fax_number: NexusDataset::new_with_default("fax_number"),
+            email: NexusDataset::new_with_default("email"),
+            facility_user_id: NexusDataset::new_with_default("facility_user_id"),
         }
     }
 }
@@ -57,9 +69,17 @@ impl NexusGroupDef for User {
 impl<'a> NexusHandleMessage<RunStart<'a>> for User {
     fn handle_message(
         &mut self,
-        _message: &RunStart<'a>,
-        _location: &Group,
+        message: &RunStart<'a>,
+        parent: &Group,
     ) -> Result<(), NexusPushError> {
+        self.name.push_message(message, parent)?;
+        self.name.write_string(parent, "User's Name")?;
+        self.affiliation.write_string(parent, "User's Affiliation")?;
+        self.address.write_string(parent, "User's Address")?;
+        self.telephone_number.write_string(parent, "User's Phone Number")?;
+        self.fax_number.write_string(parent, "User's Fax Number")?;
+        self.email.write_string(parent, "User's Email")?;
+        self.facility_user_id.write_string(parent, "User ID")?;
         Ok(())
     }
 }

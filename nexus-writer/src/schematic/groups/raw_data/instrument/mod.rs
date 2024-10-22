@@ -1,3 +1,4 @@
+use detector::Detector;
 use hdf5::Group;
 use source::Source;
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
@@ -6,7 +7,7 @@ use crate::{
     elements::{
         dataset::{NexusDataset, NexusDatasetMut},
         group::NexusGroup,
-        traits::{NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage},
+        traits::{NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
     },
     error::NexusPushError,
     nexus::NexusSettings,
@@ -17,8 +18,9 @@ mod source;
 mod detector;
 
 pub(super) struct Instrument {
-    _name: NexusDatasetMut<H5String>,
-    _source: NexusGroup<Source>,
+    name: NexusDatasetMut<H5String>,
+    source: NexusGroup<Source>,
+    detector_: Vec<NexusGroup<Detector>>,
 }
 
 impl NexusGroupDef for Instrument {
@@ -27,8 +29,9 @@ impl NexusGroupDef for Instrument {
 
     fn new(settings: &NexusSettings) -> Self {
         Self {
-            _name: NexusDataset::new_with_default("name"),
-            _source: NexusGroup::new("source", settings),
+            name: NexusDataset::new_with_default("name"),
+            source: NexusGroup::new("source", settings),
+            detector_: vec![NexusGroup::new("detector_1", settings)]
         }
     }
 }
@@ -36,9 +39,12 @@ impl NexusGroupDef for Instrument {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Instrument {
     fn handle_message(
         &mut self,
-        _message: &RunStart<'a>,
-        _location: &Group,
+        message: &RunStart<'a>,
+        parent: &Group,
     ) -> Result<(), NexusPushError> {
+        self.name.write_string(parent, "SuperMuSR")?;
+        self.source.push_message(message, parent)?;
+        self.detector_.iter_mut().map(|detector|detector.push_message(message, parent)).collect::<Result<_,_>>()?;
         Ok(())
     }
 }
