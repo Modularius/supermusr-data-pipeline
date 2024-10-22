@@ -135,6 +135,14 @@ where
         let attribute = self.create_hdf5_instance(parent)?;
         Ok(attribute.read_scalar().map_err(HDF5Error::HDF5)?)
     }
+
+    fn mutate<F>(&self, parent: &Self::HDF5Container, f : F) -> Result<(), Self::ThisError>
+    where F : Fn(&Self::DataType) -> Self::DataType {
+        let attribute = self.create_hdf5_instance(parent)?;
+        let value = attribute.read_scalar().map_err(HDF5Error::HDF5)?;
+        attribute.write_scalar(&f(&value)).map_err(HDF5Error::HDF5)?;
+        Ok(())
+    }
 }
 
 impl<P> NexusDataHolderStringMutable for NexusAttribute<NexusClassMutableDataHolder<H5String>, P> where

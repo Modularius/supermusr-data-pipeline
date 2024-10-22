@@ -79,6 +79,9 @@ pub(crate) trait NexusDataHolderScalarMutable:
     ) -> Result<(), Self::ThisError>;
 
     fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, Self::ThisError>;
+
+    fn mutate<F>(&self, parent: &Self::HDF5Container, f : F) -> Result<(), Self::ThisError>
+    where F : Fn(&Self::DataType) -> Self::DataType;
 }
 
 pub(crate) trait NexusDataHolderFixed: NexusDataHolderWithStaticType {
@@ -129,6 +132,33 @@ pub(crate) trait NexusAppendableDataHolder:
         values: &[Self::DataType],
     ) -> Result<(), Self::ThisError>;
 }
+
+/// Implemented for `NexusDataHolder` objects have extendable vector data
+/// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
+pub(crate) trait NexusSearchableDataHolder: NexusAppendableDataHolder
+{
+    fn find(&self, parent: &Self::HDF5Container, value: Self::DataType) -> Result<Option<usize>, Self::ThisError>;
+}
+
+
+/// Implemented for `NexusDataHolder` objects have mutable scalar data
+/// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
+pub(crate) trait NexusDataHolderVectorMutable:
+    NexusAppendableDataHolder
+{
+    fn write_at(
+        &self,
+        parent: &Self::HDF5Container,
+        value: Self::DataType,
+        index: usize
+    ) -> Result<(), Self::ThisError>;
+
+    fn read_from(&self, parent: &Self::HDF5Container, index: usize) -> Result<Self::DataType, Self::ThisError>;
+
+    fn mutate_in_place<F>(&self, parent: &Self::HDF5Container, index: usize, f : F) -> Result<(), Self::ThisError>
+    where F : Fn(&Self::DataType) -> Self::DataType;
+}
+
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable

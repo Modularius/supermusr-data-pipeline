@@ -4,10 +4,10 @@ use supermusr_streaming_types::{aev2_frame_assembled_event_v2_generated::FrameAs
 use crate::{
     elements::{
         attribute::{NexusAttribute, NexusAttributeMut},
-        dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize},
+        dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusDatasetResizeMut},
         group::NexusGroup,
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderVectorMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder
         },
     },
     error::NexusPushError,
@@ -42,15 +42,24 @@ impl NexusDatasetDef for LabelsAttributes {
 }
 
 pub(super) struct Periods {
+    /// number of periods used
     number: NexusDatasetMut<u32>,
-    period_types: NexusDatasetResize<u32>,
-    frames_requested: NexusDatasetResize<u32, FramesRequestedAttributes>,
-    output: NexusDatasetResize<u32>,
+    /// unction of period: ‘1’ – DAQ, ‘2’ – DWELL
+    period_types: NexusDatasetResizeMut<u32>,
+    /// frames collected in each period before switching, ‘0’ for unlimited frames
+    frames_requested: NexusDatasetResizeMut<u32, FramesRequestedAttributes>,
+    /// output bit pattern on period card. If not known, write '0' ... `np` - 1 into array
+    output: NexusDatasetResize<u64>,
+    /// list of period names, separated by character given as attribute.May use a 2D array of NX_CHAR - TBC
     labels: NexusDatasetMut<H5String, LabelsAttributes>,
-    raw_frames: NexusDatasetResize<u32>,
-    good_frames: NexusDatasetResize<u32>,
-    sequences: NexusDatasetResize<u32>,
-    counts: NexusGroup<Log>,
+    /// raw frames collected for each period
+    raw_frames: NexusDatasetResizeMut<u32>,
+    /// good frames collected for each period
+    good_frames:NexusDatasetResizeMut<u32>,
+    /// number of times data collection took place in each period
+    sequences: NexusDatasetResizeMut<u32>,
+    /// counts collected in each periods
+    _counts: NexusGroup<Log>,
 }
 
 impl NexusGroupDef for Periods {
@@ -67,7 +76,7 @@ impl NexusGroupDef for Periods {
             raw_frames: NexusDataset::new_appendable_with_default("raw_frames", settings.periodlist_chunk_size),
             good_frames: NexusDataset::new_appendable_with_default("good_frames", settings.periodlist_chunk_size),
             sequences: NexusDataset::new_appendable_with_default("sequences", settings.periodlist_chunk_size),
-            counts: NexusGroup::new("counts", settings),
+            _counts: NexusGroup::new("counts", settings),
         }
     }
 }
@@ -88,8 +97,23 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Periods {
         message: &FrameAssembledEventListMessage<'a>,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
-        let p = message.metadata().period_number();
-
+        let period_number = message.metadata().period_number();
+        if let Some(index) = self.output.find(parent, period_number)? {
+            self.output.append(parent, &[period_number])?;
+            self.raw_frames.mutate_in_place(parent, index, |x|x + 1)?;
+            if message.metadata().veto_flags() == 0 {
+                self.good_frames.mutate_in_place(parent, index, |x|x + 1)?;
+            }
+            self.frames_requested.mutate_in_place(parent, index, |x|x + 1)?;
+        } else {
+            self.output.append(parent, &[period_number])?;
+            self.raw_frames.append(parent, &[1])?;
+            self.good_frames.append(parent, &[if message.metadata().veto_flags() == 0 {1} else {0}])?;
+            self.period_types.append(parent, &[0])?;
+            self.frames_requested.append(parent, &[0])?;
+            self.number.mutate(parent, |x|x + 1)?;
+        };
+        
         Ok(())
     }
 }

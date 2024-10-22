@@ -142,6 +142,10 @@ pub(crate) enum NexusDatasetError {
     HDF5(#[from] HDF5Error),
     #[error("Numeric Error: {0}")]
     Numeric(#[from] NexusNumericError),
+    #[error("Read Bounds Error: {0} >= {1}")]
+    ReadOutOfBounds(usize, usize),
+    #[error("Writer Bounds Error: {0} >= {1}")]
+    WriteOutOfBounds(usize, usize),
 }
 
 #[derive(Debug, Error)]
