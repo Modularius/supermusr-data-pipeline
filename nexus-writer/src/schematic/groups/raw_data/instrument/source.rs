@@ -178,7 +178,9 @@ pub(super) struct Source {
     muon_energy: NexusDatasetMut<f64, MuonEnergy>,
     /// muon momentum
     muon_momentum: NexusDatasetMut<f64, Momentum>,
-    /// pulse pattern – `n` number of pulses to instrument each frame, e.g. ISIS target 1 with TS2: `2,2,2,2,0`, with a `rep_len` of `5` and `period` 100ms, assuming no muon kicker
+    /// pulse pattern – `n` number of pulses to instrument each frame,
+    /// e.g. ISIS target 1 with TS2: `2,2,2,2,0`,
+    /// with a `rep_len` of `5` and `period` 100ms, assuming no muon kicker
     muon_pulse_pattern: NexusDatasetResize<f64, MuonPulsePattern>,
     /// pulse width for each pulse in frame, e.g. 80ns at ISIS
     muon_pulse_width: NexusDatasetResize<f64, MuonPulseWidth>,
@@ -204,7 +206,7 @@ impl NexusGroupDef for Source {
                 settings.dimensional_chunk_size,
             ),
             source_energy: NexusDataset::new_with_default("source_energy"),
-            source_current: NexusDataset::new_with_default("tarsource_currentget_thickness"),
+            source_current: NexusDataset::new_with_default("source_current"),
             //source_current_log: NexusGroup::new("source_current_log", settings),
             source_pulse_width: NexusDataset::new_with_default("source_pulse_width"),
             target_material: NexusDataset::new_with_default("target_material"),

@@ -85,19 +85,19 @@ impl<'a> NexusHandleMessage<EventTimeZeroMessage<'a>, Dataset, u64> for EventTim
     fn handle_message(
         &mut self,
         message: &EventTimeZeroMessage<'a>,
-        _dataset: &Dataset,
+        dataset: &Dataset,
     ) -> Result<u64, NexusPushError> {
         let timestamp: DateTime<Utc> = message.get_timestamp()?;
 
         let time_zero = {
             if message.has_offset {
-                let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(_dataset)?.as_str())
+                let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(dataset)?.as_str())
                     .map_err(NexusConversionError::ChronoParse)?;
 
                 datetime_diff_to_u64(timestamp, offset)?
             } else {
                 self.offset
-                    .write_string(_dataset, &timestamp.to_rfc3339())?;
+                    .write_string(dataset, &timestamp.to_rfc3339())?;
 
                 u64::default()
             }
@@ -222,14 +222,14 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
             .append(parent, &[message.metadata().period_number()])?;
 
         //  event_time_zero
-        let event_time_zero_attributes_message = EventTimeZeroMessage {
+        let event_time_zero_message = EventTimeZeroMessage {
             frame_assembled_event_list: message,
             has_offset: current_index != 0,
         };
 
         let time_zero = self
             .event_time_zero
-            .push_message(&event_time_zero_attributes_message, parent)?;
+            .push_message(&event_time_zero_message, parent)?;
 
         self.event_time_zero.append(parent, &[time_zero])?;
         Ok(())
