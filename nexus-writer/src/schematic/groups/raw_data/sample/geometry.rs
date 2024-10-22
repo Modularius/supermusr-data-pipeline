@@ -4,8 +4,14 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 use crate::{
     elements::{
         dataset::{NexusDataset, NexusDatasetMut},
-        traits::{NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusGroupDef, NexusHandleMessage},
-    }, error::NexusPushError, nexus::NexusSettings, schematic::{nexus_class, H5String}
+        traits::{
+            NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusGroupDef,
+            NexusHandleMessage,
+        },
+    },
+    error::NexusPushError,
+    nexus::NexusSettings,
+    schematic::{nexus_class, H5String},
 };
 
 pub(super) struct Geometry {
@@ -26,7 +32,7 @@ impl NexusGroupDef for Geometry {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Geometry {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
+        _message: &RunStart<'a>,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
         self.name.write_string(parent, "Geometry Name")?;

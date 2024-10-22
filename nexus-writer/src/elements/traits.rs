@@ -80,8 +80,9 @@ pub(crate) trait NexusDataHolderScalarMutable:
 
     fn read_scalar(&self, parent: &Self::HDF5Container) -> Result<Self::DataType, Self::ThisError>;
 
-    fn mutate<F>(&self, parent: &Self::HDF5Container, f : F) -> Result<(), Self::ThisError>
-    where F : Fn(&Self::DataType) -> Self::DataType;
+    fn mutate<F>(&self, parent: &Self::HDF5Container, f: F) -> Result<(), Self::ThisError>
+    where
+        F: Fn(&Self::DataType) -> Self::DataType;
 }
 
 pub(crate) trait NexusDataHolderFixed: NexusDataHolderWithStaticType {
@@ -135,30 +136,39 @@ pub(crate) trait NexusAppendableDataHolder:
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
-pub(crate) trait NexusSearchableDataHolder: NexusAppendableDataHolder
-{
-    fn find(&self, parent: &Self::HDF5Container, value: Self::DataType) -> Result<Option<usize>, Self::ThisError>;
+pub(crate) trait NexusSearchableDataHolder: NexusAppendableDataHolder {
+    fn find(
+        &self,
+        parent: &Self::HDF5Container,
+        value: Self::DataType,
+    ) -> Result<Option<usize>, Self::ThisError>;
 }
-
 
 /// Implemented for `NexusDataHolder` objects have mutable scalar data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderMutable
-pub(crate) trait NexusDataHolderVectorMutable:
-    NexusAppendableDataHolder
-{
+pub(crate) trait NexusDataHolderVectorMutable: NexusAppendableDataHolder {
     fn write_at(
         &self,
         parent: &Self::HDF5Container,
         value: Self::DataType,
-        index: usize
+        index: usize,
     ) -> Result<(), Self::ThisError>;
 
-    fn read_from(&self, parent: &Self::HDF5Container, index: usize) -> Result<Self::DataType, Self::ThisError>;
+    fn read_from(
+        &self,
+        parent: &Self::HDF5Container,
+        index: usize,
+    ) -> Result<Self::DataType, Self::ThisError>;
 
-    fn mutate_in_place<F>(&self, parent: &Self::HDF5Container, index: usize, f : F) -> Result<(), Self::ThisError>
-    where F : Fn(&Self::DataType) -> Self::DataType;
+    fn mutate_in_place<F>(
+        &self,
+        parent: &Self::HDF5Container,
+        index: usize,
+        f: F,
+    ) -> Result<(), Self::ThisError>
+    where
+        F: Fn(&Self::DataType) -> Self::DataType;
 }
-
 
 /// Implemented for `NexusDataHolder` objects have extendable vector data
 /// i.e. NexusDataset and NexusAttribute instances with C = NexusDataHolderResizable
@@ -176,7 +186,7 @@ pub(crate) trait NexusNumericAppendableDataHolder: NexusDataHolderWithSize {
 
 /// Implemented for types which can possess attributes (i.e. Group and Dataset)
 pub(crate) trait NexusContainerWithAttribute {
-    fn attribute<T: H5Type>(&self, name: &str) -> Result<Attribute,NexusAttributeError>;
+    fn attribute<T: H5Type>(&self, name: &str) -> Result<Attribute, NexusAttributeError>;
 }
 
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure
@@ -199,7 +209,10 @@ pub(crate) trait NexusDatasetDefUnitsOnly: Default {
     const UNITS: NexusUnits;
 }
 
-impl<D> NexusDatasetDef for D where D : NexusDatasetDefUnitsOnly {
+impl<D> NexusDatasetDef for D
+where
+    D: NexusDatasetDefUnitsOnly,
+{
     const UNITS: Option<NexusUnits> = Some(<D as NexusDatasetDefUnitsOnly>::UNITS);
 
     fn new() -> Self {

@@ -11,43 +11,39 @@ use super::{
         NexusClassDataHolder, NexusClassFixedDataHolder, NexusClassMutableDataHolder,
     },
     traits::{
-        NexusContainerWithAttribute, NexusDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithStaticType, NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder
+        NexusContainerWithAttribute, NexusDataHolder, NexusDataHolderFixed,
+        NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithStaticType,
+        NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder,
     },
 };
 
 #[derive(Clone)]
-pub(crate) struct NexusAttribute<C: NexusClassDataHolder, P : NexusContainerWithAttribute>
-{
+pub(crate) struct NexusAttribute<C: NexusClassDataHolder, P: NexusContainerWithAttribute> {
     name: String,
     class: C,
     attribute: Option<Attribute>,
-    phantom: PhantomData<P>
+    phantom: PhantomData<P>,
 }
 
-pub(crate) type NexusAttributeMut<T,P = Dataset> = NexusAttribute<NexusClassMutableDataHolder<T>,P>;
+pub(crate) type NexusAttributeMut<T, P = Dataset> =
+    NexusAttribute<NexusClassMutableDataHolder<T>, P>;
 
-pub(crate) type NexusAttributeFixed<T,P = Dataset> = NexusAttribute<NexusClassFixedDataHolder<T>,P>;
+pub(crate) type NexusAttributeFixed<T, P = Dataset> =
+    NexusAttribute<NexusClassFixedDataHolder<T>, P>;
 
 impl NexusContainerWithAttribute for Dataset {
-    fn attribute<T : H5Type>(&self, name: &str) -> Result<Attribute,NexusAttributeError> {
-        self.attr(name).or_else(|_| {
-            Ok(self.new_attr::<T>()
-                .create(name)
-                .map_err(HDF5Error::HDF5)?)
-        })
+    fn attribute<T: H5Type>(&self, name: &str) -> Result<Attribute, NexusAttributeError> {
+        self.attr(name)
+            .or_else(|_| Ok(self.new_attr::<T>().create(name).map_err(HDF5Error::HDF5)?))
     }
 }
 
 impl NexusContainerWithAttribute for Group {
-    fn attribute<T : H5Type>(&self, name: &str) -> Result<Attribute,NexusAttributeError> {
-        self.attr(name).or_else(|_| {
-            Ok(self.new_attr::<T>()
-                .create(name)
-                .map_err(HDF5Error::HDF5)?)
-        })
+    fn attribute<T: H5Type>(&self, name: &str) -> Result<Attribute, NexusAttributeError> {
+        self.attr(name)
+            .or_else(|_| Ok(self.new_attr::<T>().create(name).map_err(HDF5Error::HDF5)?))
     }
 }
-
 
 impl<C, P> NexusDataHolder for NexusAttribute<C, P>
 where
@@ -92,7 +88,8 @@ where
             Ok(attribute.clone())
         } else {
             let attribute = parent.attribute::<T>(&self.name)?;
-            attribute.write_scalar(&self.class.default_value)
+            attribute
+                .write_scalar(&self.class.default_value)
                 .map_err(HDF5Error::HDF5)?;
             Ok(attribute)
         }
@@ -111,14 +108,14 @@ impl<T, P> NexusDataHolderScalarMutable for NexusAttribute<NexusClassMutableData
 where
     T: H5Type + Clone + Default,
     P: NexusContainerWithAttribute,
-    NexusClassMutableDataHolder<T>: NexusClassDataHolder
+    NexusClassMutableDataHolder<T>: NexusClassDataHolder,
 {
     fn new_with_initial(name: &str, default_value: Self::DataType) -> Self {
         Self {
             name: name.to_string(),
             class: NexusClassMutableDataHolder { default_value },
             attribute: None,
-            phantom: Default::default()
+            phantom: Default::default(),
         }
     }
 
@@ -136,18 +133,23 @@ where
         Ok(attribute.read_scalar().map_err(HDF5Error::HDF5)?)
     }
 
-    fn mutate<F>(&self, parent: &Self::HDF5Container, f : F) -> Result<(), Self::ThisError>
-    where F : Fn(&Self::DataType) -> Self::DataType {
+    fn mutate<F>(&self, parent: &Self::HDF5Container, f: F) -> Result<(), Self::ThisError>
+    where
+        F: Fn(&Self::DataType) -> Self::DataType,
+    {
         let attribute = self.create_hdf5_instance(parent)?;
         let value = attribute.read_scalar().map_err(HDF5Error::HDF5)?;
-        attribute.write_scalar(&f(&value)).map_err(HDF5Error::HDF5)?;
+        attribute
+            .write_scalar(&f(&value))
+            .map_err(HDF5Error::HDF5)?;
         Ok(())
     }
 }
 
-impl<P> NexusDataHolderStringMutable for NexusAttribute<NexusClassMutableDataHolder<H5String>, P> where
+impl<P> NexusDataHolderStringMutable for NexusAttribute<NexusClassMutableDataHolder<H5String>, P>
+where
     P: NexusContainerWithAttribute,
-    Self::ThisError: From<HDF5Error>
+    Self::ThisError: From<HDF5Error>,
 {
 }
 
@@ -155,7 +157,7 @@ impl<P> NexusDataHolderStringMutable for NexusAttribute<NexusClassMutableDataHol
 NexusClassFixedDataHolder
     */
 
-impl<T,P> NexusH5InstanceCreatableDataHolder for NexusAttribute<NexusClassFixedDataHolder<T>, P>
+impl<T, P> NexusH5InstanceCreatableDataHolder for NexusAttribute<NexusClassFixedDataHolder<T>, P>
 where
     T: H5Type + Clone + Default,
     P: NexusContainerWithAttribute,
@@ -172,7 +174,7 @@ where
     }
 }
 
-impl<T,P> NexusDataHolderWithStaticType for NexusAttribute<NexusClassFixedDataHolder<T>, P>
+impl<T, P> NexusDataHolderWithStaticType for NexusAttribute<NexusClassFixedDataHolder<T>, P>
 where
     T: H5Type + Clone + Default,
     P: NexusContainerWithAttribute,
@@ -180,19 +182,19 @@ where
     type DataType = T;
 }
 
-impl<T,P> NexusDataHolderFixed for NexusAttribute<NexusClassFixedDataHolder<T>, P>
+impl<T, P> NexusDataHolderFixed for NexusAttribute<NexusClassFixedDataHolder<T>, P>
 where
     T: H5Type + Clone + Default,
     NexusClassFixedDataHolder<T>: NexusClassDataHolder,
     P: NexusContainerWithAttribute,
-    Self: NexusH5InstanceCreatableDataHolder<HDF5Type = Attribute, ThisError = NexusAttributeError>
+    Self: NexusH5InstanceCreatableDataHolder<HDF5Type = Attribute, ThisError = NexusAttributeError>,
 {
     fn new_with_fixed_value(name: &str, fixed_value: Self::DataType) -> Self {
         Self {
             name: name.to_string(),
             class: NexusClassFixedDataHolder { fixed_value },
             attribute: None,
-            phantom: Default::default()
+            phantom: Default::default(),
         }
     }
 

@@ -8,11 +8,19 @@ use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
     elements::{
-        attribute::{NexusAttribute, NexusAttributeMut}, dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize}, group::NexusGroup, traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage, NexusPushMessage}, NexusUnits
+        attribute::{NexusAttribute, NexusAttributeMut},
+        dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize},
+        group::NexusGroup,
+        traits::{
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage,
+            NexusPushMessage,
+        },
+        NexusUnits,
     },
     error::NexusPushError,
     nexus::NexusSettings,
-    schematic::{groups::log::Log, nexus_class, H5String},
+    schematic::{nexus_class, H5String},
 };
 
 mod environment;
@@ -65,7 +73,7 @@ struct Temperature {
 
 impl NexusDatasetDef for Temperature {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Kelvin);
-    
+
     fn new() -> Self {
         Self {
             role: NexusAttribute::new_with_default("role"),
@@ -100,7 +108,7 @@ struct MagneticField {
 
 impl NexusDatasetDef for MagneticField {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Gauss);
-    
+
     fn new() -> Self {
         Self {
             role: NexusAttribute::new_with_default("role"),
@@ -190,17 +198,32 @@ impl NexusGroupDef for Sample {
             sample_holder: NexusDataset::new_with_default("sample_holder"),
             flypast: NexusDataset::new_with_default("flypast"),
             geometry: NexusGroup::new("geometry", settings),
-            sample_component: NexusDataset::new_appendable_with_default("sample_component", settings.components_chunk_size),
-            thickness: NexusDataset::new_appendable_with_default("thickness", settings.components_chunk_size),
+            sample_component: NexusDataset::new_appendable_with_default(
+                "sample_component",
+                settings.components_chunk_size,
+            ),
+            thickness: NexusDataset::new_appendable_with_default(
+                "thickness",
+                settings.components_chunk_size,
+            ),
             mass: NexusDataset::new_appendable_with_default("mass", settings.components_chunk_size),
-            density: NexusDataset::new_appendable_with_default("density", settings.components_chunk_size),
+            density: NexusDataset::new_appendable_with_default(
+                "density",
+                settings.components_chunk_size,
+            ),
             temperature: NexusDataset::new_with_default("temperature"),
-            magnetic_field: NexusDataset::new_appendable_with_default("magnetic_field", settings.dimensional_chunk_size),
+            magnetic_field: NexusDataset::new_appendable_with_default(
+                "magnetic_field",
+                settings.dimensional_chunk_size,
+            ),
             magnetic_field_state: NexusDataset::new_with_default("magnetic_field_state"),
             temperature_x: vec![NexusDataset::new_with_default("temperature_1")],
             temperature_x_env: vec![NexusGroup::new("temperature_1_env", settings)],
             //temperature_x_log: vec![NexusGroup::new("temperature_1_log", settings)],
-            magnetic_field_x: vec![NexusDataset::new_appendable_with_default("magnetic_field_1", settings.dimensional_chunk_size)],
+            magnetic_field_x: vec![NexusDataset::new_appendable_with_default(
+                "magnetic_field_1",
+                settings.dimensional_chunk_size,
+            )],
             magnetic_field_x_env: vec![NexusGroup::new("magnetic_field_1_env", settings)],
             //magnetic_field_x_log: vec![NexusGroup::new("magnetic_field_1_log", settings)],
         }
@@ -219,22 +242,33 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for Sample {
         self.sample_type.write_string(parent, "Sample Type")?;
         self.situation.write_string(parent, "atmosphere")?;
         self.shape.write_string(parent, "Sample Shape")?;
-        self.preparation_date.write_string(parent, DateTime::<Utc>::default().to_rfc3339().as_str())?;
+        self.preparation_date
+            .write_string(parent, DateTime::<Utc>::default().to_rfc3339().as_str())?;
         self.sample_holder.write_string(parent, "Sample Name")?;
         self.flypast.write_string(parent, "Sample Name")?;
         self.geometry.push_message(message, parent)?;
-        self.sample_component.append(parent, &["Sample Name".parse().expect("")])?;
+        self.sample_component
+            .append(parent, &["Sample Name".parse().expect("")])?;
         self.thickness.append(parent, &[0])?;
         self.mass.append(parent, &[0])?;
         self.density.append(parent, &[0])?;
         self.temperature.write_scalar(parent, 0)?;
-        self.magnetic_field.append(parent, &[0.0,0.0,0.0])?;
-        self.magnetic_field_state.write_string(parent, "Sample Name")?;
-        self.temperature_x.iter().map(|temperature|temperature.write_scalar(parent, 0)).collect::<Result<_,_>>()?;
-        self.temperature_x_env.iter_mut().map(|temperature_env|temperature_env.push_message(message, parent)).collect::<Result<_,_>>()?;
+        self.magnetic_field.append(parent, &[0.0, 0.0, 0.0])?;
+        self.magnetic_field_state
+            .write_string(parent, "Sample Name")?;
+        self.temperature_x
+            .iter()
+            .try_for_each(|temperature| temperature.write_scalar(parent, 0))?;
+        self.temperature_x_env
+            .iter_mut()
+            .try_for_each(|temperature_env| temperature_env.push_message(message, parent))?;
         //self.temperature_x_log.iter_mut().map(|temperature_log|temperature_log.push_message(message, parent)).collect::<Result<_,_>>()?;
-        self.magnetic_field_x.iter().map(|temperature|temperature.append(parent, &[0,0,0])).collect::<Result<_,_>>()?;
-        self.magnetic_field_x_env.iter_mut().map(|temperature_env|temperature_env.push_message(message, parent)).collect::<Result<_,_>>()?;
+        self.magnetic_field_x
+            .iter()
+            .try_for_each(|temperature| temperature.append(parent, &[0, 0, 0]))?;
+        self.magnetic_field_x_env
+            .iter_mut()
+            .try_for_each(|temperature_env| temperature_env.push_message(message, parent))?;
         //self.magnetic_field_x_log.iter_mut().map(|temperature_log|temperature_log.push_message(message, parent)).collect::<Result<_,_>>()?;
         Ok(())
     }

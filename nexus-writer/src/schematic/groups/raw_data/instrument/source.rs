@@ -1,13 +1,22 @@
-use hdf5::Group;
+use hdf5::{Dataset, Group};
 use supermusr_streaming_types::ecs_pl72_run_start_generated::RunStart;
 
 use crate::{
     elements::{
-        attribute::{NexusAttribute, NexusAttributeMut}, dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize}, group::NexusGroup, traits::{NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage}, NexusUnits
-    }, error::NexusPushError, nexus::NexusSettings, schematic::{groups::log::Log, nexus_class, H5String}
+        attribute::{NexusAttribute, NexusAttributeMut},
+        dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize},
+        traits::{
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage,
+        },
+        NexusUnits,
+    },
+    error::NexusPushError,
+    nexus::NexusSettings,
+    schematic::{nexus_class, H5String},
 };
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct SourceFrequency;
 
 impl NexusDatasetDefUnitsOnly for SourceFrequency {
@@ -24,54 +33,67 @@ struct SourceFramePattern {
     pulses_per_frame: NexusAttributeMut<f64>,
 }
 
+impl<'a> NexusHandleMessage<RunStart<'a>, Dataset> for SourceFramePattern {
+    fn handle_message(
+        &mut self,
+        _message: &RunStart<'a>,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        self.rep_len.write_scalar(parent, 1)?;
+        self.period.write_scalar(parent, 80.0)?;
+        self.pulses_per_frame.write_scalar(parent, 1.0)?;
+        Ok(())
+    }
+}
+
 impl NexusDatasetDef for SourceFramePattern {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Milliseconds);
-    
+
     fn new() -> Self {
         Self {
             rep_len: NexusAttribute::new_with_default("rep_len"),
             period: NexusAttribute::new_with_default("period"),
             pulses_per_frame: NexusAttribute::new_with_default("pulses_per_frame"),
         }
-    }    
+    }
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct SourceEnergy;
 
 impl NexusDatasetDefUnitsOnly for SourceEnergy {
     const UNITS: NexusUnits = NexusUnits::MegaElectronVolts;
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct SourceCurrent;
 
 impl NexusDatasetDefUnitsOnly for SourceCurrent {
     const UNITS: NexusUnits = NexusUnits::MicroAmps;
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct SourcePulseWidth;
 
 impl NexusDatasetDefUnitsOnly for SourcePulseWidth {
     const UNITS: NexusUnits = NexusUnits::Nanoseconds; // Todo (is this correct?)
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct TargetThickness;
 
 impl NexusDatasetDefUnitsOnly for TargetThickness {
     const UNITS: NexusUnits = NexusUnits::Millimeters;
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct Momentum;
 
 impl NexusDatasetDefUnitsOnly for Momentum {
     const UNITS: NexusUnits = NexusUnits::MegaElectronVoltsOverC;
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct MuonEnergy;
 
 impl NexusDatasetDefUnitsOnly for MuonEnergy {
@@ -88,23 +110,35 @@ struct MuonPulsePattern {
 
 impl NexusDatasetDef for MuonPulsePattern {
     const UNITS: Option<NexusUnits> = Some(NexusUnits::Milliseconds);
-    
+
     fn new() -> Self {
         Self {
             rep_len: NexusAttribute::new_with_default("rep_len"),
-            period: NexusAttribute::new_with_default("period")
+            period: NexusAttribute::new_with_default("period"),
         }
-    }    
+    }
 }
 
-#[derive(Default,Clone)]
+impl<'a> NexusHandleMessage<RunStart<'a>, Dataset> for MuonPulsePattern {
+    fn handle_message(
+        &mut self,
+        _message: &RunStart<'a>,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        self.rep_len.write_scalar(parent, 1)?;
+        self.period.write_scalar(parent, 80.0)?;
+        Ok(())
+    }
+}
+
+#[derive(Default, Clone)]
 struct MuonPulseWidth;
 
 impl NexusDatasetDefUnitsOnly for MuonPulseWidth {
     const UNITS: NexusUnits = NexusUnits::Nanoseconds;
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 struct MuonPulseSeparation;
 
 impl NexusDatasetDefUnitsOnly for MuonPulseSeparation {
@@ -120,8 +154,8 @@ pub(super) struct Source {
     probe: NexusDatasetMut<H5String>,
     /// accelerator frequency, note that some framesmay be 'missing' at target
     source_frequency: NexusDatasetMut<f64, SourceFrequency>,
-    /// log of source frequency during run
-    source_frequency_log: NexusGroup<Log>,
+    // /// log of source frequency during run
+    //source_frequency_log: NexusGroup<Log>,
     /// frame pattern: `1` frame to target, `0` frame missing at `frequency`
     /// e.g. ISIS target 1 with TS2: `1,1,1,1,0`,
     /// with a `rep_len` of `5` and `period` 100ms
@@ -164,8 +198,11 @@ impl NexusGroupDef for Source {
             source_type: NexusDataset::new_with_default("source_type"),
             probe: NexusDataset::new_with_default("probe"),
             source_frequency: NexusDataset::new_with_default("source_frequency"),
-            source_frequency_log: NexusGroup::new("source_frequency_log", settings),
-            source_frame_pattern: NexusDataset::new_appendable_with_default("source_frame_pattern", settings.dimensional_chunk_size),
+            //source_frequency_log: NexusGroup::new("source_frequency_log", settings),
+            source_frame_pattern: NexusDataset::new_appendable_with_default(
+                "source_frame_pattern",
+                settings.dimensional_chunk_size,
+            ),
             source_energy: NexusDataset::new_with_default("source_energy"),
             source_current: NexusDataset::new_with_default("tarsource_currentget_thickness"),
             //source_current_log: NexusGroup::new("source_current_log", settings),
@@ -175,9 +212,18 @@ impl NexusGroupDef for Source {
             pion_momentum: NexusDataset::new_with_default("pion_momentum"),
             muon_energy: NexusDataset::new_with_default("muon_energy"),
             muon_momentum: NexusDataset::new_with_default("muon_momentum"),
-            muon_pulse_pattern: NexusDataset::new_appendable_with_default("muon_pulse_pattern", settings.dimensional_chunk_size),
-            muon_pulse_width: NexusDataset::new_appendable_with_default("muon_pulse_width", settings.dimensional_chunk_size),
-            muon_pulse_separation: NexusDataset::new_appendable_with_default("muon_pulse_separation", settings.dimensional_chunk_size),
+            muon_pulse_pattern: NexusDataset::new_appendable_with_default(
+                "muon_pulse_pattern",
+                settings.dimensional_chunk_size,
+            ),
+            muon_pulse_width: NexusDataset::new_appendable_with_default(
+                "muon_pulse_width",
+                settings.dimensional_chunk_size,
+            ),
+            muon_pulse_separation: NexusDataset::new_appendable_with_default(
+                "muon_pulse_separation",
+                settings.dimensional_chunk_size,
+            ),
             notes: NexusDataset::new_with_default("notes"),
         }
     }
@@ -186,11 +232,13 @@ impl NexusGroupDef for Source {
 impl<'a> NexusHandleMessage<RunStart<'a>> for Source {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
+        _message: &RunStart<'a>,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
-        self.name.write_string(parent, "Isis Neutron and Muon Source")?;
-        self.source_type.write_string(parent, "Isis Neutron and Muon Source")?;
+        self.name
+            .write_string(parent, "Isis Neutron and Muon Source")?;
+        self.source_type
+            .write_string(parent, "Isis Neutron and Muon Source")?;
         self.probe.write_string(parent, "Positive Muons")?;
         self.source_frequency.write_scalar(parent, 50.0)?;
         self.source_frame_pattern.append(parent, &[0])?;

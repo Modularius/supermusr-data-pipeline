@@ -157,7 +157,8 @@ async fn main() -> anyhow::Result<()> {
         args.use_hdf5_swmr,
     );
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
-    let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings, nexus_configuration);
+    let mut nexus_engine =
+        NexusEngine::new(Some(&args.file_name), nexus_settings, nexus_configuration);
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

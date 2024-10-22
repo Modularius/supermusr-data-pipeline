@@ -1,4 +1,4 @@
-use hdf5::Group;
+use hdf5::{Dataset, Group};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::{
@@ -7,14 +7,15 @@ use crate::{
         dataset::{NexusDataset, NexusDatasetMut, NexusDatasetResize, NexusDatasetResizeMut},
         group::NexusGroup,
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderVectorMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder
+            NexusAppendableDataHolder, NexusDataHolderFixed, NexusDataHolderScalarMutable,
+            NexusDataHolderStringMutable, NexusDataHolderVectorMutable, NexusDatasetDef,
+            NexusGroupDef, NexusHandleMessage, NexusSearchableDataHolder,
         },
     },
     error::NexusPushError,
     nexus::NexusSettings,
     schematic::{groups::log::Log, nexus_class, H5String},
 };
-
 
 /*
     Dataset: FramesRequested
@@ -34,6 +35,16 @@ impl NexusDatasetDef for FramesRequested {
     }
 }
 
+impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>, Dataset> for FramesRequested {
+    fn handle_message(
+        &mut self,
+        _message: &FrameAssembledEventListMessage<'a>,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        Ok(self.frame_type.write_string(parent, "raw")?)
+    }
+}
+
 /*
     Dataset: Labels
 */
@@ -47,12 +58,23 @@ struct Labels {
 impl NexusDatasetDef for Labels {
     fn new() -> Self {
         Self {
-            separator: NexusAttribute::new_with_fixed_value("separator",",".parse().expect("String should parse")),
+            separator: NexusAttribute::new_with_fixed_value(
+                "separator",
+                ",".parse().expect("String should parse"),
+            ),
         }
     }
 }
 
-
+impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>, Dataset> for Labels {
+    fn handle_message(
+        &mut self,
+        _message: &FrameAssembledEventListMessage<'a>,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        Ok(self.separator.write(parent)?)
+    }
+}
 
 /*
     Group: Periods
@@ -72,7 +94,7 @@ pub(super) struct Periods {
     /// raw frames collected for each period
     raw_frames: NexusDatasetResizeMut<u32>,
     /// good frames collected for each period
-    good_frames:NexusDatasetResizeMut<u32>,
+    good_frames: NexusDatasetResizeMut<u32>,
     /// number of times data collection took place in each period
     sequences: NexusDatasetResizeMut<u32>,
     /// counts collected in each periods
@@ -86,13 +108,31 @@ impl NexusGroupDef for Periods {
     fn new(settings: &NexusSettings) -> Self {
         Self {
             number: NexusDataset::new_with_default("number"),
-            period_types: NexusDataset::new_appendable_with_default("type", settings.periodlist_chunk_size),
-            frames_requested: NexusDataset::new_appendable_with_default("frames_requested", settings.periodlist_chunk_size),
-            output: NexusDataset::new_appendable_with_default("output", settings.periodlist_chunk_size),
+            period_types: NexusDataset::new_appendable_with_default(
+                "type",
+                settings.periodlist_chunk_size,
+            ),
+            frames_requested: NexusDataset::new_appendable_with_default(
+                "frames_requested",
+                settings.periodlist_chunk_size,
+            ),
+            output: NexusDataset::new_appendable_with_default(
+                "output",
+                settings.periodlist_chunk_size,
+            ),
             labels: NexusDataset::new_with_default("labels"),
-            raw_frames: NexusDataset::new_appendable_with_default("raw_frames", settings.periodlist_chunk_size),
-            good_frames: NexusDataset::new_appendable_with_default("good_frames", settings.periodlist_chunk_size),
-            sequences: NexusDataset::new_appendable_with_default("sequences", settings.periodlist_chunk_size),
+            raw_frames: NexusDataset::new_appendable_with_default(
+                "raw_frames",
+                settings.periodlist_chunk_size,
+            ),
+            good_frames: NexusDataset::new_appendable_with_default(
+                "good_frames",
+                settings.periodlist_chunk_size,
+            ),
+            sequences: NexusDataset::new_appendable_with_default(
+                "sequences",
+                settings.periodlist_chunk_size,
+            ),
             _counts: NexusGroup::new("counts", settings),
         }
     }
@@ -107,22 +147,34 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Periods {
         let period_number = message.metadata().period_number();
         if let Some(index) = self.output.find(parent, period_number)? {
             self.output.append(parent, &[period_number])?;
-            self.raw_frames.mutate_in_place(parent, index, |x|x + 1)?;
+            self.raw_frames.mutate_in_place(parent, index, |x| x + 1)?;
             if message.metadata().veto_flags() == 0 {
-                self.good_frames.mutate_in_place(parent, index, |x|x + 1)?;
+                self.good_frames.mutate_in_place(parent, index, |x| x + 1)?;
             }
-            self.frames_requested.mutate_in_place(parent, index, |x|x + 1)?;
+            self.frames_requested
+                .mutate_in_place(parent, index, |x| x + 1)?;
         } else {
             self.output.append(parent, &[period_number])?;
-            self.labels.mutate(parent, |labels| format!("{0},{1}", labels.as_str(), period_number).parse().expect("String should parse"))?;
+            self.labels.mutate(parent, |labels| {
+                format!("{0},{1}", labels.as_str(), period_number)
+                    .parse()
+                    .expect("String should parse")
+            })?;
             self.raw_frames.append(parent, &[1])?;
-            self.good_frames.append(parent, &[if message.metadata().veto_flags() == 0 {1} else {0}])?;
+            self.good_frames.append(
+                parent,
+                &[if message.metadata().veto_flags() == 0 {
+                    1
+                } else {
+                    0
+                }],
+            )?;
             self.period_types.append(parent, &[0])?;
             self.frames_requested.append(parent, &[0])?;
             self.sequences.append(parent, &[0])?;
-            self.number.mutate(parent, |x|x + 1)?;
+            self.number.mutate(parent, |x| x + 1)?;
         };
-        
+
         Ok(())
     }
 }

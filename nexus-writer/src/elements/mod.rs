@@ -9,36 +9,40 @@ pub(crate) mod traits;
 pub(crate) enum NexusUnits {
     #[strum(to_string = "Hz")]
     Hertz,
+    // Time
     #[strum(to_string = "second")]
     Seconds,
     #[strum(to_string = "ms")]
     Milliseconds,
-    #[strum(to_string = "us")]
-    Microseconds,
     #[strum(to_string = "ns")]
     Nanoseconds,
-    #[strum(to_string = "ISO8601")]
-    ISO8601,
+    // Energy
     #[strum(to_string = "eV")]
     ElectronVolts,
     #[strum(to_string = "MeV")]
     MegaElectronVolts,
+    // Momentum
     #[strum(to_string = "MeVc^-1")]
     MegaElectronVoltsOverC,
+    // Current
     #[strum(to_string = "uA")]
     MicroAmps,
+    // Charge
     #[strum(to_string = "uAh")]
     MicroAmpHours,
-    #[strum(to_string = "counts")]
-    Counts,
+    // Length
     #[strum(to_string = "mm")]
     Millimeters,
+    // Mass
     #[strum(to_string = "mg")]
     Milligrams,
+    // Density
     #[strum(to_string = "mgcm^-3")]
     MilligramsPerCm3,
+    // Temperature
     #[strum(to_string = "K")]
     Kelvin,
+    // Magnetic Field
     #[strum(to_string = "G")]
     Gauss,
 }

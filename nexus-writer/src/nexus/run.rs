@@ -1,6 +1,7 @@
 use crate::{
     elements::{
-        dataholder_class::NexusClassAppendableDataHolder, group::NexusGroup, traits::{NexusHandleMessage, NexusPushMessage}
+        group::NexusGroup,
+        traits::{NexusHandleMessage, NexusPushMessage},
     },
     error::{HDF5Error, NexusPushError, RunError},
     schematic::groups::NXRoot,
@@ -64,13 +65,17 @@ impl Run {
             nexus_settings,
         );
 
-        let run_started = nx_root.push_message(&run_start, &file).expect("RunStart should be handled by nx_root");
-        nx_root.push_message(nexus_configuration, &file).expect("NexusConfiguration should be handled by nx_root");
+        let run_started = nx_root
+            .push_message(&run_start, &file)
+            .expect("RunStart should be handled by nx_root");
+        nx_root
+            .push_message(nexus_configuration, &file)
+            .expect("NexusConfiguration should be handled by nx_root");
         Ok(Self {
             span: Default::default(),
             parameters: RunParameters::new(run_started),
             file,
-            nx_root
+            nx_root,
         })
     }
 

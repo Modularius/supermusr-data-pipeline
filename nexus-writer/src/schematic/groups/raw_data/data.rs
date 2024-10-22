@@ -12,7 +12,9 @@ use crate::{
         attribute::{NexusAttribute, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetResize},
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDataHolderWithSize, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef,
+            NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage,
         },
         NexusUnits,
     },
@@ -30,8 +32,6 @@ struct EventTimeOffset {}
 impl NexusDatasetDefUnitsOnly for EventTimeOffset {
     const UNITS: NexusUnits = NexusUnits::Nanoseconds;
 }
-
-
 
 /*
     Dataset: EventTimeZero
@@ -81,9 +81,7 @@ fn datetime_diff_to_u64(
         .map_err(NexusConversionError::TimeDeltaNegative)
 }
 
-impl<'a> NexusHandleMessage<EventTimeZeroMessage<'a>, Dataset, u64>
-    for EventTimeZero
-{
+impl<'a> NexusHandleMessage<EventTimeZeroMessage<'a>, Dataset, u64> for EventTimeZero {
     fn handle_message(
         &mut self,
         message: &EventTimeZeroMessage<'a>,

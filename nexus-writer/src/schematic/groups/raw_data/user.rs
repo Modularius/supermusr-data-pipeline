@@ -6,7 +6,8 @@ use crate::{
         attribute::{NexusAttribute, NexusAttributeMut},
         dataset::{NexusDataset, NexusDatasetMut},
         traits::{
-            NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusGroupDef, NexusHandleMessage, NexusPushMessage
+            NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef,
+            NexusGroupDef, NexusHandleMessage, NexusPushMessage,
         },
     },
     error::NexusPushError,
@@ -30,14 +31,13 @@ impl NexusDatasetDef for Name {
 impl<'a> NexusHandleMessage<RunStart<'a>, Dataset> for Name {
     fn handle_message(
         &mut self,
-        message: &RunStart<'a>,
+        _message: &RunStart<'a>,
         parent: &Dataset,
     ) -> Result<(), NexusPushError> {
         self.role.write_string(parent, "User's Role")?;
         Ok(())
     }
 }
-
 
 pub(super) struct User {
     name: NexusDatasetMut<H5String, Name>,
@@ -74,9 +74,11 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for User {
     ) -> Result<(), NexusPushError> {
         self.name.push_message(message, parent)?;
         self.name.write_string(parent, "User's Name")?;
-        self.affiliation.write_string(parent, "User's Affiliation")?;
+        self.affiliation
+            .write_string(parent, "User's Affiliation")?;
         self.address.write_string(parent, "User's Address")?;
-        self.telephone_number.write_string(parent, "User's Phone Number")?;
+        self.telephone_number
+            .write_string(parent, "User's Phone Number")?;
         self.fax_number.write_string(parent, "User's Fax Number")?;
         self.email.write_string(parent, "User's Email")?;
         self.facility_user_id.write_string(parent, "User ID")?;

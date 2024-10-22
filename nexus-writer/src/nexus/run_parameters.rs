@@ -61,7 +61,6 @@ pub(crate) struct RunParameters {
     pub(crate) started: RunStarted,
     pub(crate) collect_until: Option<DateTime<Utc>>,
     pub(crate) last_modified: DateTime<Utc>,
-    pub(crate) num_frames: usize, // Do we actually need this?
 }
 
 impl RunParameters {
@@ -70,7 +69,6 @@ impl RunParameters {
             started,
             collect_until: None,
             last_modified: Utc::now(),
-            num_frames: 0,
         }
     }
 
@@ -89,7 +87,6 @@ impl RunParameters {
 
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn new_frame(&mut self) {
-        self.num_frames += 1;
         self.update_last_modified();
     }
 

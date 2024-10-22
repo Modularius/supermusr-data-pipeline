@@ -20,7 +20,9 @@ use crate::{
         dataset::{NexusDataset, NexusDatasetFixed, NexusDatasetMut},
         group::NexusGroup,
         traits::{
-            NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage, NexusPushMessage
+            NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef, NexusHandleMessage,
+            NexusPushMessage,
         },
         NexusUnits,
     },
@@ -75,7 +77,6 @@ impl NexusDatasetDefUnitsOnly for ProtonChargeAttributes {
     const UNITS: NexusUnits = NexusUnits::MicroAmpHours;
 }
 
-
 #[derive(Clone)]
 struct ProgramNameAttributes {
     /// version of creating program
@@ -90,19 +91,20 @@ impl NexusDatasetDef for ProgramNameAttributes {
     fn new() -> Self {
         Self {
             version: NexusAttribute::new_with_fixed_value("version", "TODO".parse().expect("")),
-            configuration: NexusAttribute::new_with_default("URL")
+            configuration: NexusAttribute::new_with_default("URL"),
         }
     }
 }
 
-impl NexusHandleMessage<NexusConfiguration,Dataset> for ProgramNameAttributes {
+impl NexusHandleMessage<NexusConfiguration, Dataset> for ProgramNameAttributes {
     fn handle_message(
         &mut self,
         message: &NexusConfiguration,
         parent: &Dataset,
     ) -> Result<(), NexusPushError> {
         self.version.write(parent)?;
-        self.configuration.write_string(parent, message.configuration.as_str())?;
+        self.configuration
+            .write_string(parent, message.configuration.as_str())?;
         Ok(())
     }
 }
@@ -117,7 +119,7 @@ pub(super) struct RawData {
     /// a template (DTD name) on which an extension to the base definition is based
     definition_local: NexusDatasetFixed<H5String, DefinitionAttributes>,
     /// Name of creating program
-    program_name: NexusDatasetFixed<H5String,ProgramNameAttributes>,
+    program_name: NexusDatasetFixed<H5String, ProgramNameAttributes>,
     /// Run number
     run_number: NexusDatasetMut<u32>,
     /// extended title for the entry, e.g. string containing sample, temperature and field
@@ -147,11 +149,11 @@ pub(super) struct RawData {
     run_cycle: NexusDatasetMut<H5String>,
     /// details of representative user
     user_1: NexusGroup<User>,
-    /// 
+    ///
     run_log: NexusGroup<RunLog>,
-    /// 
+    ///
     selog: NexusGroup<Selog>,
-    /// 
+    ///
     periods: NexusGroup<Periods>,
     /// details of the sample under investigation
     sample: NexusGroup<Sample>,
@@ -176,7 +178,10 @@ impl NexusGroupDef for RawData {
                 "definition_local",
                 "muonTD".parse().expect(""),
             ),
-            program_name: NexusDataset::new_with_fixed_value("program_name", "SuperMuSR Data Pipeline Nexus Writer".parse().expect("")),
+            program_name: NexusDataset::new_with_fixed_value(
+                "program_name",
+                "SuperMuSR Data Pipeline Nexus Writer".parse().expect(""),
+            ),
             run_number: NexusDataset::new_with_default("run_number"),
             title: NexusDataset::new_with_default("title"),
             notes: NexusDataset::new_with_default("notes"),
@@ -239,7 +244,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.idf_version.write(parent)?;
         self.definition.push_message(message, parent)?;
         self.definition_local.push_message(message, parent)?;
-        
+
         self.run_number.write_scalar(parent, 0)?;
         self.notes
             .write_string(parent, message.metadata().unwrap_or_default())?;
@@ -252,7 +257,7 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for RawData {
         self.raw_frames.write_scalar(parent, 1)?;
         self.proton_charge.write_scalar(parent, 1.0)?;
         self.run_cycle.write_string(parent, "This")?;
-        
+
         self.user_1.push_message(message, parent)?;
         self.sample.push_message(message, parent)?;
         self.instrument.push_message(message, parent)?;

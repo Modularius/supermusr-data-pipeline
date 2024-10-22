@@ -7,15 +7,18 @@ use crate::{
     elements::{
         dataset::{NexusDataset, NexusDatasetMut},
         group::NexusGroup,
-        traits::{NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusGroupDef, NexusHandleMessage, NexusPushMessage},
+        traits::{
+            NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusGroupDef,
+            NexusHandleMessage, NexusPushMessage,
+        },
     },
     error::NexusPushError,
     nexus::NexusSettings,
     schematic::{nexus_class, H5String},
 };
 
-mod source;
 mod detector;
+mod source;
 
 pub(super) struct Instrument {
     name: NexusDatasetMut<H5String>,
@@ -31,7 +34,7 @@ impl NexusGroupDef for Instrument {
         Self {
             name: NexusDataset::new_with_default("name"),
             source: NexusGroup::new("source", settings),
-            detector_: vec![NexusGroup::new("detector_1", settings)]
+            detector_: vec![NexusGroup::new("detector_1", settings)],
         }
     }
 }
@@ -44,7 +47,9 @@ impl<'a> NexusHandleMessage<RunStart<'a>> for Instrument {
     ) -> Result<(), NexusPushError> {
         self.name.write_string(parent, "SuperMuSR")?;
         self.source.push_message(message, parent)?;
-        self.detector_.iter_mut().map(|detector|detector.push_message(message, parent)).collect::<Result<_,_>>()?;
+        self.detector_
+            .iter_mut()
+            .try_for_each(|detector| detector.push_message(message, parent))?;
         Ok(())
     }
 }

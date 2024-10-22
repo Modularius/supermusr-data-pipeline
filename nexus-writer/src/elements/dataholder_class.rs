@@ -53,7 +53,6 @@ impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType<T>
 
 impl<T: H5Type + Default + Clone> NexusClassWithSize for NexusClassAppendableDataHolder<T> {}
 
-
 /// Class of NexusDataHolder which has an expandable vector whose values can be changed dynamically
 #[derive(Default, Clone)]
 pub(crate) struct NexusClassMutableAppendableDataHolder<T: H5Type + Default + Clone> {
@@ -62,7 +61,10 @@ pub(crate) struct NexusClassMutableAppendableDataHolder<T: H5Type + Default + Cl
     pub(super) chunk_size: usize,
 }
 
-impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassMutableAppendableDataHolder<T> {}
+impl<T: H5Type + Default + Clone> NexusClassDataHolder
+    for NexusClassMutableAppendableDataHolder<T>
+{
+}
 
 impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType<T>
     for NexusClassMutableAppendableDataHolder<T>

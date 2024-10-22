@@ -1,7 +1,10 @@
 use hdf5::{types::VarLenUnicode, Group};
 use std::str::FromStr;
 
-use crate::{error::{HDF5Error, NexusGroupError, NexusPushError}, schematic::H5String};
+use crate::{
+    error::{HDF5Error, NexusGroupError, NexusPushError},
+    schematic::H5String,
+};
 
 use super::traits::{NexusGroupDef, NexusHandleMessage, NexusPushMessage};
 
@@ -32,10 +35,12 @@ impl<D: NexusGroupDef> NexusGroup<D> {
                 .create_group(self.name.as_str())
                 .map_err(HDF5Error::HDF5)?;
 
-            group.new_attr::<H5String>().create("NXclass")
+            group
+                .new_attr::<H5String>()
+                .create("NXclass")
                 .map_err(HDF5Error::HDF5)?
-                .write_scalar(&VarLenUnicode::from_str(D::CLASS_NAME)
-                    .map_err(HDF5Error::HDF5String)?
+                .write_scalar(
+                    &VarLenUnicode::from_str(D::CLASS_NAME).map_err(HDF5Error::HDF5String)?,
                 )
                 .map_err(HDF5Error::HDF5)?;
 

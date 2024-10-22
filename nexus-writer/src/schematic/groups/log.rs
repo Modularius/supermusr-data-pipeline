@@ -12,7 +12,9 @@ use crate::{
         dataset::{NexusDataset, NexusDatasetResize, NexusLogValueDatasetResize},
         log_value::NumericVector,
         traits::{
-            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable, NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder, NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage
+            NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
+            NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder,
+            NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage,
         },
         NexusUnits,
     },
@@ -40,19 +42,12 @@ impl NexusDatasetDef for TimeAttributes {
 }
 
 impl NexusHandleMessage<i64, Dataset> for TimeAttributes {
-    fn handle_message(
-        &mut self,
-        message: &i64,
-        parent: &Dataset,
-    ) -> Result<(), NexusPushError> {
+    fn handle_message(&mut self, message: &i64, parent: &Dataset) -> Result<(), NexusPushError> {
         let datetime = DateTime::<Utc>::from_timestamp_nanos(*message);
         self.offset.write_string(parent, &datetime.to_rfc3339())?;
         Ok(())
     }
 }
-
-
-
 
 pub(super) struct Log {
     time: NexusDatasetResize<i64, TimeAttributes>,
@@ -168,15 +163,15 @@ impl NexusGroupDef for ValueLog {
         Self {
             alarm_severity: NexusDataset::new_appendable_with_default(
                 "alarm_severity",
-                settings.seloglist_chunk_size,
+                settings.alarmlist_chunk_size,
             ),
             alarm_status: NexusDataset::new_appendable_with_default(
                 "alarm_status",
-                settings.seloglist_chunk_size,
+                settings.alarmlist_chunk_size,
             ),
             alarm_time: NexusDataset::new_appendable_with_default(
                 "alarm_time",
-                settings.seloglist_chunk_size,
+                settings.alarmlist_chunk_size,
             ),
             time: NexusDataset::new_appendable_with_default("time", settings.seloglist_chunk_size),
             value: NexusLogValueDatasetResize::new("value", settings.seloglist_chunk_size),
@@ -263,21 +258,20 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
         message: &se00_SampleEnvironmentData<'a>,
         parent: &Group,
     ) -> Result<(), NexusPushError> {
-        let values : NumericVector = message.try_into()?;
-        let timestamps : Vec<_> = {
+        let values: NumericVector = message.try_into()?;
+        let timestamps: Vec<_> = {
             if let Some(timestamps) = message.timestamps() {
                 timestamps.iter().collect()
             } else if message.time_delta() > 0.0 {
-                (0..values.len()).map(|i| (i as f64 * message.time_delta()) as i64).collect()
+                (0..values.len())
+                    .map(|i| (i as f64 * message.time_delta()) as i64)
+                    .collect()
             } else {
                 Err(NexusMissingError::Selog(NexusMissingSelogError::Times))?
             }
         };
 
-        self.time.append(
-            parent,
-            &timestamps,
-        )?;
+        self.time.append(parent, &timestamps)?;
         self.time.close_hdf5();
 
         self.value.append_numerics(parent, &values)?;
