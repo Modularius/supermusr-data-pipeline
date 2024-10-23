@@ -11,11 +11,12 @@ use super::{NexusConfiguration, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{File, FileBuilder};
 use std::path::Path;
+use std::{fs::create_dir_all, future::Future, io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-use tracing::{info_span, Span};
+use tracing::{info, info_span, warn, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
