@@ -159,6 +159,7 @@ async fn main() -> anyhow::Result<()> {
         args.frame_list_chunk_size,
         args.event_list_chunk_size,
         args.use_hdf5_swmr,
+        args.archive_name.as_deref()
     );
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
     let mut nexus_engine =

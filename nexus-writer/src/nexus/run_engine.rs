@@ -484,6 +484,7 @@ impl NexusSettings {
         framelist_chunk_size: usize,
         eventlist_chunk_size: usize,
         use_swmr: bool,
+        archive_path: Option<&Path>,
     ) -> Self {
         Self {
             framelist_chunk_size,
@@ -495,6 +496,7 @@ impl NexusSettings {
             dimensional_chunk_size: 4,
             components_chunk_size: 16,
             use_swmr,
+            archive_path: archive_path.map(Path::to_owned)
         }
     }
 }
