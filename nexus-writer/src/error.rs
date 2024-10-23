@@ -72,8 +72,6 @@ pub(crate) enum NexusMissingError {
 pub(crate) enum NexusConversionError {
     #[error("Cannot fit duration into i64: {0}")]
     NanosecondError(TimeDelta),
-    #[error("TimeDelta negative: {0}")]
-    TimeDeltaNegative(<u64 as TryFrom<i64>>::Error),
     #[error("Chrono Parse Error: {0}")]
     ChronoParse(#[from] chrono::ParseError),
     #[error("Parse Error: {0}")]

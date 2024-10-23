@@ -1,6 +1,5 @@
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use hdf5::Group;
-use raw_data::RawData;
 
 use crate::{
     elements::{
@@ -12,7 +11,7 @@ use crate::{
         },
     },
     error::NexusPushError,
-    nexus::{NexusConfiguration, NexusSettings},
+    nexus::{NexusConfiguration, NexusSettings, RunStarted},
     schematic::{nexus_class, H5String},
 };
 use supermusr_streaming_types::{
@@ -94,15 +93,12 @@ impl NexusHandleMessage<NexusConfiguration> for NXRoot {
     }
 }
 
-impl<'a, R> NexusHandleMessage<RunStart<'a>, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<RunStart<'a>, Group, R>,
-{
+impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for NXRoot {
     fn handle_message(
         &mut self,
         message: &RunStart<'a>,
         parent: &Group,
-    ) -> Result<R, NexusPushError> {
+    ) -> Result<RunStarted, NexusPushError> {
         if let Some(filename) = message.filename() {
             self.file_name
                 .write_scalar(parent, filename.parse().expect(""))?;
@@ -119,63 +115,52 @@ where
     }
 }
 
-impl<'a, R> NexusHandleMessage<RunStop<'a>, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<RunStop<'a>, Group, R>,
-{
+impl<'a> NexusHandleMessage<RunStop<'a>, Group, DateTime<Utc>> for NXRoot {
     fn handle_message(
         &mut self,
         message: &RunStop<'a>,
         parent: &Group,
-    ) -> Result<R, NexusPushError> {
+    ) -> Result<DateTime<Utc>, NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }
 
-impl<'a, R> NexusHandleMessage<FrameAssembledEventListMessage<'a>, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<FrameAssembledEventListMessage<'a>, Group, R>,
-{
+impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
     fn handle_message(
         &mut self,
         message: &FrameAssembledEventListMessage<'a>,
         parent: &Group,
-    ) -> Result<R, NexusPushError> {
+    ) -> Result<(), NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }
 
-impl<'a, R> NexusHandleMessage<Alarm<'a>, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<Alarm<'a>, Group, R>,
-{
-    fn handle_message(&mut self, message: &Alarm<'a>, parent: &Group) -> Result<R, NexusPushError> {
+impl<'a> NexusHandleMessage<Alarm<'a>> for NXRoot {
+    fn handle_message(
+        &mut self,
+        message: &Alarm<'a>,
+        parent: &Group,
+    ) -> Result<(), NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }
 
-impl<'a, R> NexusHandleMessage<f144_LogData<'a>, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<f144_LogData<'a>, Group, R>,
-{
+impl<'a> NexusHandleMessage<f144_LogData<'a>> for NXRoot {
     fn handle_message(
         &mut self,
         message: &f144_LogData<'a>,
         parent: &Group,
-    ) -> Result<R, NexusPushError> {
+    ) -> Result<(), NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }
 
-impl<'a, R> NexusHandleMessage<se00_SampleEnvironmentData<'a>, Group, R> for NXRoot
-where
-    RawData: NexusHandleMessage<se00_SampleEnvironmentData<'a>, Group, R>,
-{
+impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for NXRoot {
     fn handle_message(
         &mut self,
         message: &se00_SampleEnvironmentData<'a>,
         parent: &Group,
-    ) -> Result<R, NexusPushError> {
+    ) -> Result<(), NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }

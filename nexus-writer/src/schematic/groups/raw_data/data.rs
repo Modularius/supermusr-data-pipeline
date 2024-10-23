@@ -1,20 +1,20 @@
-use std::str::FromStr;
-
 use chrono::{DateTime, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_pl72_run_start_generated::RunStart,
 };
+use tracing::info;
 
 use crate::{
     elements::{
         attribute::{NexusAttribute, NexusAttributeMut},
-        dataset::{NexusDataset, NexusDatasetResize},
+        dataset::{NexusDataset, NexusDatasetResize, NexusDatasetResizeMut},
         traits::{
             NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
-            NexusDataHolderWithSize, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef,
-            NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage,
+            NexusDataHolderVectorMutable, NexusDataHolderWithSize, NexusDatasetDef,
+            NexusDatasetDefUnitsOnly, NexusGroupDef, NexusH5CreatableDataHolder,
+            NexusHandleMessage, NexusPushMessage,
         },
         NexusUnits,
     },
@@ -51,58 +51,74 @@ impl NexusDatasetDef for EventTimeZero {
     }
 }
 
-struct EventTimeZeroMessage<'a> {
-    frame_assembled_event_list: &'a FrameAssembledEventListMessage<'a>,
-    has_offset: bool,
+#[derive(Default)]
+struct EventTimeZeroResult {
+    time_zero: u64,
+    offset_diff: Option<u64>,
 }
 
-impl<'a> EventTimeZeroMessage<'a> {
-    fn get_timestamp(&self) -> Result<DateTime<Utc>, NexusPushError> {
-        (*self
-            .frame_assembled_event_list
-            .metadata()
-            .timestamp()
-            .ok_or(NexusMissingEventlistError::Timestamp)
-            .map_err(NexusMissingError::Eventlist)?)
-        .try_into()
-        .map_err(NexusConversionError::GpsTimeConversion)
-        .map_err(NexusPushError::Conversion)
+impl EventTimeZeroResult {
+    fn new(offset_diff: i64) -> Self {
+        // if new datetime is before the current offset, then previous event_time_zero entries should be ammended.
+        if offset_diff < 0 {
+            info!("offset_diff = {offset_diff} < 0");
+            Self {
+                time_zero: u64::default(),
+                // all existing event_time_zero entries are `value - old_offset`,
+                // and as `offset_diff = new_offset - old_offset`,
+                // the updated event_time_zero entries should be
+                // `value - new_offset = value - old_offset - offset_diff`.
+                // So existing entries should add `-offset_diff` to themselves.
+                offset_diff: Some(
+                    (-offset_diff)
+                        .try_into()
+                        .expect("-offset_delta should be non-negative"),
+                ),
+            }
+        } else {
+            info!("offset_diff = {offset_diff} >= 0");
+            // Otherwise only the current one should be ammended
+            Self {
+                time_zero: offset_diff
+                    .try_into()
+                    .expect("offset_delta should be non-negative"),
+                offset_diff: None,
+            }
+        }
     }
 }
 
-fn datetime_diff_to_u64(
-    timestamp: DateTime<Utc>,
-    offset: DateTime<Utc>,
-) -> Result<u64, NexusConversionError> {
-    (timestamp - offset)
-        .num_nanoseconds()
-        .ok_or(NexusConversionError::NanosecondError(timestamp - offset))?
-        .try_into()
-        .map_err(NexusConversionError::TimeDeltaNegative)
-}
-
-impl<'a> NexusHandleMessage<EventTimeZeroMessage<'a>, Dataset, u64> for EventTimeZero {
+impl<'a> NexusHandleMessage<DateTime<Utc>, Dataset, EventTimeZeroResult> for EventTimeZero {
     fn handle_message(
         &mut self,
-        message: &EventTimeZeroMessage<'a>,
+        timestamp: &DateTime<Utc>,
         dataset: &Dataset,
-    ) -> Result<u64, NexusPushError> {
-        let timestamp: DateTime<Utc> = message.get_timestamp()?;
+    ) -> Result<EventTimeZeroResult, NexusPushError> {
+        let offset_string = self.offset.read_scalar(dataset)?;
 
-        let time_zero = {
-            if message.has_offset {
-                let offset = DateTime::<Utc>::from_str(self.offset.read_scalar(dataset)?.as_str())
-                    .map_err(NexusConversionError::ChronoParse)?;
+        if offset_string.is_empty() {
+            self.offset.write_string(dataset, &timestamp.to_rfc3339())?;
+            info!("No offset found, {0} written", timestamp.to_rfc3339());
 
-                datetime_diff_to_u64(timestamp, offset)?
-            } else {
-                self.offset
-                    .write_string(dataset, &timestamp.to_rfc3339())?;
+            Ok(EventTimeZeroResult::default())
+        } else {
+            info!("Found offset {offset_string}");
+            // Get current offset datetime
+            let offset: DateTime<Utc> = offset_string
+                .parse()
+                .map_err(NexusConversionError::ChronoParse)?;
 
-                u64::default()
+            // get integer nanosecond difference
+            let offset_diff = (*timestamp - offset)
+                .num_nanoseconds()
+                .ok_or_else(|| NexusConversionError::NanosecondError(*timestamp - offset))?;
+
+            if offset_diff < 0 {
+                self.offset.write_string(dataset, &timestamp.to_rfc3339())?;
             }
-        };
-        Ok(time_zero)
+
+            Ok(EventTimeZeroResult::new(offset_diff))
+        }
     }
 }
 
@@ -117,7 +133,7 @@ pub(super) struct Data {
     /// list of times attributed to each detection event relative to the start of the frame
     event_time_offset: NexusDatasetResize<u32, EventTimeOffset>,
     /// list of times each frame
-    event_time_zero: NexusDatasetResize<u64, EventTimeZero>,
+    event_time_zero: NexusDatasetResizeMut<u64, EventTimeZero>,
     /// list of periods of each frame
     event_period_number: NexusDatasetResize<u64>,
     /// list of intensities attributed to each detection event
@@ -221,17 +237,26 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
         self.event_period_number
             .append(parent, &[message.metadata().period_number()])?;
 
-        //  event_time_zero
-        let event_time_zero_message = EventTimeZeroMessage {
-            frame_assembled_event_list: message,
-            has_offset: current_index != 0,
-        };
+        // event_time_zero
+        let time_zero: DateTime<Utc> =
+            (*message
+                .metadata()
+                .timestamp()
+                .ok_or(NexusMissingError::Eventlist(
+                    NexusMissingEventlistError::Timestamp,
+                ))?)
+            .try_into()
+            .map_err(NexusConversionError::GpsTimeConversion)?;
 
-        let time_zero = self
-            .event_time_zero
-            .push_message(&event_time_zero_message, parent)?;
+        let event_time_zero_result = self.event_time_zero.push_message(&time_zero, parent)?;
 
-        self.event_time_zero.append(parent, &[time_zero])?;
+        //  If offset_diff is set, then add it to the existing event_time_zero entries
+        if let Some(offset_diff) = event_time_zero_result.offset_diff {
+            self.event_time_zero
+                .mutate_all_in_place(parent, |value| *value + offset_diff)?;
+        }
+        self.event_time_zero
+            .append(parent, &[event_time_zero_result.time_zero])?;
         Ok(())
     }
 }

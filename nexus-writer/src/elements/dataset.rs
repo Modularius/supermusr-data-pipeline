@@ -467,10 +467,25 @@ where
         }
         let selection = s![index..(index + 1)];
         let slice = dataset
-            .read_slice::<T, _, ndarray::Dim<[usize; 1]>>(selection)
+            .read_slice_1d::<T, _>(selection)
             .map_err(HDF5Error::HDF5)?;
         let data = slice.first().expect("Slice should not be empty");
         Ok(data.clone())
+    }
+
+    fn mutate_all_in_place<F>(
+        &self,
+        parent: &Self::HDF5Container,
+        f: F,
+    ) -> Result<(), Self::ThisError>
+    where
+        F: Fn(&Self::DataType) -> Self::DataType,
+    {
+        let dataset = self.create_hdf5_instance(parent)?;
+        let selection = s![0..dataset.size()];
+        let mut slice = dataset.read_slice_1d(selection).map_err(HDF5Error::HDF5)?;
+        slice.iter_mut().for_each(|value| *value = f(value));
+        Ok(())
     }
 
     fn mutate_in_place<F>(
@@ -489,7 +504,7 @@ where
         }
         let selection = s![index..(index + 1)];
         let mut slice = dataset
-            .read_slice::<T, _, ndarray::Dim<[usize; 1]>>(selection)
+            .read_slice_1d::<T, _>(selection)
             .map_err(HDF5Error::HDF5)?;
         let value = slice.first_mut().expect("Slice should not be empty");
         *value = f(value);
@@ -586,7 +601,7 @@ where
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         let dataset = self.create_hdf5_instance(parent)?;
-        let ret = self.definition.handle_message(message, &dataset)?;
+        let ret = self.definition.handle_message(message.into(), &dataset)?;
         Ok(ret)
     }
 }

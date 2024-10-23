@@ -160,6 +160,14 @@ pub(crate) trait NexusDataHolderVectorMutable: NexusAppendableDataHolder {
         index: usize,
     ) -> Result<Self::DataType, Self::ThisError>;
 
+    fn mutate_all_in_place<F>(
+        &self,
+        parent: &Self::HDF5Container,
+        f: F,
+    ) -> Result<(), Self::ThisError>
+    where
+        F: Fn(&Self::DataType) -> Self::DataType;
+
     fn mutate_in_place<F>(
         &self,
         parent: &Self::HDF5Container,
