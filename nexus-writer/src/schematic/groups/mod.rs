@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use hdf5::Group;
+use raw_data::RawData;
 
 use crate::{
     elements::{
@@ -7,11 +8,11 @@ use crate::{
         group::NexusGroup,
         traits::{
             NexusDataHolderFixed, NexusDataHolderScalarMutable, NexusGroupDef, NexusHandleMessage,
-            NexusPushMessage,
+            NexusPushMessage, StandardMessage,
         },
     },
     error::NexusPushError,
-    nexus::{NexusConfiguration, NexusSettings, RunStarted},
+    nexus::{FrameParameters, NexusConfiguration, NexusSettings, PeriodParameters, RunStarted},
     schematic::{nexus_class, H5String},
 };
 use supermusr_streaming_types::{
@@ -83,16 +84,6 @@ impl NexusGroupDef for NXRoot {
     }
 }
 
-impl NexusHandleMessage<NexusConfiguration> for NXRoot {
-    fn handle_message(
-        &mut self,
-        message: &NexusConfiguration,
-        parent: &Group,
-    ) -> Result<(), NexusPushError> {
-        self.raw_data_1.push_message(message, parent)
-    }
-}
-
 impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for NXRoot {
     fn handle_message(
         &mut self,
@@ -115,52 +106,21 @@ impl<'a> NexusHandleMessage<RunStart<'a>, Group, RunStarted> for NXRoot {
     }
 }
 
-impl<'a> NexusHandleMessage<RunStop<'a>, Group, DateTime<Utc>> for NXRoot {
-    fn handle_message(
-        &mut self,
-        message: &RunStop<'a>,
-        parent: &Group,
-    ) -> Result<DateTime<Utc>, NexusPushError> {
-        self.raw_data_1.push_message(message, parent)
-    }
-}
+impl StandardMessage<NexusConfiguration> for NXRoot {}
+impl<'a> StandardMessage<RunStop<'a>> for NXRoot {}
+impl<'a> StandardMessage<FrameAssembledEventListMessage<'a>> for NXRoot {}
+impl<'a> StandardMessage<Alarm<'a>> for NXRoot {}
+impl<'a> StandardMessage<se00_SampleEnvironmentData<'a>> for NXRoot {}
+impl<'a> StandardMessage<f144_LogData<'a>> for NXRoot {}
+impl StandardMessage<Vec<FrameParameters>> for NXRoot {}
+impl StandardMessage<Vec<PeriodParameters>> for NXRoot {}
 
-impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for NXRoot {
-    fn handle_message(
-        &mut self,
-        message: &FrameAssembledEventListMessage<'a>,
-        parent: &Group,
-    ) -> Result<(), NexusPushError> {
-        self.raw_data_1.push_message(message, parent)
-    }
-}
-
-impl<'a> NexusHandleMessage<Alarm<'a>> for NXRoot {
-    fn handle_message(
-        &mut self,
-        message: &Alarm<'a>,
-        parent: &Group,
-    ) -> Result<(), NexusPushError> {
-        self.raw_data_1.push_message(message, parent)
-    }
-}
-
-impl<'a> NexusHandleMessage<f144_LogData<'a>> for NXRoot {
-    fn handle_message(
-        &mut self,
-        message: &f144_LogData<'a>,
-        parent: &Group,
-    ) -> Result<(), NexusPushError> {
-        self.raw_data_1.push_message(message, parent)
-    }
-}
-
-impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for NXRoot {
-    fn handle_message(
-        &mut self,
-        message: &se00_SampleEnvironmentData<'a>,
-        parent: &Group,
-    ) -> Result<(), NexusPushError> {
+impl<M, R> NexusHandleMessage<M, Group, R> for NXRoot
+where
+    Self: StandardMessage<M>,
+    RawData: NexusHandleMessage<M, Group, R>,
+{
+    fn handle_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         self.raw_data_1.push_message(message, parent)
     }
 }

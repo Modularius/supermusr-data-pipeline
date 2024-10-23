@@ -13,7 +13,7 @@ use crate::{
         },
     },
     error::NexusPushError,
-    nexus::NexusSettings,
+    nexus::{NexusSettings, PeriodParameters},
     schematic::{groups::log::Log, nexus_class, H5String},
 };
 
@@ -135,6 +135,16 @@ impl NexusGroupDef for Periods {
             ),
             _counts: NexusGroup::new("counts", settings),
         }
+    }
+}
+
+impl NexusHandleMessage<Vec<PeriodParameters>> for Periods {
+    fn handle_message(
+        &mut self,
+        _message: &Vec<PeriodParameters>,
+        _parent: &Group,
+    ) -> Result<(), NexusPushError> {
+        Ok(())
     }
 }
 

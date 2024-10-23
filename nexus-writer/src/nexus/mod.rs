@@ -2,7 +2,7 @@ mod run;
 mod run_engine;
 mod run_parameters;
 
-pub(crate) use run::Run;
+pub(crate) use run::{FrameParameters, PeriodParameters, Run};
 pub(crate) use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
 pub(crate) use run_parameters::{RunBounded, RunParameters, RunStarted};
 

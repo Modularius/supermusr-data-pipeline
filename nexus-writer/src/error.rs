@@ -1,6 +1,6 @@
 use std::num::TryFromIntError;
 
-use chrono::TimeDelta;
+use chrono::{DateTime, Utc};
 use hdf5::types::TypeDescriptor;
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::Value, ecs_se00_data_generated::ValueUnion,
@@ -71,7 +71,7 @@ pub(crate) enum NexusMissingError {
 #[derive(Debug, Error)]
 pub(crate) enum NexusConversionError {
     #[error("Cannot fit duration into i64: {0}")]
-    NanosecondError(TimeDelta),
+    NanosecondError(DateTime<Utc>),
     #[error("Chrono Parse Error: {0}")]
     ChronoParse(#[from] chrono::ParseError),
     #[error("Parse Error: {0}")]

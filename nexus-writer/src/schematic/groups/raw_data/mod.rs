@@ -27,7 +27,10 @@ use crate::{
         NexusUnits,
     },
     error::NexusPushError,
-    nexus::{NexusConfiguration, NexusSettings, RunBounded, RunStarted},
+    nexus::{
+        FrameParameters, NexusConfiguration, NexusSettings, PeriodParameters, RunBounded,
+        RunStarted,
+    },
     schematic::{nexus_class, H5String},
 };
 
@@ -216,6 +219,28 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for RawData {
         location: &Group,
     ) -> Result<(), NexusPushError> {
         self.periods.push_message(message, location)?;
+        self.detector_1.push_message(message, location)?;
+        Ok(())
+    }
+}
+
+impl NexusHandleMessage<Vec<PeriodParameters>> for RawData {
+    fn handle_message(
+        &mut self,
+        message: &Vec<PeriodParameters>,
+        location: &Group,
+    ) -> Result<(), NexusPushError> {
+        self.periods.push_message(message, location)?;
+        Ok(())
+    }
+}
+
+impl NexusHandleMessage<Vec<FrameParameters>> for RawData {
+    fn handle_message(
+        &mut self,
+        message: &Vec<FrameParameters>,
+        location: &Group,
+    ) -> Result<(), NexusPushError> {
         self.detector_1.push_message(message, location)?;
         Ok(())
     }

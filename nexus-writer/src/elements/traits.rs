@@ -243,3 +243,5 @@ pub(crate) trait NexusPushMessage<M, P = Group, R = ()> {
 pub(crate) trait NexusHandleMessage<M, P = Group, R = ()> {
     fn handle_message(&mut self, message: &M, own: &P) -> Result<R, NexusPushError>;
 }
+
+pub(crate) trait StandardMessage<M> {}

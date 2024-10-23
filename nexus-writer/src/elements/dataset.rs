@@ -601,7 +601,7 @@ where
 {
     fn push_message(&mut self, message: &M, parent: &Group) -> Result<R, NexusPushError> {
         let dataset = self.create_hdf5_instance(parent)?;
-        let ret = self.definition.handle_message(message.into(), &dataset)?;
+        let ret = self.definition.handle_message(message, &dataset)?;
         Ok(ret)
     }
 }

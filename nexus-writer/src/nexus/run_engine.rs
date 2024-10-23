@@ -1,7 +1,6 @@
 use crate::{
-    elements::traits::NexusHandleMessage,
+    elements::traits::NexusPushMessage,
     error::{NexusConversionError, NexusMissingError, NexusMissingEventlistError, NexusPushError},
-    schematic::groups::NXRoot,
 };
 
 use super::Run;
@@ -53,6 +52,7 @@ impl NexusEngine {
     pub(crate) fn get_num_cached_runs(&self) -> usize {
         self.run_cache.len()
     }
+
     fn find_run(&mut self, timestamp: DateTime<Utc>) -> Option<&mut Run> {
         if let Some(run) = self
             .run_cache
@@ -66,18 +66,18 @@ impl NexusEngine {
         }
     }
 
-    fn link_run_and_push_message<M, F>(
+    fn link_run_and_push_message<M, F, R>(
         run: &mut Run,
         message: &M,
         f: F,
-    ) -> Result<(), NexusPushError>
+    ) -> Result<R, NexusPushError>
     where
-        NXRoot: NexusHandleMessage<M>,
+        Run: NexusPushMessage<M, (), R>,
         F: Fn() -> Span,
     {
         run.link_current_span(f)
             .expect("Run should have span, this should never happen");
-        run.push_message(message)
+        run.push_message(message, &())
     }
 
     #[tracing::instrument(skip_all)]
@@ -237,12 +237,15 @@ impl NexusEngine {
 
         // Remove all runs found to be completed, and place them in self.run_move_cache
         for index in removed_indices {
-            let run = self
+            let mut run = self
                 .run_cache
                 .remove(index)
                 .expect("Index should be within bounds");
             if let Err(e) = run.end_span() {
                 warn!("Run span drop failed {e}")
+            }
+            if let Err(e) = run.finish() {
+                warn!("Cannot finish run file {e}")
             }
             self.run_move_cache.push(run);
         }
@@ -496,7 +499,7 @@ impl NexusSettings {
             dimensional_chunk_size: 4,
             components_chunk_size: 16,
             use_swmr,
-            archive_path: archive_path.map(Path::to_owned)
+            archive_path: archive_path.map(Path::to_owned),
         }
     }
 }
