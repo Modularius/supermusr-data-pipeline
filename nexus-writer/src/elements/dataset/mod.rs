@@ -18,7 +18,7 @@ use super::{
     },
 };
 
-mod dataset;
+mod scalar;
 mod vector;
 
 #[derive(Clone, Default)]
@@ -67,23 +67,6 @@ where
     type HDF5Type = Dataset;
     type HDF5Container = Group;
     type ThisError = NexusDatasetError;
-}
-
-impl<D, C> NexusH5CreatableDataHolder for NexusDataset<D, C>
-where
-    D: NexusDatasetDef,
-    C: NexusClassDataHolder,
-    Self: NexusH5InstanceCreatableDataHolder
-        + NexusDataHolder<HDF5Type = Dataset, ThisError = NexusDatasetError>,
-{
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), NexusDatasetError> {
-        let dataset = self.create_hdf5_instance(parent)?;
-        self.dataset = Some(dataset.clone());
-        Ok(())
-    }
-    fn close_hdf5(&mut self) {
-        self.dataset = None;
-    }
 }
 
 /*

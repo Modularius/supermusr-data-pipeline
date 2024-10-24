@@ -168,7 +168,8 @@ pub(crate) trait NexusNumericAppendableDataHolder: NexusDataHolderWithSize {
 
 /// Implemented for types which can possess attributes (i.e. Group and Dataset)
 pub(crate) trait NexusContainerWithAttribute {
-    fn attribute<T: H5Type>(&self, name: &str) -> Result<Attribute, NexusAttributeError>;
+    fn attribute<T,F>(&self, name: &str, f : F) -> Result<Attribute, NexusAttributeError>
+    where T: H5Type, F : Fn(Attribute)->Result<Attribute,HDF5Error>;
 }
 
 /// Implemented for structs in the `groups` folder which define the HDF5 group structure

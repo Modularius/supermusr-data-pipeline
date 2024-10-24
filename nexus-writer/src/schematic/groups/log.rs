@@ -273,7 +273,6 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
         };
 
         self.time.append(parent, &timestamps)?;
-        self.time.close_hdf5();
 
         self.value.append_numerics(parent, &values).map_err(|e| {
             warn!("{}", message.name());

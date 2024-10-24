@@ -28,15 +28,12 @@ where
         &self,
         parent: &Self::HDF5Container,
     ) -> Result<Self::HDF5Type, NexusAttributeError> {
-        if let Some(ref attribute) = self.attribute {
-            Ok(attribute.clone())
-        } else {
-            let attribute = parent.attribute::<T>(&self.name)?;
-            attribute
+        parent.attribute::<T,_>(&self.name, |attr| {
+            attr
                 .write_scalar(&self.class.default_value)
                 .map_err(HDF5Error::HDF5)?;
-            Ok(attribute)
-        }
+            Ok(attr)
+        })
     }
 }
 
@@ -50,7 +47,6 @@ where
         Self {
             name: name.to_string(),
             class: NexusClassMutableDataHolder { default_value },
-            attribute: None,
             phantom: Default::default(),
         }
     }
@@ -100,11 +96,11 @@ where
         &self,
         parent: &Self::HDF5Container,
     ) -> Result<Self::HDF5Type, Self::ThisError> {
-        let attribute = parent.attribute::<T>(&self.name)?;
-        attribute
-            .write_scalar(&self.class.fixed_value)
-            .map_err(HDF5Error::HDF5)?;
-        Ok(attribute)
+        parent.attribute::<T,_>(&self.name, |attr| {
+            attr.write_scalar(&self.class.fixed_value)
+                .map_err(HDF5Error::HDF5)?;
+            Ok(attr)
+        })
     }
 }
 
@@ -117,7 +113,6 @@ where
         Self {
             name: name.to_string(),
             class: NexusClassFixedDataHolder { fixed_value },
-            attribute: None,
             phantom: Default::default(),
         }
     }

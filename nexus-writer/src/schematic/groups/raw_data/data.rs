@@ -161,7 +161,6 @@ impl<'a> NexusHandleMessage<FrameAssembledEventListMessage<'a>> for Data {
                 .iter()
                 .collect::<Vec<_>>(),
         )?;
-        self.event_time_offset.close_hdf5();
 
         //  event_pulse_height
         self.event_pulse_height.append(
