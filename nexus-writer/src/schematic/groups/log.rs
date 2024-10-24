@@ -20,7 +20,8 @@ use crate::{
         NexusUnits,
     },
     error::{
-        HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError, NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError
+        HDF5Error, NexusDatasetError, NexusMissingAlarmError, NexusMissingError,
+        NexusMissingRunlogError, NexusMissingSelogError, NexusNumericError, NexusPushError,
     },
     nexus::NexusSettings,
     schematic::{nexus_class, H5String},
@@ -274,8 +275,10 @@ impl<'a> NexusHandleMessage<se00_SampleEnvironmentData<'a>> for ValueLog {
         self.time.append(parent, &timestamps)?;
         self.time.close_hdf5();
 
-        self.value.append_numerics(parent, &values)
-            .map_err(|e|{warn!("{}",message.name()); e})?;
+        self.value.append_numerics(parent, &values).map_err(|e| {
+            warn!("{}", message.name());
+            e
+        })?;
         Ok(())
     }
 }

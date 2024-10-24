@@ -1,4 +1,4 @@
-use std::{fmt::Display, num::TryFromIntError, error::Error};
+use std::{error::Error, fmt::Display, num::TryFromIntError};
 
 use chrono::{DateTime, Utc};
 use hdf5::types::TypeDescriptor;

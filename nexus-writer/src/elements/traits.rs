@@ -7,30 +7,6 @@ use crate::{
     schematic::H5String,
 };
 
-/// Implemented for objects who are constructed by a builder
-/// i.e. NexusDataset and NexusAttribute instances
-pub(crate) trait NexusBuildable: Sized {
-    type Builder: NexusBuilderBegun;
-
-    fn begin(name: &str) -> Self::Builder;
-}
-
-/// Implemented for builders which require input
-/// i.e. NexusBuilder with FINISHED = false
-pub(crate) trait NexusBuilderBegun: Sized {
-    type FinshedBuilder: NexusBuilderFinished;
-
-    fn new(name: &str) -> Self;
-}
-
-/// Implemented for builders which are ready to complete
-/// i.e. NexusBuilder with FINISHED = true
-pub(crate) trait NexusBuilderFinished {
-    type BuildType: NexusBuildable;
-
-    fn finish(self) -> Self::BuildType;
-}
-
 /// Implemented for objects which can hold data
 /// i.e. NexusBuilder with FINISHED = true
 pub(crate) trait NexusDataHolder {
@@ -40,7 +16,6 @@ pub(crate) trait NexusDataHolder {
 }
 
 /// Implemented for objects which can hold data
-/// i.e. NexusBuilder with FINISHED = true
 pub(crate) trait NexusH5InstanceCreatableDataHolder: NexusDataHolder {
     fn create_hdf5_instance(
         &self,
@@ -49,7 +24,6 @@ pub(crate) trait NexusH5InstanceCreatableDataHolder: NexusDataHolder {
 }
 
 /// Implemented for objects which can hold data
-/// i.e. NexusBuilder with FINISHED = true
 pub(crate) trait NexusH5CreatableDataHolder: NexusH5InstanceCreatableDataHolder {
     fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError>;
     fn close_hdf5(&mut self);

@@ -12,9 +12,8 @@ pub(crate) struct NexusClassMutableDataHolder<T: H5Type + Default + Clone> {
 
 impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassMutableDataHolder<T> {}
 
-impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType<T>
-    for NexusClassMutableDataHolder<T>
-{
+impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType for NexusClassMutableDataHolder<T> {
+    type DataType = T;
 }
 
 /// Class of NexusDataHolder which has an immutable scalar value with customizable fixed value
@@ -25,15 +24,16 @@ pub(crate) struct NexusClassFixedDataHolder<T: H5Type + Default + Clone> {
 
 impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassFixedDataHolder<T> {}
 
-impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType<T> for NexusClassFixedDataHolder<T> {}
+impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType for NexusClassFixedDataHolder<T> {
+    type DataType = T;
+}
 
 /// Class of NexusDataHolder whose size can be queried
 pub(crate) trait NexusClassWithSize: NexusClassDataHolder {}
 
 /// Class of NexusDataHolder which has a statically defined type
-pub(crate) trait NexusClassWithStaticDataType<T: H5Type + Clone + Default>:
-    NexusClassDataHolder
-{
+pub(crate) trait NexusClassWithStaticDataType: NexusClassDataHolder {
+    type DataType: H5Type + Clone + Default;
 }
 
 /// Class of NexusDataHolder which has an expandable vector value with customizable default value
@@ -46,9 +46,10 @@ pub(crate) struct NexusClassAppendableDataHolder<T: H5Type + Default + Clone> {
 
 impl<T: H5Type + Default + Clone> NexusClassDataHolder for NexusClassAppendableDataHolder<T> {}
 
-impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType<T>
+impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType
     for NexusClassAppendableDataHolder<T>
 {
+    type DataType = T;
 }
 
 impl<T: H5Type + Default + Clone> NexusClassWithSize for NexusClassAppendableDataHolder<T> {}
@@ -66,9 +67,10 @@ impl<T: H5Type + Default + Clone> NexusClassDataHolder
 {
 }
 
-impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType<T>
+impl<T: H5Type + Default + Clone> NexusClassWithStaticDataType
     for NexusClassMutableAppendableDataHolder<T>
 {
+    type DataType = T;
 }
 
 impl<T: H5Type + Default + Clone> NexusClassWithSize for NexusClassMutableAppendableDataHolder<T> {}
@@ -79,26 +81,7 @@ pub(crate) struct NexusClassNumericAppendableDataHolder {
     pub(super) type_desc: Option<TypeDescriptor>,
     pub(super) chunk_size: usize,
 }
-/*
-impl NexusClassNumericAppendableDataHolder {
-    pub(crate) fn try_set_type(
-        &mut self,
-        init_type_desc: TypeDescriptor,
-    ) -> Result<(), NexusNumericError> {
-        if let Some(type_desc) = &self.type_desc {
-            if *type_desc != init_type_desc {
-                Err(NexusNumericError::TypeMismatch {
-                    required_type: type_desc.clone(),
-                    input_type: init_type_desc,
-                })?;
-            }
-        } else {
-            self.type_desc = Some(init_type_desc);
-        }
-        Ok(())
-    }
-}
- */
+
 impl NexusClassDataHolder for NexusClassNumericAppendableDataHolder {}
 
 impl NexusClassWithSize for NexusClassNumericAppendableDataHolder {}
