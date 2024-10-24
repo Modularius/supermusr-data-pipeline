@@ -244,8 +244,8 @@ impl NexusEngine {
             if let Err(e) = run.end_span() {
                 warn!("Run span drop failed {e}")
             }
-            if let Err(e) = run.finish() {
-                warn!("Cannot finish run file {e}")
+            if let Err(e) = run.finalise() {
+                warn!("Cannot finalise run file {e}")
             }
             self.run_move_cache.push(run);
         }

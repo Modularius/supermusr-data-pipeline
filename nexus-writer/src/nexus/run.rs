@@ -134,7 +134,7 @@ impl Run {
     }
 
     #[tracing::instrument(skip_all, level = "info")]
-    pub(crate) fn finish(&mut self) -> Result<(), NexusPushError> {
+    pub(crate) fn finalise(&mut self) -> Result<(), NexusPushError> {
         self.nx_root.push_message(&self.periods, &self.file)?;
         // Ensure we don't attempt to take a minimum from an empty list
         if !self.frames.is_empty() {
