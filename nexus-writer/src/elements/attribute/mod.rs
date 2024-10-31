@@ -9,7 +9,7 @@ use crate::{
         },
         traits::{
             NexusContainerWithAttribute, NexusDataHolder, NexusDataHolderWithStaticType,
-            NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder,
+            NexusH5InstanceCreatableDataHolder,
         },
     },
     error::{HDF5Error, NexusAttributeError}

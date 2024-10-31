@@ -13,7 +13,7 @@ use super::{
     },
     traits::{
         NexusDataHolder, NexusDataHolderWithSize, NexusDataHolderWithStaticType, NexusDatasetDef,
-        NexusH5CreatableDataHolder, NexusH5InstanceCreatableDataHolder, NexusHandleMessage,
+        NexusH5InstanceCreatableDataHolder, NexusHandleMessage,
         NexusPushMessage,
     },
 };
@@ -25,7 +25,6 @@ mod vector;
 pub(crate) struct NexusDataset<D: NexusDatasetDef, C: NexusClassDataHolder> {
     name: String,
     class: C,
-    dataset: Option<Dataset>,
     definition: D,
 }
 

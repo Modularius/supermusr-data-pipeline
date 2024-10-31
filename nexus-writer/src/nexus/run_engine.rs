@@ -118,7 +118,20 @@ impl NexusEngine {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        runstart_broker = message.broker(),
+        runstart_control_topic = message.control_topic(),
+        runstart_filename = message.filename(),
+        runstart_instrument_name = message.instrument_name(),
+        runstart_job_id = message.job_id(),
+        runstart_metadata = message.metadata(),
+        runstart_n_periods = message.n_periods(),
+        runstart_nexus_structure = message.nexus_structure(),
+        runstart_run_name = message.run_name(),
+        runstart_service_id = message.service_id(),
+        runstart_start_time = message.start_time(),
+        runstart_stop_time = message.stop_time(),
+    ))]
     pub(crate) fn start_command(&mut self, message: RunStart<'_>) -> anyhow::Result<()> {
         // Check that the last run has already had its stop command
         // TODO: In the future, this check will not result in an error, but only emit a warning.
@@ -152,11 +165,17 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<()> {
+    #[tracing::instrument(skip_all, fields(
+        runstop_command_id  = message.command_id(),
+        runstop_job_id = message.job_id(),
+        runstop_run_name = message.run_name(),
+        runstop_service_id = message.service_id(),
+        runstop_stop_time = message.stop_time()
+    ))]
+    pub(crate) fn stop_command(&mut self, message: RunStop<'_>) -> anyhow::Result<()> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(data)?;
-
+            last_run.set_stop_if_valid(message)?;
+            
             if let Err(e) = last_run.link_current_span(|| {
                 info_span!(target: "otel",
                     "Run Stop Command",

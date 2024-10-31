@@ -48,7 +48,6 @@ where
         Self {
             name: name.to_string(),
             class: NexusClassMutableDataHolder { default_value },
-            dataset: None,
             definition: D::new(),
         }
     }
@@ -100,21 +99,17 @@ where
         &self,
         parent: &Self::HDF5Container,
     ) -> Result<hdf5::Dataset, NexusDatasetError> {
-        if let Some(ref dataset) = self.dataset {
-            Ok(dataset.clone())
-        } else {
-            parent.dataset(&self.name).or_else(|_| {
-                let dataset = parent
-                    .new_dataset::<T>()
-                    .create(self.name.as_str())
-                    .map_err(HDF5Error::HDF5)?;
-                dataset
-                    .write_scalar(&self.class.fixed_value)
-                    .map_err(HDF5Error::HDF5)?;
-                self.create_units(&dataset)?;
-                Ok::<_, NexusDatasetError>(dataset)
-            })
-        }
+        parent.dataset(&self.name).or_else(|_| {
+            let dataset = parent
+                .new_dataset::<T>()
+                .create(self.name.as_str())
+                .map_err(HDF5Error::HDF5)?;
+            dataset
+                .write_scalar(&self.class.fixed_value)
+                .map_err(HDF5Error::HDF5)?;
+            self.create_units(&dataset)?;
+            Ok::<_, NexusDatasetError>(dataset)
+        })
     }
 }
 
@@ -127,7 +122,6 @@ where
         Self {
             name: name.to_string(),
             class: NexusClassFixedDataHolder { fixed_value },
-            dataset: None,
             definition: D::new(),
         }
     }

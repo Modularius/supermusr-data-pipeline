@@ -32,26 +32,22 @@ where
         &self,
         parent: &Self::HDF5Container,
     ) -> Result<hdf5::Dataset, NexusDatasetError> {
-        if let Some(ref dataset) = self.dataset {
-            Ok(dataset.clone())
-        } else {
-            parent.dataset(&self.name).or_else(|_| {
-                let dataset = parent
-                    .new_dataset::<T>()
-                    .shape(SimpleExtents::resizable(vec![self.class.default_size]))
-                    .chunk(vec![self.class.chunk_size])
-                    .create(self.name.as_str())
-                    .map_err(HDF5Error::HDF5)?;
-                dataset
-                    .write_slice(
-                        &vec![self.class.default_value.clone(); self.class.default_size],
-                        s![0..self.class.default_size],
-                    )
-                    .map_err(HDF5Error::HDF5)?;
-                self.create_units(&dataset)?;
-                Ok::<_, NexusDatasetError>(dataset)
-            })
-        }
+        parent.dataset(&self.name).or_else(|_| {
+            let dataset = parent
+                .new_dataset::<T>()
+                .shape(SimpleExtents::resizable(vec![self.class.default_size]))
+                .chunk(vec![self.class.chunk_size])
+                .create(self.name.as_str())
+                .map_err(HDF5Error::HDF5)?;
+            dataset
+                .write_slice(
+                    &vec![self.class.default_value.clone(); self.class.default_size],
+                    s![0..self.class.default_size],
+                )
+                .map_err(HDF5Error::HDF5)?;
+            self.create_units(&dataset)?;
+            Ok::<_, NexusDatasetError>(dataset)
+        })
     }
 }
 
@@ -71,7 +67,6 @@ impl<D: NexusDatasetDef, T: H5Type + Clone + Default> NexusAppendableDataHolder
                 default_size,
                 chunk_size,
             },
-            dataset: None,
             definition: D::new(),
         }
     }
@@ -107,26 +102,22 @@ where
         &self,
         parent: &Self::HDF5Container,
     ) -> Result<hdf5::Dataset, NexusDatasetError> {
-        if let Some(ref dataset) = self.dataset {
-            Ok(dataset.clone())
-        } else {
-            parent.dataset(&self.name).or_else(|_| {
-                let dataset = parent
-                    .new_dataset::<T>()
-                    .shape(SimpleExtents::resizable(vec![self.class.default_size]))
-                    .chunk(vec![self.class.chunk_size])
-                    .create(self.name.as_str())
-                    .map_err(HDF5Error::HDF5)?;
-                dataset
-                    .write_slice(
-                        &vec![self.class.default_value.clone(); self.class.default_size],
-                        s![0..self.class.default_size],
-                    )
-                    .map_err(HDF5Error::HDF5)?;
-                self.create_units(&dataset)?;
-                Ok::<_, NexusDatasetError>(dataset)
-            })
-        }
+        parent.dataset(&self.name).or_else(|_| {
+            let dataset = parent
+                .new_dataset::<T>()
+                .shape(SimpleExtents::resizable(vec![self.class.default_size]))
+                .chunk(vec![self.class.chunk_size])
+                .create(self.name.as_str())
+                .map_err(HDF5Error::HDF5)?;
+            dataset
+                .write_slice(
+                    &vec![self.class.default_value.clone(); self.class.default_size],
+                    s![0..self.class.default_size],
+                )
+                .map_err(HDF5Error::HDF5)?;
+            self.create_units(&dataset)?;
+            Ok::<_, NexusDatasetError>(dataset)
+        })
     }
 }
 
@@ -148,7 +139,6 @@ where
                 default_size,
                 chunk_size,
             },
-            dataset: None,
             definition: D::new(),
         }
     }
@@ -289,18 +279,14 @@ where
         parent: &Self::HDF5Container,
     ) -> Result<hdf5::Dataset, NexusDatasetError> {
         if let Some(type_desc) = &self.class.type_desc {
-            if let Some(ref dataset) = self.dataset {
-                Ok(dataset.clone())
-            } else {
-                let dataset = parent.dataset(&self.name).or_else(|_| {
-                    parent
-                        .new_dataset_builder()
-                        .chunk(vec![self.class.chunk_size])
-                        .create_numeric(self.name.as_str(), type_desc)
-                })?;
-                self.create_units(&dataset)?;
-                Ok(dataset)
-            }
+            let dataset = parent.dataset(&self.name).or_else(|_| {
+                parent
+                    .new_dataset_builder()
+                    .chunk(vec![self.class.chunk_size])
+                    .create_numeric(self.name.as_str(), type_desc)
+            })?;
+            self.create_units(&dataset)?;
+            Ok(dataset)
         } else {
             Err(NexusNumericError::NumericTypeNotSet)?
         }
@@ -317,7 +303,6 @@ impl<D: NexusDatasetDef> NexusNumericAppendableDataHolder
                 type_desc: None,
                 chunk_size,
             },
-            dataset: None,
             definition: D::new(),
         }
     }

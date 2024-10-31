@@ -14,7 +14,7 @@ use crate::{
         log_value::NumericVector,
         traits::{
             NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
-            NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef, NexusH5CreatableDataHolder,
+            NexusDataHolderWithSize, NexusDatasetDef, NexusGroupDef,
             NexusHandleMessage, NexusNumericAppendableDataHolder, NexusPushMessage,
         },
         NexusUnits,

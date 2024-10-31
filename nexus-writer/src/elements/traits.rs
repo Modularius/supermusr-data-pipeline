@@ -22,13 +22,6 @@ pub(crate) trait NexusH5InstanceCreatableDataHolder: NexusDataHolder {
         parent: &Self::HDF5Container,
     ) -> Result<Self::HDF5Type, Self::ThisError>;
 }
-
-/// Implemented for objects which can hold data
-pub(crate) trait NexusH5CreatableDataHolder: NexusH5InstanceCreatableDataHolder {
-    fn create_hdf5(&mut self, parent: &Self::HDF5Container) -> Result<(), Self::ThisError>;
-    fn close_hdf5(&mut self);
-}
-
 /// Implemented for objects which can hold data
 /// i.e. NexusBuilder with FINISHED = true
 pub(crate) trait NexusDataHolderWithStaticType: NexusDataHolder {

@@ -11,7 +11,7 @@ use crate::{
         traits::{
             NexusAppendableDataHolder, NexusDataHolderScalarMutable, NexusDataHolderStringMutable,
             NexusDataHolderWithSize, NexusDatasetDef, NexusDatasetDefUnitsOnly, NexusGroupDef,
-            NexusH5CreatableDataHolder, NexusHandleMessage, NexusPushMessage,
+            NexusHandleMessage, NexusPushMessage,
         },
         NexusUnits,
     },
