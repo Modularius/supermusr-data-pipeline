@@ -45,6 +45,7 @@ impl ChannelData {
 
 /// Holds required data for a specific digitiser.
 pub(crate) struct DigitiserData {
+    pub(crate) traces_up_to_date: bool,
     pub(crate) msg_count: usize,
     pub(crate) last_msg_count: usize,
     pub(crate) msg_rate: f64,
@@ -70,6 +71,7 @@ impl DigitiserData {
         is_num_samples_identical: bool,
     ) -> Self {
         DigitiserData {
+            traces_up_to_date: false,
             msg_count: 1,
             msg_rate: 0 as f64,
             last_msg_count: 1,

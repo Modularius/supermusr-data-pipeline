@@ -108,6 +108,7 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
         match rx.recv()? {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => break,
+                KeyCode::Char('u') => app.update_trace_stats(Arc::clone(&common_dig_data_map)),
                 KeyCode::Down => app.next(),
                 KeyCode::Up => app.previous(),
                 KeyCode::Right => {
@@ -252,13 +253,16 @@ fn process_digitizer_analog_trace_message(
             if let Some(channels) = data.channels() {
                 let c = channels.get(d.channel_data.index);
                 d.channel_data.id = c.channel();
-                if let Some(voltage) = c.voltage() {
-                    let max = voltage.iter().max().unwrap_or(Intensity::MIN);
-                    let min = voltage.iter().min().unwrap_or(Intensity::MAX);
-                    d.channel_data.max = Intensity::max(d.channel_data.max, max);
-                    d.channel_data.min = Intensity::min(d.channel_data.min, min);
+                if !d.traces_up_to_date {
+                    if let Some(voltage) = c.voltage() {
+                        let max = voltage.iter().max().unwrap_or(Intensity::MIN);
+                        let min = voltage.iter().min().unwrap_or(Intensity::MAX);
+                        d.channel_data.max = Intensity::max(d.channel_data.max, max);
+                        d.channel_data.min = Intensity::min(d.channel_data.min, min);
+                    }
                 }
             }
+            d.traces_up_to_date = true;
         })
         .or_insert(DigitiserData::new(
             timestamp,

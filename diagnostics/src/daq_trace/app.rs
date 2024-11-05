@@ -106,6 +106,13 @@ impl App {
             .unwrap_or_default();
         self.table_state.select(Some(index));
     }
+
+    pub(crate) fn update_trace_stats(&mut self, common_dig_data_map: DigitiserDataHashMap) {
+        let mut logged_data = common_dig_data_map
+            .lock()
+            .expect("should be able to lock common data");
+        logged_data.iter_mut().for_each(|(_,data)|data.traces_up_to_date = false);
+    }
 }
 
 /// Create a neatly formatted String from a timestamp.

@@ -23,7 +23,7 @@ pub(crate) fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
 /// Draws a help box containing key binding information in a given chunk.
 fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     let help = Paragraph::new(Text::styled(
-        "<UP>: Previous row | <DOWN>: Next row | <LEFT>: Previous Channel | <RIGHT>: Next Channel | <q>: Quit",
+        "<UP>: Previous row | <DOWN>: Next row | <LEFT>: Previous Channel | <RIGHT>: Next Channel | <u> Update Trace Stats | <q>: Quit",
         Style::default().add_modifier(Modifier::DIM),
     ))
     .alignment(Alignment::Center)
