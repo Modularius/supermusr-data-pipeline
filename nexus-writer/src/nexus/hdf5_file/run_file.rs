@@ -320,8 +320,10 @@ impl RunFile {
         &mut self,
         parameters: &RunParameters,
         message: &FrameAssembledEventListMessage,
+        nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         self.lists.push_message_to_event_runfile(message)?;
+        self.logs.push_message_to_logs(message, nexus_settings)?;
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }

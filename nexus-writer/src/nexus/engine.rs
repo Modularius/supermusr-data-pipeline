@@ -163,7 +163,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_message(self.filename.as_deref(), message)?;
+            run.push_message(self.filename.as_deref(), message, &self.nexus_settings)?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");
