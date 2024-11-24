@@ -35,6 +35,10 @@ impl<D> PartialFrame<D> {
         cache_digitiser_ids
     }
 
+    pub(super) fn metadata(&self) -> &FrameMetadata {
+        &self.metadata
+    }
+
     pub(super) fn push(&mut self, digitiser_id: DigitizerId, data: D) {
         self.digitiser_data.push((digitiser_id, data));
     }
