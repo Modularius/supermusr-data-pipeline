@@ -1,7 +1,7 @@
 use opentelemetry::trace::TraceError;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
-use tracing::level_filters::LevelFilter;
+use tracing::{debug, level_filters::LevelFilter, warn};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{
     filter::{self, Filtered, Targets},
@@ -68,5 +68,17 @@ where
             .with_filter(filter);
 
         Ok(Self { layer })
+    }
+}
+
+pub fn otel_error_handler(e : opentelemetry::global::Error) {
+    match e {
+        opentelemetry::global::Error::Trace(trace_error) => match trace_error {
+            TraceError::ExportFailed(export_error) => debug!("Exporter failed: {}", export_error.exporter_name()),
+            TraceError::ExportTimedOut(duration) => debug!("Exporter Time Out: {:?}", duration),
+            TraceError::Other(error) => debug!("{error}"),
+            _ => debug!("{trace_error}"),
+        },
+        other_error => debug!("{other_error}"),
     }
 }

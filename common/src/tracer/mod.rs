@@ -2,7 +2,7 @@ mod otel_tracer;
 mod propagator;
 mod tracer_engine;
 
-pub use otel_tracer::OtelTracer;
+pub use otel_tracer::{otel_error_handler, OtelTracer};
 pub use propagator::{FutureRecordTracerExt, OptionalHeaderTracerExt};
 pub use tracer_engine::{TracerEngine, TracerOptions};
 
@@ -19,7 +19,7 @@ macro_rules! init_tracer {
         if tracer.use_otel() {
             if let Some(e) = tracer.get_otel_setup_error() {
                 warn!("{e}");
-            } else if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
+            } else if let Err(e) = tracer.set_otel_error_handler(supermusr_common::tracer::otel_error_handler) {
                 warn!("{e}");
             }
         }
