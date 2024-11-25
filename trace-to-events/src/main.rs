@@ -265,7 +265,7 @@ fn process_digitiser_trace_message(
                 counter!(MESSAGES_PROCESSED).increment(1);
             }
             Err(e) => {
-                error_span!("Producer Thread Error").in_scope(||error!("{e:?}"));
+                error_span!("Producer Thread Error").in_scope(|| error!("{e:?}"));
                 counter!(
                     FAILURES,
                     &[failures::get_label(FailureKind::KafkaPublishFailed)]

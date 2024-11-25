@@ -19,7 +19,9 @@ macro_rules! init_tracer {
         if tracer.use_otel() {
             if let Some(e) = tracer.get_otel_setup_error() {
                 warn!("{e}");
-            } else if let Err(e) = tracer.set_otel_error_handler(supermusr_common::tracer::otel_error_handler) {
+            } else if let Err(e) =
+                tracer.set_otel_error_handler(supermusr_common::tracer::otel_error_handler)
+            {
                 warn!("{e}");
             }
         }

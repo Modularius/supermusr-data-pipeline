@@ -290,8 +290,7 @@ async fn cache_poll(
                     TrySendError::Full(_) => {
                         error!("Buffer Full");
                     }
-                }
-            );
+                });
             return Err(e);
         }
     }
@@ -330,7 +329,7 @@ async fn produce_to_kafka(
                 produce_frame_to_kafka(use_otel, frame, &producer, &output_topic).await;
             }
             None => {
-                error_span!("Send-Frame Error").in_scope(||error!("Receiver Error"));
+                error_span!("Send-Frame Error").in_scope(|| error!("Receiver Error"));
                 return;
             }
         }
@@ -357,7 +356,7 @@ async fn produce_frame_to_kafka(
             counter!(FRAMES_SENT).increment(1)
         }
         Err(e) => {
-            error_span!("Delivery failed").in_scope(||error!("{e:?}"));
+            error_span!("Delivery failed").in_scope(|| error!("{e:?}"));
             counter!(
                 FAILURES,
                 &[failures::get_label(FailureKind::KafkaPublishFailed)]

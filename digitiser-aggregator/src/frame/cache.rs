@@ -89,7 +89,8 @@ where
                 .pop_front()
                 .expect("self.frames should be non-empty, this should never fail");
             if frame.is_expired() {
-                let span = warn_span!("Expired Frame Dispatched to Nexus Writer",
+                let span = warn_span!(
+                    "Expired Frame Dispatched to Nexus Writer",
                     metadata_timestamp = tracing::field::Empty,
                     metadata_frame_number = tracing::field::Empty,
                     metadata_period_number = tracing::field::Empty,
@@ -97,9 +98,15 @@ where
                     metadata_protons_per_pulse = tracing::field::Empty,
                     metadata_running = tracing::field::Empty,
                     digitisers = tracing::field::Empty,
-                ).entered();
+                )
+                .entered();
                 record_metadata_fields_to_span!(&frame.metadata(), span);
-                let digitisers = frame.digitiser_ids().iter().map(DigitizerId::to_string).collect::<Vec<_>>().join(",");
+                let digitisers = frame
+                    .digitiser_ids()
+                    .iter()
+                    .map(DigitizerId::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",");
                 span.record("digitisers", digitisers);
             }
             if let Err(e) = frame.end_span() {
