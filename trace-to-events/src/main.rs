@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::task::JoinSet;
-use tracing::{debug, error, instrument, metadata::LevelFilter, trace, warn};
+use tracing::{debug, error, error_span, instrument, metadata::LevelFilter, trace, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -265,7 +265,7 @@ fn process_digitiser_trace_message(
                 counter!(MESSAGES_PROCESSED).increment(1);
             }
             Err(e) => {
-                error!("{:?}", e);
+                error_span!("Producer Thread Error").in_scope(||error!("{e:?}"));
                 counter!(
                     FAILURES,
                     &[failures::get_label(FailureKind::KafkaPublishFailed)]

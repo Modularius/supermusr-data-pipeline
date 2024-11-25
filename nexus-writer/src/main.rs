@@ -38,7 +38,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::time;
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, error_span, info_span, instrument, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -203,7 +203,7 @@ async fn main() -> anyhow::Result<()> {
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);
                         if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
-                            error!("Failed to commit Kafka message consumption: {e}");
+                            error_span!("Failed to commit Kafka message consumption").in_scope(||error!("{e}"));
                         }
                     }
                 }
