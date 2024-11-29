@@ -3,7 +3,7 @@ use crate::{
     error::{NexusConversionError, NexusMissingError, NexusMissingEventlistError, NexusPushError},
 };
 
-use super::Run;
+use super::{Run, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
 use std::collections::vec_deque;
@@ -132,37 +132,44 @@ impl NexusEngine {
         runstart_start_time = message.start_time(),
         runstart_stop_time = message.stop_time(),
     ))]
-    pub(crate) fn start_command(&mut self, message: RunStart<'_>) -> anyhow::Result<()> {
-        // Check that the last run has already had its stop command
-        // TODO: In the future, this check will not result in an error, but only emit a warning.
-        if self
-            .run_cache
-            .back()
-            .map(|run| run.has_run_stop())
-            .unwrap_or(true)
-        {
-            let mut run = Run::new_run(
+    pub(crate) fn start_command(&mut self, message: RunStart<'_>) -> anyhow::Result<&mut Run> {
+        //  If a run is already in progress, and is missing a run-stop
+        //  then call an abort run on the current run.
+        if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
+            self.abort_back_run(&message)?;
+        }
+
+        let mut run = Run::new_run(
+            self.filename.as_deref(),
+            RunParameters::new(message)?,
+            &self.nexus_settings,
+            &self.nexus_configuration,
+        )?;
+        if let Err(e) = run.span_init() {
+            warn!("Run span initiation failed {e}")
+        }
+        self.run_cache.push_back(run);
+        Ok(self.run_cache.back_mut().expect("Run exists"))
+    }
+
+    #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
+        fields(
+            run_name = data.run_name(),
+            instrument_name = data.instrument_name(),
+            start_time = data.start_time(),
+        )
+    )]
+    fn abort_back_run(&mut self, data: &RunStart<'_>) -> anyhow::Result<()> {
+        self.run_cache
+            .back_mut()
+            .expect("run_cache::back_mut should exist")
+            .abort_run(
                 self.filename.as_deref(),
-                message,
+                data.start_time(),
                 &self.nexus_settings,
                 &self.nexus_configuration,
             )?;
-            run.span_init()
-                .expect("Run span initiation failed, this should never happen");
-
-            run.link_current_span(|| {
-                info_span!(target: "otel",
-                "Run Start Command",
-                "Start" = run.parameters().started.collect_from.to_string())
-            })
-            .expect("Run should have span, this should never happen");
-
-            self.run_cache.push_back(run);
-
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("Unexpected RunStart Command."))
-        }
+        Ok(())
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -246,27 +253,19 @@ impl NexusEngine {
 
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn flush(&mut self, delay: &Duration) {
-        // Get Indices of all completed run
-        let removed_indices: Vec<_> = self
-            .run_cache
-            .iter()
-            .enumerate()
-            .filter_map(|(index, run)| run.has_completed(delay).then_some(index))
-            .collect();
-
-        // Remove all runs found to be completed, and place them in self.run_move_cache
-        for index in removed_indices {
-            let mut run = self
-                .run_cache
-                .remove(index)
-                .expect("Index should be within bounds");
-            if let Err(e) = run.end_span() {
-                warn!("Run span drop failed {e}")
+        // Moves the runs into a new vector, then consumes it,
+        // directing completed runs to self.run_move_cache
+        // and incomplete ones back to self.run_cache
+        let temp: Vec<_> = self.run_cache.drain(..).collect();
+        for run in temp.into_iter() {
+            if run.has_completed(delay) {
+                if let Err(e) = run.end_span() {
+                    warn!("Run span drop failed {e}")
+                }
+                self.run_move_cache.push(run);
+            } else {
+                self.run_cache.push_back(run);
             }
-            if let Err(e) = run.finalise() {
-                warn!("Cannot finalise run file {e}")
-            }
-            self.run_move_cache.push(run);
         }
     }
 
@@ -374,7 +373,7 @@ mod test {
         let mut nexus = NexusEngine::new(
             None,
             NexusSettings::default(),
-            NexusConfiguration::default(),
+            NexusConfiguration::new(None),
         );
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
@@ -423,7 +422,7 @@ mod test {
         let mut nexus = NexusEngine::new(
             None,
             NexusSettings::default(),
-            NexusConfiguration::default(),
+            NexusConfiguration::new(None),
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -436,16 +435,18 @@ mod test {
         let mut nexus = NexusEngine::new(
             None,
             NexusSettings::default(),
-            NexusConfiguration::default(),
+            NexusConfiguration::new(None),
         );
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
         nexus.start_command(start1).unwrap();
+        assert_eq!(nexus.get_num_cached_runs(), 1);
 
         fbb.reset();
         let start2 = create_start(&mut fbb, "Test2", 0).unwrap();
-        assert!(nexus.start_command(start2).is_err());
+        nexus.start_command(start2).unwrap();
+        assert_eq!(nexus.get_num_cached_runs(), 2);
     }
 
     #[test]
@@ -453,7 +454,7 @@ mod test {
         let mut nexus = NexusEngine::new(
             None,
             NexusSettings::default(),
-            NexusConfiguration::default(),
+            NexusConfiguration::new(None),
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -481,6 +482,41 @@ mod test {
             .unwrap();
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
+
+        nexus.flush(&Duration::zero());
+        assert_eq!(nexus.cache_iter().len(), 0);
+    }
+
+    #[test]
+    fn two_runs_flushed() {
+        let mut nexus = NexusEngine::new(
+            None,
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
+        let mut fbb = FlatBufferBuilder::new();
+
+        let ts_start: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).try_into().unwrap();
+        let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).try_into().unwrap();
+
+        let start = create_start(&mut fbb, "TestRun1", ts_start.timestamp_millis() as u64).unwrap();
+        nexus.start_command(start).unwrap();
+
+        fbb.reset();
+        let stop = create_stop(&mut fbb, "TestRun1", ts_end.timestamp_millis() as u64).unwrap();
+        nexus.stop_command(stop).unwrap();
+
+        assert_eq!(nexus.cache_iter().len(), 1);
+
+        fbb.reset();
+        let start = create_start(&mut fbb, "TestRun2", ts_start.timestamp_millis() as u64).unwrap();
+        nexus.start_command(start).unwrap();
+
+        fbb.reset();
+        let stop = create_stop(&mut fbb, "TestRun2", ts_end.timestamp_millis() as u64).unwrap();
+        nexus.stop_command(stop).unwrap();
+
+        assert_eq!(nexus.cache_iter().len(), 2);
 
         nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
