@@ -29,6 +29,8 @@ pub(crate) struct FrameParameters {
 
 pub(crate) struct PeriodParameters {}
 
+pub(crate) struct AbortRun(u64);
+
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
@@ -37,6 +39,7 @@ pub(crate) struct Run {
     file: File,
     nx_root: NexusGroup<NXRoot>,
 }
+
 impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
@@ -155,6 +158,37 @@ impl Run {
     pub(crate) fn set_stop_if_valid(&mut self, run_stop: RunStop<'_>) -> anyhow::Result<()> {
         let bounded = self.nx_root.push_message(&run_stop, &self.file)?;
         self.parameters.bound(bounded)?;
+        Ok(())
+    }
+
+    pub(crate) fn abort_run(
+        &mut self,
+        filename: Option<&Path>,
+        absolute_stop_time_ms: u64,
+        nexus_settings: &NexusSettings,
+    ) -> anyhow::Result<()> {
+        self.parameters.set_aborted_run(absolute_stop_time_ms)?;
+
+        if let Some(filename) = filename {
+            //let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+
+            let collect_until = self
+                .parameters
+                .collect_until
+                .expect("RunStopParameters should exists"); // This never panics
+
+            //hdf5.set_end_time(&collect_until)?;
+            let relative_stop_time_ms =
+                (collect_until - self.parameters.started.collect_from).num_milliseconds();
+            
+            self.nx_root.push_message(&AbortRun(absolute_stop_time_ms), &self.file)?;
+            if let Ok(relative_stop_time_ms) = relative_stop_time_ms.try_into() {
+                hdf5.set_aborted_run_warning(relative_stop_time_ms, nexus_settings)?;
+            } else {
+                warn!("Cannot convert {relative_stop_time_ms} to i32");
+            }
+            hdf5.close()?;
+        }
         Ok(())
     }
 

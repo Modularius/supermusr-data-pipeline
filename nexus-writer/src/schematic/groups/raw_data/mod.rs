@@ -28,8 +28,7 @@ use crate::{
     },
     error::NexusPushError,
     nexus::{
-        FrameParameters, NexusConfiguration, NexusSettings, PeriodParameters, RunBounded,
-        RunStarted,
+        AbortRun, FrameParameters, NexusConfiguration, NexusSettings, PeriodParameters, RunBounded, RunStarted
     },
     schematic::{nexus_class, H5String},
 };
@@ -103,6 +102,19 @@ impl NexusHandleMessage<NexusConfiguration, Dataset> for ProgramNameAttributes {
     fn handle_message(
         &mut self,
         message: &NexusConfiguration,
+        parent: &Dataset,
+    ) -> Result<(), NexusPushError> {
+        self.version.write(parent)?;
+        self.configuration
+            .write_string(parent, message.configuration.as_str())?;
+        Ok(())
+    }
+}
+
+impl NexusHandleMessage<AbortRun, Dataset> for ProgramNameAttributes {
+    fn handle_message(
+        &mut self,
+        message: &AbortRun,
         parent: &Dataset,
     ) -> Result<(), NexusPushError> {
         self.version.write(parent)?;

@@ -141,7 +141,7 @@ impl NexusEngine {
 
         let mut run = Run::new_run(
             self.filename.as_deref(),
-            RunParameters::new(message)?,
+            message,
             &self.nexus_settings,
             &self.nexus_configuration,
         )?;
@@ -166,8 +166,7 @@ impl NexusEngine {
             .abort_run(
                 self.filename.as_deref(),
                 data.start_time(),
-                &self.nexus_settings,
-                &self.nexus_configuration,
+                &self.nexus_settings
             )?;
         Ok(())
     }

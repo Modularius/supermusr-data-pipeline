@@ -116,10 +116,6 @@ struct Cli {
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
 
-    /// Optional configuration options to include in the nexus file
-    #[clap(long)]
-    configuration_options: Option<String>,
-
     /// Specifies whether to activate "Single Writer Multiple Reader" mode
     #[clap(long)]
     use_hdf5_swmr: bool,
