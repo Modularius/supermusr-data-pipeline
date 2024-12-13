@@ -10,6 +10,7 @@ chrono.workspace = true
 clap.workspace = true
 glob.workspace = true
 hdf5.workspace = true
+hdf5-sys.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
 ndarray.workspace = true

@@ -10,6 +10,7 @@ use crate::nexus::{
 };
 use chrono::{DateTime, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File, H5Type};
+use hdf5_sys::h5::H5garbage_collect;
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -58,6 +59,11 @@ impl RunFile {
         create_dir_all(path)?;
         let filename = RunParameters::get_hdf5_filename(path, run_name);
         debug!("File save begin. File: {0}.", filename.display());
+
+        //  this clears any previously cached memory that we no longer need
+        unsafe {
+            H5garbage_collect();
+        }
 
         let file = File::create(filename)?;
         set_group_nx_class(&file, NX::ROOT)?;
