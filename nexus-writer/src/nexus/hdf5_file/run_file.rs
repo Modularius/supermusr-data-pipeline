@@ -1,6 +1,6 @@
 use super::{
     add_attribute_to, add_new_group_to, create_resizable_dataset, set_group_nx_class, set_slice_to,
-    set_string_to, EventRun,
+    set_string_to, EventRun, PushMessageStats,
 };
 use crate::nexus::{
     hdf5_file::run_file_components::{RunLog, SeLog},
@@ -61,9 +61,7 @@ impl RunFile {
         debug!("File save begin. File: {0}.", filename.display());
 
         //  this clears any previously cached memory that we no longer need
-        unsafe {
-            H5garbage_collect();
-        }
+        Self::flush_hdf5_cache();
 
         let file = File::create(filename)?;
         set_group_nx_class(&file, NX::ROOT)?;
@@ -281,7 +279,7 @@ impl RunFile {
     pub(crate) fn push_message_to_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<PushMessageStats> {
         self.lists.push_message_to_event_runfile(message)
     }
 
@@ -331,6 +329,18 @@ impl RunFile {
         self.logs
             .set_aborted_run_warning(stop_time, nexus_settings)?;
         Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn flush_hdf5_cache() {
+        unsafe {
+            H5garbage_collect();
+        }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub(crate) fn get_num_events(&self) -> usize {
+        self.lists.get_num_events()
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]

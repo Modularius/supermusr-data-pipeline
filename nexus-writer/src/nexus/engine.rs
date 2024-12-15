@@ -220,6 +220,20 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn check_hdf5_cache(&mut self) {
+        if let Some(max_events_in_cache) = self.nexus_settings.max_events_in_cache {
+            if self
+                .run_cache
+                .iter()
+                .any(|run| run.check_hdf5_cache(max_events_in_cache))
+            {
+                self.run_cache.iter_mut().for_each(Run::reset_hdf5_cache);
+                Run::flush_hdf5_cache();
+            }
+        }
+    }
+
+    #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn flush(&mut self, delay: &Duration) {
         // Moves the runs into a new vector, then consumes it,
         // directing completed runs to self.run_move_cache
@@ -498,6 +512,7 @@ pub(crate) struct NexusSettings {
     pub(crate) runloglist_chunk_size: usize,
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
+    pub(crate) max_events_in_cache: Option<usize>,
     archive_path: Option<PathBuf>,
 }
 
@@ -505,11 +520,13 @@ impl NexusSettings {
     pub(crate) fn new(
         framelist_chunk_size: usize,
         eventlist_chunk_size: usize,
+        max_events_in_cache: Option<usize>,
         archive_path: Option<&Path>,
     ) -> Self {
         Self {
             framelist_chunk_size,
             eventlist_chunk_size,
+            max_events_in_cache,
             periodlist_chunk_size: 8,
             runloglist_chunk_size: 64,
             seloglist_chunk_size: 1024,

@@ -113,6 +113,10 @@ struct Cli {
     /// The HDF5 chunk size in bytes used when writing the frame list
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
+
+    /// The number of eventlist chunks' worth of events to process per triggering of the hdf5 garbage collector
+    #[clap(long)]
+    max_events_to_cache: Option<usize>,
 }
 
 #[tokio::main]
@@ -157,6 +161,7 @@ async fn main() -> anyhow::Result<()> {
     let nexus_settings = NexusSettings::new(
         args.frame_list_chunk_size,
         args.event_list_chunk_size,
+        args.max_events_to_cache,
         args.archive_name.as_deref(),
     );
 
@@ -199,6 +204,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
                 nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible"));
+                nexus_engine.check_hdf5_cache();
                 nexus_engine.flush_move_cache().await;
             }
             event = consumer.recv() => {

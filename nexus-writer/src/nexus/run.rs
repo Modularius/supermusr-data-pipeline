@@ -12,6 +12,7 @@ use tracing::{info, info_span, warn, Span};
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
+    cached_events_count: usize,
 }
 
 impl Run {
@@ -31,6 +32,7 @@ impl Run {
         Ok(Self {
             span: Default::default(),
             parameters,
+            cached_events_count: 0,
         })
     }
 
@@ -40,6 +42,7 @@ impl Run {
         Ok(Self {
             span: Default::default(),
             parameters,
+            cached_events_count: run.get_num_events(),
         })
     }
 
@@ -131,8 +134,11 @@ impl Run {
     ) -> anyhow::Result<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(message)?;
+            let push_message_stats = hdf5.push_message_to_runfile(message)?;
             hdf5.close()?;
+
+            //  Add to the number of potentially cached events
+            self.cached_events_count += push_message_stats.num_new_events;
         }
 
         self.parameters.update_last_modified();
@@ -212,6 +218,18 @@ impl Run {
             .as_ref()
             .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
             .unwrap_or(false)
+    }
+
+    pub(crate) fn check_hdf5_cache(&self, max_events_in_cache: usize) -> bool {
+        self.cached_events_count > max_events_in_cache
+    }
+
+    pub(crate) fn reset_hdf5_cache(&mut self) {
+        self.cached_events_count = Default::default();
+    }
+
+    pub(crate) fn flush_hdf5_cache() {
+        RunFile::flush_hdf5_cache();
     }
 }
 

@@ -8,6 +8,10 @@ use ndarray::s;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
+pub(crate) struct PushMessageStats {
+    pub(crate) num_new_events: usize,
+}
+
 #[derive(Debug)]
 pub(crate) struct EventRun {
     offset: Option<DateTime<Utc>>,
@@ -147,7 +151,7 @@ impl EventRun {
     pub(crate) fn push_message_to_event_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<PushMessageStats> {
         tracing::Span::current().record("message_number", self.num_messages);
 
         // Fields Indexed By Frame
@@ -221,6 +225,11 @@ impl EventRun {
         self.num_messages += 1;
 
         tracing::Span::current().record("num_events", num_new_events);
-        Ok(())
+        Ok(PushMessageStats { num_new_events })
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub(crate) fn get_num_events(&self) -> usize {
+        self.num_events
     }
 }

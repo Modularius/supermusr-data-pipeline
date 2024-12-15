@@ -7,4 +7,4 @@ use hdf5_writer::{
     set_string_to,
 };
 pub(crate) use run_file::RunFile;
-use run_file_components::EventRun;
+use run_file_components::{EventRun, PushMessageStats};

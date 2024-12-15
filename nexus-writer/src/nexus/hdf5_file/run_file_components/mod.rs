@@ -5,6 +5,6 @@ mod timeseries_file;
 
 use super::add_new_group_to;
 
-pub(crate) use event_run_file::EventRun;
+pub(crate) use event_run_file::{EventRun, PushMessageStats};
 pub(crate) use runlog_file::RunLog;
 pub(crate) use selog_file::SeLog;
