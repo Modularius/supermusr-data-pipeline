@@ -90,6 +90,7 @@ impl Run {
     ) -> anyhow::Result<()> {
         if let Some(run_file) = self.run_file.as_mut() {
             run_file.push_logdata_to_runfile(logdata, nexus_settings)?;
+            run_file.flush()?;
         }
 
         self.parameters.update_last_modified();
@@ -103,6 +104,7 @@ impl Run {
     ) -> anyhow::Result<()> {
         if let Some(run_file) = self.run_file.as_mut() {
             run_file.push_alarm_to_runfile(alarm)?;
+            run_file.flush()?;
         }
 
         self.parameters.update_last_modified();

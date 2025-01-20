@@ -273,8 +273,7 @@ impl RunFile {
         set_string_to(&self.contents.source_type, "")?;
         set_string_to(&self.contents.source_probe, "")?;
 
-        self.contents.lists.init(&parameters.collect_from)?;
-        Ok(())
+        self.contents.lists.init(&parameters.collect_from)
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
@@ -383,6 +382,12 @@ impl RunFile {
         self.contents
             .logs
             .set_aborted_run_warning(stop_time, nexus_settings)?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn flush(&self) -> anyhow::Result<()> {
+        self.file.flush()?;
         Ok(())
     }
 
