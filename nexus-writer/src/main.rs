@@ -207,7 +207,9 @@ async fn main() -> anyhow::Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&run_ttl);
+                if let Err(e) = nexus_engine.flush(&run_ttl) {
+                    error!("Run Flush Error: {e}");
+                }
                 nexus_engine.flush_move_cache().await;
             }
             event = consumer.recv() => {

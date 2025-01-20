@@ -12,6 +12,7 @@ use tracing::{info, info_span, warn, Span};
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
+    run_file: Option<RunFile>,
 }
 
 impl Run {
@@ -23,25 +24,31 @@ impl Run {
         nexus_configuration: &NexusConfiguration,
     ) -> anyhow::Result<Self> {
         if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::new_runfile(local_path, &parameters.run_name, nexus_settings)?;
-            hdf5.init(&parameters, nexus_configuration)?;
-            hdf5.close()?;
+            let mut run_file = RunFile::new_runfile(local_path, &parameters.run_name, nexus_settings)?;
+            run_file.init(&parameters, nexus_configuration)?;
+            Ok(Self {
+                span: Default::default(),
+                parameters,
+                run_file: Some(run_file),
+            })
+        } else {
+            Ok(Self {
+                span: Default::default(),
+                parameters,
+                run_file: None,
+            })
         }
 
-        Ok(Self {
-            span: Default::default(),
-            parameters,
-        })
     }
 
     pub(crate) fn resume_partial_run(local_path: &Path, filename: &str) -> anyhow::Result<Self> {
-        let run = RunFile::open_runfile(local_path, filename)?;
-        let parameters = run.extract_run_parameters()?;
-        run.close()?;
+        let run_file = RunFile::open_runfile(local_path, filename)?;
+        let parameters = run_file.extract_run_parameters()?;
 
         Ok(Self {
             span: Default::default(),
             parameters,
+            run_file: Some(run_file),
         })
     }
 
@@ -78,14 +85,11 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
-        local_path: Option<&Path>,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
-            hdf5.close()?;
+        if let Some(run_file) = self.run_file.as_mut() {
+            run_file.push_logdata_to_runfile(logdata, nexus_settings)?;
         }
 
         self.parameters.update_last_modified();
@@ -95,13 +99,10 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm_to_run(
         &mut self,
-        local_path: Option<&Path>,
         alarm: Alarm,
     ) -> anyhow::Result<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_alarm_to_runfile(alarm)?;
-            hdf5.close()?;
+        if let Some(run_file) = self.run_file.as_mut() {
+            run_file.push_alarm_to_runfile(alarm)?;
         }
 
         self.parameters.update_last_modified();
@@ -111,14 +112,11 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
-        local_path: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_selogdata(logdata, nexus_settings)?;
-            hdf5.close()?;
+        if let Some(run_file) = self.run_file.as_mut() {
+            run_file.push_selogdata(logdata, nexus_settings)?;
         }
 
         self.parameters.update_last_modified();
@@ -128,14 +126,11 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_message(
         &mut self,
-        local_path: Option<&Path>,
         message: &FrameAssembledEventListMessage,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(message, nexus_settings)?;
-            hdf5.close()?;
+        if let Some(run_file) = self.run_file.as_mut() {
+            run_file.push_message_to_runfile(message, nexus_settings)?;
         }
 
         self.parameters.update_last_modified();
@@ -153,15 +148,12 @@ impl Run {
 
     pub(crate) fn set_stop_if_valid(
         &mut self,
-        local_path: Option<&Path>,
         data: RunStop<'_>,
     ) -> anyhow::Result<()> {
         self.parameters.set_stop_if_valid(data)?;
 
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-
-            hdf5.set_end_time(
+        if let Some(run_file) = self.run_file.as_mut() {
+            run_file.set_end_time(
                 &self
                     .parameters
                     .run_stop_parameters
@@ -169,22 +161,18 @@ impl Run {
                     .expect("RunStopParameters should exist, this should never happen")
                     .collect_until,
             )?;
-            hdf5.close()?;
         }
         Ok(())
     }
 
     pub(crate) fn abort_run(
         &mut self,
-        local_path: Option<&Path>,
         absolute_stop_time_ms: u64,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-
+        if let Some(run_file) = self.run_file.as_mut() {
             let collect_until = self
                 .parameters
                 .run_stop_parameters
@@ -192,21 +180,27 @@ impl Run {
                 .expect("RunStopParameters should exist, this should never happen")
                 .collect_until;
 
-            hdf5.set_end_time(&collect_until)?;
+                run_file.set_end_time(&collect_until)?;
             let relative_stop_time_ms =
                 (collect_until - self.parameters.collect_from).num_milliseconds();
             if let Ok(relative_stop_time_ms) = relative_stop_time_ms.try_into() {
-                hdf5.set_aborted_run_warning(relative_stop_time_ms, nexus_settings)?;
+                run_file.set_aborted_run_warning(relative_stop_time_ms, nexus_settings)?;
             } else {
                 warn!("Cannot convert {relative_stop_time_ms} to i32");
             }
-            hdf5.close()?;
         }
         Ok(())
     }
 
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
         self.parameters.is_message_timestamp_valid(timestamp)
+    }
+
+    pub(crate) fn close(&mut self) -> anyhow::Result<()> {
+        if let Some(run_file) = self.run_file.take() {
+            run_file.close()?;
+        }
+        Ok(())
     }
 
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {

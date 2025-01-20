@@ -93,7 +93,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(self.local_path.as_deref(), data, &self.nexus_settings)?;
+            run.push_selogdata(data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message with timestamp: {timestamp}");
@@ -109,7 +109,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_logdata_to_run(self.local_path.as_deref(), data, &self.nexus_settings)?;
+            run.push_logdata_to_run(data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message with timestamp: {timestamp}");
@@ -125,7 +125,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_alarm_to_run(self.local_path.as_deref(), data)?;
+            run.push_alarm_to_run(data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for alarm message with timestamp: {timestamp}");
@@ -166,7 +166,6 @@ impl NexusEngine {
             .back_mut()
             .expect("run_cache::back_mut should exist")
             .abort_run(
-                self.local_path.as_deref(),
                 data.start_time(),
                 &self.nexus_settings,
             )?;
@@ -176,7 +175,7 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(self.local_path.as_deref(), data)?;
+            last_run.set_stop_if_valid(data)?;
 
             Ok(last_run)
         } else {
@@ -210,7 +209,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_message(self.local_path.as_deref(), message, &self.nexus_settings)?;
+            run.push_message(message, &self.nexus_settings)?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");
@@ -220,21 +219,23 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) {
+    pub(crate) fn flush(&mut self, delay: &Duration) -> anyhow::Result<()> {
         // Moves the runs into a new vector, then consumes it,
         // directing completed runs to self.run_move_cache
         // and incomplete ones back to self.run_cache
         let temp: Vec<_> = self.run_cache.drain(..).collect();
-        for run in temp.into_iter() {
+        for mut run in temp.into_iter() {
             if run.has_completed(delay) {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
                 }
+                run.close()?;
                 self.run_move_cache.push(run);
             } else {
                 self.run_cache.push_back(run);
             }
         }
+        Ok(())
     }
 
     /// If an additional archive location is set by the user,
