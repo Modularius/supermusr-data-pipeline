@@ -104,6 +104,7 @@ struct Cli {
     pub(crate) mode: Mode,
 }
 
+/// Entry point.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -188,6 +189,8 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
+/// 
+/// # Parameters
 #[instrument(skip_all, level = "trace", err(level = "warn"))]
 fn spanned_root_as_digitizer_analog_trace_message(
     payload: &[u8],
@@ -195,6 +198,8 @@ fn spanned_root_as_digitizer_analog_trace_message(
     root_as_digitizer_analog_trace_message(payload)
 }
 
+/// 
+/// # Parameters
 #[instrument(skip_all, level = "debug", err(level = "warn"))]
 fn process_kafka_message(
     tracer: &TracerEngine,
@@ -253,6 +258,8 @@ fn process_kafka_message(
     Ok(())
 }
 
+/// 
+/// # Parameters
 #[instrument(
     skip_all,
     fields(
@@ -319,6 +326,10 @@ fn process_digitiser_trace_message(
 }
 
 // The following functions control the kafka producer thread
+
+
+/// 
+/// # Parameters
 fn create_producer_task(
     send_digitiser_eventlist_buffer_size: usize,
 ) -> std::io::Result<(DigitiserEventListToBufferSender, JoinHandle<()>)> {
@@ -330,6 +341,8 @@ fn create_producer_task(
     Ok((channel_send, handle))
 }
 
+/// 
+/// # Parameters
 async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint: Signal) {
     loop {
         // Blocks until a frame is received
@@ -352,6 +365,8 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint
     }
 }
 
+/// 
+/// # Parameters
 async fn produce_eventlist_to_kafka(future: DeliveryFuture) {
     match future.await {
         Ok(_) => {
@@ -369,6 +384,8 @@ async fn produce_eventlist_to_kafka(future: DeliveryFuture) {
     }
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, name = "Closing", level = "info", fields(capactity = channel_recv.capacity(), max_capactity = channel_recv.max_capacity()))]
 async fn close_and_flush_producer_channel(
     channel_recv: &mut Receiver<DeliveryFuture>,
@@ -381,6 +398,8 @@ async fn close_and_flush_producer_channel(
     }
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, name = "Flush Eventlist")]
 async fn flush_eventlist(future: DeliveryFuture) -> Option<()> {
     produce_eventlist_to_kafka(future).await;

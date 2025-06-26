@@ -19,6 +19,8 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::FrameMetadataV2,
 };
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 pub(crate) fn find_channel_events(
     metadata: &FrameMetadataV2,
@@ -51,6 +53,8 @@ pub(crate) fn find_channel_events(
     result
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_fixed_threshold_events(
     metadata: &FrameMetadataV2,
@@ -110,6 +114,8 @@ fn find_fixed_threshold_events(
     (time, voltage)
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_advanced_events(
     metadata: &FrameMetadataV2,

@@ -52,7 +52,7 @@ where
 {
     /// Create an [EventIter] iterator, which applies a detector to a trace source as it is consumed.
     /// 
-    /// # Attributes
+    /// # Parameters
     /// - detector: A detector which is to be applied as the iterator is consumed.
     fn events(self, detector: D) -> EventIter<I, D>;
 }
@@ -113,7 +113,7 @@ where
 {
     /// Create an [AssemblerIter] iterator, which applies an assembler to an event source as it is consumed.
     /// 
-    /// # Attributes
+    /// # Parameters
     /// - assembler: An assembler which is to be applied as the iterator is consumed.
     fn assemble(self, assembler: A) -> AssemblerIter<I, A>;
 }

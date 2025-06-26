@@ -1,4 +1,6 @@
-//!
+//! Implements the [FiniteDifferences] window.
+//! 
+//! This outputs a vector of finite differences up to the nth.
 use super::{Real, RealArray, Window};
 use num::integer::binomial;
 use std::collections::VecDeque;

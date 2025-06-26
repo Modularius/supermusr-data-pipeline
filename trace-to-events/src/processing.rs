@@ -18,6 +18,8 @@ use supermusr_streaming_types::{
 };
 use tracing::debug;
 
+/// [Todo] To remove.
+/// # Parameters
 pub(crate) fn get_save_file_name(
     path: &Path,
     frame_number: FrameNumber,
@@ -36,6 +38,8 @@ pub(crate) fn get_save_file_name(
     }
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, fields(num_total_pulses = tracing::field::Empty))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,

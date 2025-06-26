@@ -1,4 +1,4 @@
-//!
+//! Defines [Window]s which perform operations on subintervals of a waveform.
 pub(crate) mod baseline;
 pub(crate) mod finite_differences;
 pub(crate) mod smoothing_window;
@@ -32,7 +32,9 @@ where
     I::Item: TracePoint,
     W: Window,
 {
+    /// Window function to apply.
     window_function: W,
+    /// Source.
     source: I,
 }
 
@@ -43,6 +45,7 @@ where
     W: Window,
 {
     /// Creates a new iterator which applies the given window.
+    /// 
     /// # Parameters
     /// - source: base iterator which is consumed.
     /// - window_function: window to apply to the base iterator.
