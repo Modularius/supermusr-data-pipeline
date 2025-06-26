@@ -1,3 +1,4 @@
+//!
 pub(crate) mod baseline;
 pub(crate) mod finite_differences;
 pub(crate) mod smoothing_window;

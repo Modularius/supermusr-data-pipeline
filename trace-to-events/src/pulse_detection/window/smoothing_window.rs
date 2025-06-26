@@ -1,3 +1,4 @@
+//!
 use super::{Real, Stats, Window};
 use std::collections::VecDeque;
 

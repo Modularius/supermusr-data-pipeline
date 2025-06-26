@@ -1,3 +1,4 @@
+//!
 use super::{Real, RealArray, Window};
 use num::integer::binomial;
 use std::collections::VecDeque;

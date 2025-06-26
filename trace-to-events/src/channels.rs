@@ -1,3 +1,4 @@
+//!
 use crate::{
     parameters::{
         AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,

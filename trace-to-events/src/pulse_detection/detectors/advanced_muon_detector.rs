@@ -1,3 +1,4 @@
+//!
 use super::{Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue};
 use std::fmt::Display;
 

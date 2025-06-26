@@ -1,3 +1,4 @@
+//! [Todo] This module is no longer needed, replaced by `trace-viewer` component.
 use super::{Pulse, Temporal};
 use std::{
     fmt::Display,

@@ -1,3 +1,11 @@
+//! # Trace to Events
+//!
+//! The Trace to Events tool performs the following functions:
+//! * 
+//!
+//! ## Features
+//! * 
+//!
 mod channels;
 mod parameters;
 mod processing;
