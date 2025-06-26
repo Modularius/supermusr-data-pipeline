@@ -1,3 +1,4 @@
+//!
 use crate::pulse_detection::Real;
 use clap::{Parser, Subcommand, ValueEnum};
 use digital_muon_common::Intensity;

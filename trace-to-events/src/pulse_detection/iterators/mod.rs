@@ -1,3 +1,4 @@
+//!
 pub(crate) mod event;
 
 use super::{Assembler, Detector, Pulse, TracePoint};

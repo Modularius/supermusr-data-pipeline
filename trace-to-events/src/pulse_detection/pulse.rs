@@ -1,14 +1,18 @@
+//!
 use std::fmt::Display;
 
 use super::Real;
 use super::RealArray;
 
+/// A time-dependent value of a trace.
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct TimeValue<T>
 where
     T: Default + Clone,
 {
+    /// The time at which the value occurs.
     pub(crate) time: Real,
+    /// The value of the trace.
     pub(crate) value: T,
 }
 
@@ -27,7 +31,9 @@ pub(crate) struct TimeValueOptional<T>
 where
     T: Default + Clone,
 {
+    /// The time at which the value occurs.
     pub(crate) time: Option<Real>,
+    /// The value of the trace.
     pub(crate) value: Option<T>,
 }
 
@@ -57,6 +63,8 @@ where
 }
 
 /// A general pulse.
+/// 
+/// This object is designed as a generic output for assemblers.
 #[derive(Default)]
 pub(crate) struct Pulse {
     /// Time at which the pulse starts, and the value at this time.

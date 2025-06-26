@@ -1,3 +1,4 @@
+//!
 use crate::{channels::find_channel_events, parameters::DetectorSettings, pulse_detection::Real};
 use digital_muon_common::{
     Channel, EventData,
