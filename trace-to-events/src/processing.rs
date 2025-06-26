@@ -17,6 +17,28 @@ use metrics::counter;
 use rayon::prelude::*;
 use tracing::debug;
 
+/// [Todo] To remove.
+/// # Parameters
+pub(crate) fn get_save_file_name(
+    path: &Path,
+    frame_number: FrameNumber,
+    channel: Channel,
+    subscript: &str,
+) -> PathBuf {
+    let file_name = format!(
+        "{0}f{frame_number}c{channel}_{subscript}",
+        path.file_stem()
+            .and_then(|os_str| os_str.to_str())
+            .expect("file-name should be a valid file name")
+    );
+    match path.parent() {
+        Some(parent) => parent.to_owned().join(file_name).with_extension("csv"),
+        None => PathBuf::from(file_name).with_extension("csv"),
+    }
+}
+
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, fields(num_total_pulses = tracing::field::Empty))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,

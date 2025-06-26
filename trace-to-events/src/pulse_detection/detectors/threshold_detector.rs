@@ -1,6 +1,8 @@
+//!
 use super::{Detector, EventData, Real};
 use std::fmt::Display;
 
+/// The time-independnt data of the detector's event.
 #[derive(Default, Debug, Clone, PartialEq)]
 pub(crate) struct Data {
     pub(crate) pulse_height: Real,
@@ -14,6 +16,7 @@ impl Display for Data {
 
 impl EventData for Data {}
 
+/// The triggering parameters of the threshold detector.
 #[derive(Default, Debug, Clone)]
 pub(crate) struct ThresholdDuration {
     pub(crate) threshold: Real,
@@ -21,6 +24,7 @@ pub(crate) struct ThresholdDuration {
     pub(crate) cool_off: i32,
 }
 
+/// This detector triggers an event when the trace exceeds the threshold.
 #[derive(Default, Clone)]
 pub(crate) struct ThresholdDetector {
     trigger: ThresholdDuration,
@@ -31,6 +35,8 @@ pub(crate) struct ThresholdDetector {
 }
 
 impl ThresholdDetector {
+    /// Creates a new detector with the given triggering parameters.
+    /// # Parameters
     pub(crate) fn new(trigger: &ThresholdDuration) -> Self {
         Self {
             trigger: trigger.clone(),
@@ -39,6 +45,7 @@ impl ThresholdDetector {
     }
 }
 
+/// The time-dependent event of the threshold detector.
 pub(crate) type ThresholdEvent = (Real, Data);
 
 impl Detector for ThresholdDetector {

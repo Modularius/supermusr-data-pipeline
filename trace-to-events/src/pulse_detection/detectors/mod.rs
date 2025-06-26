@@ -29,6 +29,7 @@ pub(crate) trait Assembler: Default + Clone {
     type DetectorType: Detector;
 
     /// Takes in a detector event and possibly outputs a pulse.
+    /// # Parameters
     fn assemble_pulses(
         &mut self,
         source: <Self::DetectorType as Detector>::EventPointType,

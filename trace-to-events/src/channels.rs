@@ -18,6 +18,8 @@ use crate::{
 use digital_muon_common::{Intensity, Time};
 use digital_muon_streaming_types::dat2_digitizer_analog_trace_v2_generated::ChannelTrace;
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 pub(crate) fn find_channel_events(
     trace: &ChannelTrace,
@@ -51,6 +53,8 @@ pub(crate) fn find_channel_events(
     result
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_fixed_threshold_events(
     trace: &ChannelTrace,
@@ -133,6 +137,8 @@ fn find_differential_threshold_events(
     (time, voltage)
 }
 
+/// 
+/// # Parameters
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_advanced_events(
     trace: &ChannelTrace,
