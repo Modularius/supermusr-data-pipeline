@@ -1,4 +1,4 @@
-//!
+//! Provides functions which extract and return lists of muon events using specified detectors and settings.
 use crate::{
     parameters::{
         AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
@@ -19,8 +19,13 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::FrameMetadataV2,
 };
 
-/// 
+/// Extract muon events from the given trace, using the given detector settings.
 /// # Parameters
+/// - metadata: metadata specific to the frame.
+/// - trace: raw trace data.
+/// - sample_time: sample time in ns.
+/// - detector_settings: settings to use for the detector.
+/// - save_options: [TODO] To Remove.
 #[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 pub(crate) fn find_channel_events(
     metadata: &FrameMetadataV2,
@@ -53,8 +58,15 @@ pub(crate) fn find_channel_events(
     result
 }
 
-/// 
+/// Extract muon events from the given trace, using the fixed threshold discriminator and the given settings.
 /// # Parameters
+/// - metadata: metadata specific to the frame.
+/// - trace: raw trace data.
+/// - sample_time: sample time in ns.
+/// - polarity: the polarity of the trace signal.
+/// - baseline: the baseline of the trace signal.
+/// - parameters: settings to use for the fixed threshold discriminator.
+/// - save_options: [TODO] To Remove.
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_fixed_threshold_events(
     metadata: &FrameMetadataV2,
@@ -114,8 +126,15 @@ fn find_fixed_threshold_events(
     (time, voltage)
 }
 
-/// 
+/// Extract muon events from the given trace, using the advanced muon detector and the given settings.
 /// # Parameters
+/// - metadata: metadata specific to the frame.
+/// - trace: raw trace data.
+/// - sample_time: sample time in ns.
+/// - polarity: the polarity of the trace signal.
+/// - baseline: the baseline of the trace signal.
+/// - parameters: settings to use for the advanced muon detector.
+/// - save_options: [TODO] To Remove.
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_advanced_events(
     metadata: &FrameMetadataV2,

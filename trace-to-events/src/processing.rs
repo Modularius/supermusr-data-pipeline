@@ -1,4 +1,6 @@
-//!
+//! Provides the [process] function which extracts muon events, creates the flatbuffer eventlist messages.
+//! 
+//! The function then creates a [DeliveryFuture], and passes it to the kafka producer task.
 use crate::{channels::find_channel_events, parameters::DetectorSettings, pulse_detection::Real};
 use metrics::counter;
 use rayon::prelude::*;
@@ -40,6 +42,10 @@ pub(crate) fn get_save_file_name(
 
 /// 
 /// # Parameters
+/// - fbb: a flatbuffer builder object which creates the event list messages.
+/// - trace: the flatbuffer message of the trace.
+/// - detector_settings: settings to use for the detector.
+/// - save_options: [Todo] To remove.
 #[tracing::instrument(skip_all, fields(num_total_pulses = tracing::field::Empty))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
