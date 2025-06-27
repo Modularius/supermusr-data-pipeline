@@ -1,4 +1,4 @@
-//!
+//! Provides functions which extract and return lists of muon events using specified detectors and settings.
 use crate::{
     parameters::{
         AdvancedMuonDetectorParameters, DetectorSettings,
@@ -18,8 +18,13 @@ use crate::{
 use digital_muon_common::{Intensity, Time};
 use digital_muon_streaming_types::dat2_digitizer_analog_trace_v2_generated::ChannelTrace;
 
-/// 
+/// Extract muon events from the given trace, using the given detector settings.
 /// # Parameters
+/// - metadata: metadata specific to the frame.
+/// - trace: raw trace data.
+/// - sample_time: sample time in ns.
+/// - detector_settings: settings to use for the detector.
+/// - save_options: [TODO] To Remove.
 #[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 pub(crate) fn find_channel_events(
     trace: &ChannelTrace,
@@ -53,8 +58,15 @@ pub(crate) fn find_channel_events(
     result
 }
 
-/// 
+/// Extract muon events from the given trace, using the fixed threshold discriminator and the given settings.
 /// # Parameters
+/// - metadata: metadata specific to the frame.
+/// - trace: raw trace data.
+/// - sample_time: sample time in ns.
+/// - polarity: the polarity of the trace signal.
+/// - baseline: the baseline of the trace signal.
+/// - parameters: settings to use for the fixed threshold discriminator.
+/// - save_options: [TODO] To Remove.
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_fixed_threshold_events(
     trace: &ChannelTrace,
@@ -137,8 +149,15 @@ fn find_differential_threshold_events(
     (time, voltage)
 }
 
-/// 
+/// Extract muon events from the given trace, using the advanced muon detector and the given settings.
 /// # Parameters
+/// - metadata: metadata specific to the frame.
+/// - trace: raw trace data.
+/// - sample_time: sample time in ns.
+/// - polarity: the polarity of the trace signal.
+/// - baseline: the baseline of the trace signal.
+/// - parameters: settings to use for the advanced muon detector.
+/// - save_options: [TODO] To Remove.
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_advanced_events(
     trace: &ChannelTrace,
