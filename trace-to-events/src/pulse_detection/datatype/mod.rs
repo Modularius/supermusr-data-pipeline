@@ -1,3 +1,4 @@
+//! Provides abstractions for data types used in both traces and eventlists.
 use super::Real;
 use std::fmt::{Debug, Display};
 use supermusr_common::Intensity;
