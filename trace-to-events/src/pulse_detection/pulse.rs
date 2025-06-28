@@ -1,10 +1,12 @@
-//!
+//! Provides a general structure for capturing all possible attributes of a pulse.
+//! 
+//! These attributes are optional, so that not all detectors/assemblers need to provide values for them.
 use std::fmt::Display;
 
 use super::Real;
 use super::RealArray;
 
-/// A time-dependent value of a trace.
+/// A time-dependent value occuring in a trace.
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct TimeValue<T>
 where

@@ -1,3 +1,4 @@
+//! Provides abstractions for data types used in both traces and eventlists.
 use super::Real;
 use digital_muon_common::Intensity;
 use std::fmt::{Debug, Display};

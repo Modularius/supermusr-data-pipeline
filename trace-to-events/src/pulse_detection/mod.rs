@@ -29,4 +29,5 @@ pub(crate) use window::WindowFilter;
 
 pub(crate) use pulse::Pulse;
 
+/// Standard type to use for real numbers.
 pub(crate) type Real = f64;

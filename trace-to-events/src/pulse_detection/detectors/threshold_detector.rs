@@ -1,4 +1,7 @@
-//!
+//! This detector registers an event whenever the input stream passes a given threshold
+//! value for a given time.
+//! 
+//! The detector also implements a cool-down period to wait before another detection is registered.
 use super::{Detector, EventData, Real};
 use std::fmt::Display;
 
