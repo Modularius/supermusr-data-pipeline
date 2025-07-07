@@ -2,12 +2,13 @@ mod search_engine;
 mod searcher;
 mod task;
 
-use crate::{Timestamp, messages::Cache};
+use crate::{messages::Cache, Timestamp};
 use chrono::TimeDelta;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
 pub(crate) use search_engine::SearchEngine;
+pub(crate) use searcher::SearcherError;
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchMode {
@@ -37,6 +38,9 @@ pub(crate) enum SearchStatus {
         num: usize,
         time: TimeDelta,
     },
+    Failed {
+        error: SearcherError
+    },
 }
 
 pub(crate) struct BrokerTopicInfo {
@@ -49,9 +53,11 @@ pub(crate) struct BrokerInfo {
     pub(crate) events: BrokerTopicInfo,
 }
 
-#[derive(Default)]
-pub(crate) struct SearchResults {
-    pub(crate) cache: Cache,
+pub(crate) enum SearchResults {
+    Failure {
+        error: SearcherError
+    },
+    Success { cache: Cache },
 }
 
 #[derive(Clone)]

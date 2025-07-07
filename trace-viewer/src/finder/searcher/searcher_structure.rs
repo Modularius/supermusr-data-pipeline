@@ -12,8 +12,9 @@ use std::time::Duration;
 use thiserror::Error;
 use tracing::{info, instrument};
 
-#[derive(Error, Debug)]
+#[derive(Default, Error, Debug)]
 pub(crate) enum SearcherError {
+    #[default]
     #[error("Topic start reached")]
     StartOfTopicReached,
     #[error("Topic end reached")]
@@ -132,8 +133,7 @@ where
         offset: Offset,
     ) -> Result<M, SearcherError> {
         self.consumer
-            .seek(&self.topic, 0, offset, Duration::from_millis(1))
-            .expect("Consumer cannot seek to offset");
+            .seek(&self.topic, 0, offset, Duration::from_millis(1))?;
 
         let msg = M::try_from(self.consumer.recv().await?)?;
 

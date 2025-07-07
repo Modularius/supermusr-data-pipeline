@@ -15,7 +15,7 @@ use rdkafka::{
 };
 use std::time::Duration;
 use tokio::{select, sync::mpsc, task::JoinHandle};
-use tracing::{error, instrument};
+use tracing::{error, instrument, warn};
 
 pub(crate) struct SearchEngine {
     /// The Kafka consumer object, the engine uses to poll for messages.
@@ -84,13 +84,18 @@ impl SearchEngine {
 
                             let (consumer, results) = match target.mode {
                                 SearchTargetMode::Timestamp { timestamp } => {
-                                    SearchTask::<BinarySearchByTimestamp>::new(
+                                    let task = SearchTask::<BinarySearchByTimestamp>::new(
                                         consumer,
                                         &send_status,
                                         &topics,
-                                    )
-                                    .search(timestamp, target.by, target.number)
-                                    .await
+                                    );
+                                    match task.search(timestamp, target.by, target.number).await {
+                                        Ok(result) => (task.take_consumer(), result),
+                                        Err(error) => {
+                                            warn!("{error}");
+                                            (task.take_consumer(), SearchResults::Failure{ error })
+                                        }
+                                    }
                                 }
                             };
 

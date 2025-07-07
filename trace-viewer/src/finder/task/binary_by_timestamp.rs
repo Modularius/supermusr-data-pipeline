@@ -1,11 +1,7 @@
 use crate::{
-    Timestamp,
     finder::{
-        SearchResults, SearchStatus, SearchTargetBy,
-        searcher::Searcher,
-        task::{SearchTask, TaskClass},
-    },
-    messages::{Cache, EventListMessage, FBMessage, TraceMessage},
+        searcher::{Searcher, SearcherError}, task::{SearchTask, TaskClass}, SearchResults, SearchStatus, SearchTargetBy
+    }, messages::{Cache, EventListMessage, FBMessage, TraceMessage}, Timestamp
 };
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
@@ -27,7 +23,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         number: usize,
         emit: E,
         acquire_while: A,
-    ) -> (Vec<M>, i64)
+    ) -> Result<(Vec<M>, i64), SearcherError>
     where
         E: Fn(f64) -> SearchStatus,
         M: FBMessage<'a>,
@@ -39,7 +35,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         loop {
             self.emit_status(emit(iter.get_progress())).await;
-            if iter.bisect().await.expect("") {
+            if iter.bisect().await? {
                 break;
             }
         }
@@ -51,8 +47,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let mut iter = searcher.iter_backstep();
         iter.step_size(BACKSTEP_SIZE)
             .backstep_until_time(|t| t > target)
-            .await
-            .expect("");
+            .await?;
 
         let searcher = iter.collect();
 
@@ -65,7 +60,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             .collect()
             .into();
 
-        (results, offset)
+        Ok((results, offset))
     }
 
     /// Performs a FromEnd search.
@@ -73,18 +68,18 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// - target: what to search for.
     #[instrument(skip_all)]
     pub(crate) async fn search(
-        self,
+        &self,
         target: Timestamp,
         by: SearchTargetBy,
         number: usize,
-    ) -> (StreamConsumer, SearchResults) {
+    ) -> Result<SearchResults, SearcherError> {
         let start = Utc::now();
 
         let mut cache = Cache::default();
 
         // Find Digitiser Traces
         let searcher =
-            Searcher::new(&self.consumer, &self.topics.trace_topic, 1, Offset::Offset).expect("");
+            Searcher::new(&self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
 
         let (trace_results, offset) = self
             .search_topic(
@@ -94,7 +89,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 SearchStatus::TraceSearchInProgress,
                 |msg: &TraceMessage| msg.filter_by(&by),
             )
-            .await;
+            .await?;
         self.emit_status(SearchStatus::TraceSearchFinished).await;
 
         let digitiser_ids = {
@@ -113,8 +108,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             &self.topics.digitiser_event_topic,
             offset,
             Offset::Offset,
-        )
-        .expect("");
+        )?;
 
         let (eventlist_results, _) = self
             .search_topic(
@@ -124,19 +118,18 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 SearchStatus::EventListSearchInProgress,
                 |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
             )
-            .await;
+            .await?;
         self.emit_status(SearchStatus::EventListSearchFinished)
             .await;
 
         for trace in trace_results.iter() {
-            cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"));
+            cache.push_trace(&trace.try_unpacked_message()?);
         }
 
         for eventlist in eventlist_results.iter() {
             cache.push_events(
                 &eventlist
-                    .try_unpacked_message()
-                    .expect("Cannot Unpack Eventlist"),
+                    .try_unpacked_message()?,
             );
         }
         cache.attach_event_lists_to_trace();
@@ -148,6 +141,12 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             time,
         })
         .await;
-        (self.consumer, SearchResults { cache })
+        Ok(SearchResults::Success { cache })
+    }
+
+    /// Consumes struct and returns [StreamConsumer].
+    #[instrument(skip_all)]
+    pub(crate) fn take_consumer(self) -> StreamConsumer {
+        self.consumer
     }
 }

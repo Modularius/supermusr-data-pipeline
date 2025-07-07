@@ -1,12 +1,7 @@
 use crate::{
-    Select,
-    app::{Display, Results, Setup, statusbar::Statusbar},
-    finder::MessageFinder,
-    graphics::{Bound, Bounds, FileFormat, GraphSaver},
-    messages::Cache,
-    tui::{
+    app::{statusbar::Statusbar, Display, Results, Setup}, finder::{MessageFinder, SearchResults, SearchStatus}, graphics::{Bound, Bounds, FileFormat, GraphSaver}, messages::Cache, tui::{
         Component, ComponentContainer, FocusableComponent, InputComponent, TextBox, TuiComponent,
-    },
+    }, Select
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -110,13 +105,19 @@ impl<D: AppDependencies> App<D> {
         }
 
         // If a result is available, pop it from the [MessageFinder].
-        if let Some(cache) = self.message_finder.results() {
-            self.results.new_cache(&cache.cache);
+        if let Some(results) = self.message_finder.results() {
+            match results {
+                SearchResults::Failure{ error } => {
+                    self.status.set_status(SearchStatus::Failed { error } );
+                    self.is_changed = true;
+                },
+                SearchResults::Success { cache } => {
+                    // Take ownership of the cache
+                    self.cache = Some(cache);
 
-            // Take ownership of the cache
-            self.cache = Some(cache.cache);
-
-            self.is_changed = true;
+                    self.is_changed = true;
+                },
+            }
         }
 
         // If there is a message cache available, call update on [Self::results].

@@ -1,6 +1,6 @@
 use crate::{
     Component,
-    finder::{BrokerInfo, SearchStatus},
+    finder::{BrokerInfo, SearchStatus, SearcherError},
     tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
 };
 use ratatui::{
@@ -28,6 +28,8 @@ enum StatusMessage {
         to_string = "Search Complete. Found {num} traces, in {secs},{ms} ms. Press <Enter> to search again."
     )]
     SearchFinished { num: usize, secs: i64, ms: i32 },
+    #[strum(to_string = "Search Failed: {error}.")]
+    Failed { error: SearcherError },
     #[strum(to_string = "{0}")]
     Text(String),
 }
@@ -80,7 +82,8 @@ impl Statusbar {
                     secs: time.num_seconds(),
                     ms: time.subsec_millis(),
                 });
-            }
+            },
+            SearchStatus::Failed { error } => self.status.set(StatusMessage::Failed {error} ),
         }
     }
 
