@@ -4,6 +4,7 @@ mod task;
 
 use crate::{messages::Cache, Timestamp};
 use chrono::TimeDelta;
+use miette::Error;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
@@ -39,7 +40,7 @@ pub(crate) enum SearchStatus {
         time: TimeDelta,
     },
     Failed {
-        error: SearcherError
+        error: Error
     },
 }
 
@@ -55,7 +56,7 @@ pub(crate) struct BrokerInfo {
 
 pub(crate) enum SearchResults {
     Failure {
-        error: SearcherError
+        error: Error
     },
     Success { cache: Cache },
 }

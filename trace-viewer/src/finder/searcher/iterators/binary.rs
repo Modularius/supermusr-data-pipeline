@@ -3,6 +3,7 @@ use crate::{
     finder::searcher::{Searcher, searcher_structure::SearcherError},
     messages::FBMessage,
 };
+use miette::{Error, IntoDiagnostic};
 use rdkafka::{
     Offset,
     consumer::{Consumer, StreamConsumer},
@@ -57,7 +58,7 @@ where
             / f64::log10(self.max_bound.end as f64 - self.max_bound.start as f64)
     }
 
-    pub(crate) async fn bisect(&mut self) -> Result<bool, SearcherError> {
+    pub(crate) async fn bisect(&mut self) -> Result<bool, Error> {
         if self.bound.end - self.bound.start > 1 {
             let mid = (self.bound.end + self.bound.start) / 2;
 
@@ -74,9 +75,9 @@ where
             }
             // If we have reached the start or end.
             if mid == self.max_bound.start {
-                Err(SearcherError::StartOfTopicReached)
+                Err(SearcherError::StartOfTopicReached).into_diagnostic()
             } else if mid == self.max_bound.end {
-                Err(SearcherError::EndOfTopicReached)
+                Err(SearcherError::EndOfTopicReached).into_diagnostic()
             } else {
                 Ok(false)
             }

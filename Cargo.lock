@@ -3164,6 +3164,7 @@ dependencies = [
  "chrono",
  "clap",
  "crossterm 0.29.0",
+ "miette",
  "plotters",
  "ratatui",
  "rdkafka",

@@ -3,6 +3,7 @@ use crate::{
     finder::searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
     messages::{BorrowedMessageError, FBMessage},
 };
+use miette::{Error, IntoDiagnostic};
 use rdkafka::{
     Offset, TopicPartitionList,
     consumer::{Consumer, StreamConsumer},
@@ -123,7 +124,7 @@ where
     M: FBMessage<'a>,
 {
     #[instrument(skip_all, fields(offset=offset))]
-    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
+    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, Error> {
         self.message_from_raw_offset((self.offset_fn)(offset)).await
     }
 
@@ -131,11 +132,21 @@ where
     pub(crate) async fn message_from_raw_offset(
         &mut self,
         offset: Offset,
-    ) -> Result<M, SearcherError> {
+    ) -> Result<M, Error> {
         self.consumer
-            .seek(&self.topic, 0, offset, Duration::from_millis(1))?;
+            .seek(&self.topic, 0, offset, Duration::from_millis(1)).into_diagnostic()?;
 
-        let msg = M::try_from(self.consumer.recv().await?)?;
+        let mut msg : Option<M> = None;
+        loop {
+            match M::try_from(self.consumer.recv().await.into_diagnostic()?) {
+                Ok(m) => {
+                    msg = Some(m);
+                    break;
+                },
+                Err(e) => {},
+            }
+        };
+        let msg = msg.expect("");
 
         info!(
             "Message at offset {offset:?}: timestamp: {0}",

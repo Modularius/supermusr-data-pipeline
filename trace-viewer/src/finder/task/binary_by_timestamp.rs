@@ -4,6 +4,7 @@ use crate::{
     }, messages::{Cache, EventListMessage, FBMessage, TraceMessage}, Timestamp
 };
 use chrono::Utc;
+use miette::{Error, IntoDiagnostic};
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
@@ -23,7 +24,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         number: usize,
         emit: E,
         acquire_while: A,
-    ) -> Result<(Vec<M>, i64), SearcherError>
+    ) -> Result<(Vec<M>, i64), Error>
     where
         E: Fn(f64) -> SearchStatus,
         M: FBMessage<'a>,
@@ -72,14 +73,14 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         target: Timestamp,
         by: SearchTargetBy,
         number: usize,
-    ) -> Result<SearchResults, SearcherError> {
+    ) -> Result<SearchResults, Error> {
         let start = Utc::now();
 
         let mut cache = Cache::default();
 
         // Find Digitiser Traces
         let searcher =
-            Searcher::new(&self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
+            Searcher::new(&self.consumer, &self.topics.trace_topic, 1, Offset::Offset).into_diagnostic()?;
 
         let (trace_results, offset) = self
             .search_topic(
@@ -108,7 +109,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             &self.topics.digitiser_event_topic,
             offset,
             Offset::Offset,
-        )?;
+        ).into_diagnostic()?;
 
         let (eventlist_results, _) = self
             .search_topic(
@@ -123,13 +124,14 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             .await;
 
         for trace in trace_results.iter() {
-            cache.push_trace(&trace.try_unpacked_message()?);
+            cache.push_trace(&trace.try_unpacked_message().into_diagnostic()?);
         }
 
         for eventlist in eventlist_results.iter() {
             cache.push_events(
                 &eventlist
-                    .try_unpacked_message()?,
+                    .try_unpacked_message()
+                    .into_diagnostic()?,
             );
         }
         cache.attach_event_lists_to_trace();

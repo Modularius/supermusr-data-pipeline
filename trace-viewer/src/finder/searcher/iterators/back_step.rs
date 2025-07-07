@@ -3,6 +3,7 @@ use crate::{
     finder::searcher::{Searcher, searcher_structure::SearcherError},
     messages::FBMessage,
 };
+use miette::Error;
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::{error, instrument};
 
@@ -42,7 +43,7 @@ where
     pub(crate) async fn backstep_until_time<F: Fn(Timestamp) -> bool>(
         &mut self,
         f: F,
-    ) -> Result<&mut Self, SearcherError> {
+    ) -> Result<&mut Self, Error> {
         let mut offset = self.inner.offset;
         let mut earliest = self.inner.message(offset).await?.timestamp();
 
