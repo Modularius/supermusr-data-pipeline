@@ -62,17 +62,19 @@ where
         if self.bound.end - self.bound.start > 1 {
             let mid = (self.bound.end + self.bound.start) / 2;
 
-            //self.bisect_info(Some(mid)).await;
-
-            let msg = self
-                .inner
+            let msg = match self.inner
                 .message_from_raw_offset(Offset::Offset(mid))
-                .await?;
+                .await? {
+                    Some(msg) => msg,
+                    None => return Err(SearcherError::UnknownError).into_diagnostic(),
+                };
+
             if msg.timestamp() <= self.target {
                 self.bound.start = mid;
             } else if msg.timestamp() > self.target {
                 self.bound.end = mid;
             }
+
             // If we have reached the start or end.
             if mid == self.max_bound.start {
                 Err(SearcherError::StartOfTopicReached).into_diagnostic()

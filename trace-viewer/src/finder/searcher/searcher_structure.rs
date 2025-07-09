@@ -11,11 +11,13 @@ use rdkafka::{
 };
 use std::time::Duration;
 use thiserror::Error;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument, warn};
 
 #[derive(Default, Error, Debug)]
 pub(crate) enum SearcherError {
     #[default]
+    #[error("Unknown Error")]
+    UnknownError,
     #[error("Topic start reached")]
     StartOfTopicReached,
     #[error("Topic end reached")]
@@ -124,34 +126,63 @@ where
     M: FBMessage<'a>,
 {
     #[instrument(skip_all, fields(offset=offset))]
-    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, Error> {
+    pub(crate) async fn message(&mut self, offset: i64) -> Result<Option<M>, Error> {
         self.message_from_raw_offset((self.offset_fn)(offset)).await
+    }
+
+    /// This method calls [StreamConsumer::recv] repeatedly until a message of type [M]
+    /// is successfully obtained.
+    /// 
+    /// The maximum number of tries is fixed by `MAX_TRY_FROM` to prevent an infinite loop.
+    /// If this maximum is reached, the method returns an error with all individual errors
+    /// wrapped together.
+    async fn message_until_try_from(&self) -> Result<Option<M>, Error> {
+        /// The maximum number of times to attempt to consume a message.
+        const MAX_TRY_FROM : usize = 64;
+        const RECV_TIMEOUT_MS: u64 = 500;
+
+        let mut err : Option<Error> = None;
+        for _ in 0..MAX_TRY_FROM {
+            // Introduce a timeout to prevent [StreamConsumer::recv()] blocking infinitely.
+            // If the timeout is reached, assume no message is available.
+            let recv_timeout = match tokio::time::timeout(Duration::from_millis(RECV_TIMEOUT_MS), self.consumer.recv()).await {
+                Ok(recv) => recv,
+                Err(_) => {
+                    return Ok(None);
+                },
+            };
+
+            match M::try_from(recv_timeout.into_diagnostic()?) {
+                Ok(message) => {
+                    return Ok(Some(message));
+                },
+                Err(new_error) => {
+                    warn!("try_from failed: {new_error}");
+                    err = match err {
+                        Some(inner_error) => Some(inner_error.wrap_err(new_error)),
+                        None => Some(Error::from_err(new_error)),
+                    }
+                },
+            }
+        };
+        Err(err.expect("Error should exist, this should never fail"))
     }
 
     #[instrument(skip_all)]
     pub(crate) async fn message_from_raw_offset(
         &mut self,
         offset: Offset,
-    ) -> Result<M, Error> {
+    ) -> Result<Option<M>, Error> {
         self.consumer
             .seek(&self.topic, 0, offset, Duration::from_millis(1)).into_diagnostic()?;
 
-        let mut msg : Option<M> = None;
-        loop {
-            match M::try_from(self.consumer.recv().await.into_diagnostic()?) {
-                Ok(m) => {
-                    msg = Some(m);
-                    break;
-                },
-                Err(e) => {},
-            }
-        };
-        let msg = msg.expect("");
+        let msg = self.message_until_try_from().await?;
 
-        info!(
-            "Message at offset {offset:?}: timestamp: {0}",
-            msg.timestamp()
-        );
+        match msg.as_ref() {
+            Some(msg) => debug!( "Message at offset {offset:?}: timestamp: {0}", msg.timestamp()),
+            None => debug!("No message found at offset {offset:?}")
+        }
+        
         Ok(msg)
     }
 }

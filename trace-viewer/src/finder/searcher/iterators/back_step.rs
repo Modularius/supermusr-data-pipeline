@@ -3,7 +3,7 @@ use crate::{
     finder::searcher::{Searcher, searcher_structure::SearcherError},
     messages::FBMessage,
 };
-use miette::Error;
+use miette::{Error, IntoDiagnostic};
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::{error, instrument};
 
@@ -45,7 +45,7 @@ where
         f: F,
     ) -> Result<&mut Self, Error> {
         let mut offset = self.inner.offset;
-        let mut earliest = self.inner.message(offset).await?.timestamp();
+        let mut earliest = self.inner.message(offset).await?.ok_or(SearcherError::UnknownError).into_diagnostic()?.timestamp();
 
         while f(earliest) {
             let new_offset = offset
@@ -54,7 +54,7 @@ where
                     .expect("Size step should have been set. This should never fail.");
             match self.inner.message(new_offset).await {
                 Ok(message) => {
-                    let new_timestamp = message.timestamp();
+                    let new_timestamp = message.ok_or(SearcherError::UnknownError).into_diagnostic()?.timestamp();
                     if f(new_timestamp) {
                         offset = new_offset;
                         earliest = new_timestamp;

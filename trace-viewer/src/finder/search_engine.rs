@@ -130,8 +130,8 @@ impl SearchEngine {
         let mut searcher =
             Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)
                 .ok()?;
-        let begin = searcher.message(offsets.0).await.ok()?;
-        let end = searcher.message(offsets.1 - 1).await.ok()?;
+        let begin = searcher.message(offsets.0).await.ok().flatten()?;
+        let end = searcher.message(offsets.1 - 1).await.ok().flatten()?;
         Some(BrokerTopicInfo {
             offsets,
             timestamps: (begin.timestamp(), end.timestamp()),
