@@ -1,5 +1,6 @@
 pub mod advanced_muon_detector;
 pub mod threshold_detector;
+pub mod alc_suite;
 
 use super::{EventData, EventPoint, Pulse, Real, RealArray, TracePoint, pulse::TimeValue};
 
