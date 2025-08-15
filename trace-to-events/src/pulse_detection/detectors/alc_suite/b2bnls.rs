@@ -19,26 +19,22 @@ struct B2BFittingCost {
 
 impl B2BFittingCost {
     fn B2BFittingCost(x: Vec<f64>, y: Vec<f64>, npeaks: usize) -> Self  {
-        this->nx = nx;
-        this->x = x;
-        this->y = y;
-        this->npeaks = npeaks;
-    }
-    fn Evaluate(&self, double const* const* parameters,
-                      double* residuals,
-                      double** jacobians) -> bool {
-                        
-
-    // Compute residuals
-    sum_of_back_to_back_residuals(nx, x, y, npeaks, parameters, residuals);
-
-    // Compute jacobians
-    if(jacobians != nullptr) {
-        sum_of_back_to_back_jacobian(nx, x, npeaks, parameters, jacobians);
+        Self { x, y, npeaks }
     }
 
-    return true;
-                      }
+    fn Evaluate(&self, parameters : &[B2BParams],
+                      residuals: &mut Vec<f64>,
+                      jacobians: Option<&mut [Vec<f64>]>) -> bool {
+        // Compute residuals
+        sum_of_back_to_back_residuals(self.x, self.y, self.npeaks, parameters, residuals);
+
+        // Compute jacobians
+        if let Some(jacobians) = jacobians {
+            sum_of_back_to_back_jacobian(self.x, self.npeaks, parameters, jacobians);
+        }
+
+        return true;
+    }
 }
 
 impl ceres_solver::DynamicCostFunction for B2BFittingCost {
@@ -64,6 +60,7 @@ impl B2BAlternatingFittingCost {
 
         // !!FIXME: this is inefficient!!
         // Allocate storage for jacobians
+        let all_jacobians = Vec::<Vec<f64>>::new();
         all_jacobians = new double*[npeaks+1];
         for(int k = 0; k < npeaks; k++) all_jacobians[k] = new double[nx*5];
         all_jacobians[npeaks] = new double[nx*2];

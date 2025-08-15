@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 ////*
 /// * Back to Back Exponential, its gradient and sums of this function
 ///* See https://docs.mantidproject.org/nightly/fitting/fitfunctions/BackToBackExponential.html
@@ -28,7 +30,7 @@ pub(super) struct LinParams {
     c: f64
 }
 
-pub(super) fn linear_background(x: &[f64], params: LinParams, mut acc_out: Vec<f64>) -> Vec<f64> {
+pub(super) fn linear_background(x: &[f64], params: &LinParams, mut acc_out: Vec<f64>) -> Vec<f64> {
     for (i,x) in x.iter().enumerate() {
         acc_out[i] += params.m * x + params.c;
     }
@@ -101,7 +103,6 @@ pub(super) fn back_to_back_exponential(x: &[f64], params: &B2BParams, mut acc_ou
     }).enumerate() {
         acc_out[i] += val;
     }
-    acc_out
 }
 
 /*
@@ -124,14 +125,14 @@ pub(super) fn back_to_back_exponential(x: &[f64], params: &B2BParams, mut acc_ou
  * jac - 1D array of jacobian values at evaluation points (nx*5)
  *
  */
-pub(super) fn back_to_back_jacobian(x: &[f64], params: &B2BParams, jac: Vec<f64>) -> Vec<f64> {
+pub(super) fn back_to_back_jacobian(x: &[f64], params: &B2BParams, mut jac: Vec<f64>) -> Vec<f64> {
     let s2 = params.s * params.s;
     let sqrt_2s2 = f64::sqrt(2.0) * params.s; // Should this be s2?
 
     let norm_factor = params.a * params.b / (2.0 * (params.a + params.b));
 
     for (i,(dI,da,db,dx0,ds)) in x.iter().map(|x| {
-        let diff = x - x0;
+        let diff = x - params.x0;
 
         // Arm 1 (left)
         let arg1 = 0.5 * params.a * (params.a * s2 + 2.0 * diff);
@@ -152,13 +153,13 @@ pub(super) fn back_to_back_jacobian(x: &[f64], params: &B2BParams, jac: Vec<f64>
 
         // df/dI
         let dI = total_exp_erfc * norm_factor;
-
+        
         // df/da
         let terma_erfc = (params.a * s2) / 2.0 + 0.5 * (params.a * s2 + 2.0 * diff);
         let da = - params.I * norm_factor * total_exp_erfc / (params.a + params.b)
                  + params.I * params.b * total_exp_erfc / (2.0 * (params.a + params.b))
                  + params.I * norm_factor
-                 * (- exp1 * G1 * f64::sqrt(2.0 / M_PI) * params.s
+                 * (- exp1 * G1 * f64::sqrt(2.0 / PI) * params.s
                     + exp1 * terma_erfc * erfc1);
 
         // df/db
@@ -166,17 +167,17 @@ pub(super) fn back_to_back_jacobian(x: &[f64], params: &B2BParams, jac: Vec<f64>
         let db = - params.I * norm_factor * total_exp_erfc / (params.a + params.b)
                     + params.I * params.a * total_exp_erfc / (2.0 * (params.a + params.b))
                     + params.I * norm_factor
-                    * (- exp2 * G2 * f64::sqrt(2.0 / M_PI) * params.s
+                    * (- exp2 * G2 * f64::sqrt(2.0 / PI) * params.s
                        + exp2 * termb_erfc * erfc2);
 
         // df/dx0
         let dx0 = params.I * norm_factor
                        * (- params.a * exp1 * erfc1 + params.b * exp2 * erfc2
-                          + f64::sqrt(2.0 / M_PI) * (exp1 * G1 / params.s - exp2 * G2 / params.s) );
+                          + f64::sqrt(2.0 / PI) * (exp1 * G1 / params.s - exp2 * G2 / params.s) );
 
         // df/ds
-        let term1 = -2.0 * exp1 * G1 * (f64::sqrt(2.0) * params.a - (params.a * s2 + diff) / (f64::sqrt(2.0) * s2)) / f64::sqrt(M_PI);
-        let term2 = -2.0 * exp2 * G2 * (f64::sqrt(2.0) * params.b - (params.b * s2 - diff) / (f64::sqrt(2.0) * s2)) / f64::sqrt(M_PI);
+        let term1 = -2.0 * exp1 * G1 * (f64::sqrt(2.0) * params.a - (params.a * s2 + diff) / (f64::sqrt(2.0) * s2)) / f64::sqrt(PI);
+        let term2 = -2.0 * exp2 * G2 * (f64::sqrt(2.0) * params.b - (params.b * s2 - diff) / (f64::sqrt(2.0) * s2)) / f64::sqrt(PI);
         let term3 = params.a * params.a * params.s * exp1 * erfc1;
         let term4 = params.b * params.b * params.s * exp2 * erfc2;
         let ds = params.I * norm_factor * (term1 + term2 + term3 + term4);
@@ -212,18 +213,18 @@ pub(super) fn back_to_back_jacobian(x: &[f64], params: &B2BParams, jac: Vec<f64>
  * res - 1D array of residual values at evaluation points (nx)
  *
  */
-pub(super) fn sum_of_back_to_back_residuals(x: &[f64], y: &[f64], params: &[B2BParams]) -> Vec<f64> {
+pub(super) fn sum_of_back_to_back_residuals(x: &[f64], y: &[f64], params: &[B2BParams], lin_params: &LinParams) -> Vec<f64> {
                                     
     // res[i] = sum_k b2b_k(x[i]) + m*x[i] + c - y[i]
     // initialise accumulator res with negative true values
-    let res = y.iter().map(|y|-y).collect::<Vec<_>>();
+    let mut res = y.iter().map(|y|-y).collect::<Vec<_>>();
 
     // accumulate b2bexp values into res
     for k in 0..params.len() {
         res = back_to_back_exponential(x, &params[k], res)
     }
     // accumulate linear background values into res
-    linear_background(x, params[npeaks], res)
+    linear_background(x, lin_params, res)
 }
 
 /*
