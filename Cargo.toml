@@ -22,6 +22,7 @@ edition = "2024"
 actix-files = { version = "0.6" }
 actix-web = { version = "4", features = ["macros"] }
 assert_approx_eq = "1.1.0"
+ceres-solver = { version = "0.4.0", features = ["source"] }
 cfg-if = { version = "1" }
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.42", features = ["derive", "env", "cargo", "string"] }

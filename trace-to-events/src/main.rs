@@ -1,6 +1,7 @@
 mod channels;
 mod parameters;
 mod processing;
+mod alc_detector;
 mod pulse_detection;
 
 use chrono::{DateTime, Utc};

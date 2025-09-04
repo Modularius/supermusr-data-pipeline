@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use std::path::Path;
+use ceres_solver::SolverOptions;
 use supermusr_common::{Intensity, Time};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::ChannelTrace,
@@ -200,4 +201,88 @@ fn find_advanced_events(
         voltage.push(pulse.peak.value.unwrap_or_default() as Intensity);
     }
     (time, voltage)
+}
+
+
+#[tracing::instrument(skip_all, level = "trace")]
+fn find_alc_events(
+    metadata: &FrameMetadataV2,
+    trace: &ChannelTrace,
+    sample_time: Real,
+    polarity: &Polarity,
+    baseline: Real,
+    parameters: &FixedThresholdDiscriminatorParameters,
+    save_path: Option<&Path>,
+) -> (Vec<Time>, Vec<Intensity>) {
+    let sign = match polarity {
+        Polarity::Positive => 1.0,
+        Polarity::Negative => -1.0,
+    };
+    let raw = trace
+        .voltage()
+        .unwrap()
+        .into_iter()
+        .enumerate()
+        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
+
+    let partitions = raw
+        .clone()
+        .fold(Vec::<&[(Real,Real)]>::default(), |acc, b|{
+            acc
+        });
+    //let pulses = partitions.into_iter().map();
+
+    let pulses = raw
+        .clone()
+        .events(ThresholdDetector::new(&ThresholdDuration {
+            threshold: parameters.threshold,
+            duration: parameters.duration,
+            cool_off: parameters.cool_off,
+        }));
+
+    if let Some(save_path) = save_path {
+        raw.clone()
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "raw",
+            ))
+            .unwrap();
+
+        pulses
+            .clone()
+            .save_to_file(&get_save_file_name(
+                save_path,
+                metadata.frame_number(),
+                trace.channel(),
+                "pulses",
+            ))
+            .unwrap();
+    }
+
+    let mut time = Vec::<Time>::new();
+    let mut voltage = Vec::<Intensity>::new();
+    for pulse in pulses {
+        time.push(pulse.0 as Time);
+        voltage.push(pulse.1.pulse_height as Intensity);
+    }
+    (time, voltage)
+}
+
+
+fn fit(data: &[(Real,Real)]) {
+    let cost: ceres_solver::CostFunctionType  = Box::new(|parameters: &[&[f64]],
+              residuals: &mut [f64],
+              mut jacobians: Option<&mut [Option<&mut [&mut [f64]]>]>| -> bool {
+                true
+    });
+    let (problem, _) = ceres_solver::NllsProblem::new()
+        .residual_block_builder()
+        .add_parameter(vec![0.0])
+        .add_parameter(vec![1.0])
+        .set_cost(cost, data.len())
+        .build_into_problem().expect("Problem");
+    let solution = problem.solve(&SolverOptions::builder().build().expect("")).expect("");
+    
 }
