@@ -1,20 +1,20 @@
+mod linear_background;
+mod back2back;
+mod lorentz;
+
 use ceres_solver::nlls_problem::NllsProblem;
+
+use crate::pulse_detection::Real;
 
 pub(crate) fn fitting(time: &[Real], intensities: &[Real]) {
 
 }
 
-struct B2bParams {
-    i: Real,
-    a: Real,
-    b: Real,
-    x0: Real,
-    s: Real,
-}
-
-struct LinearBackgroundParams {
-    m: Real,
-    c: Real,
+pub(crate) trait Model {
+    type Params;
+    
+    fn accumulate_value();
+    fn accumulate_jacobian();
 }
 
 fn fit_n_peaks(time: &[Real], intensities: &[Real], num_peaks: usize) {
