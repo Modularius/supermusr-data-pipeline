@@ -5238,6 +5238,7 @@ dependencies = [
  "clap",
  "const_format",
  "git-version",
+ "libm",
  "metrics",
  "metrics-exporter-prometheus",
  "miette",
