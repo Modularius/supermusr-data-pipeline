@@ -1,4 +1,6 @@
-use crate::{alc_detector::fitting::Model, pulse_detection::Real};
+use std::marker::PhantomData;
+
+use crate::{alc_detector::fitting::{Accumulator, Model}, pulse_detection::Real};
 
 const MAX_EXP: f64 = 30.0; // exp(30) ~ 1e13, safe for double
 const MIN_EXP: f64 = -30.0; // exp(-30) ~ 1e-13
@@ -10,12 +12,13 @@ fn calc_b2b_arm(coef: f64, diff: f64, s2: f64, sqrt_2s2: f64) -> Real {
     Real::exp(arg) * libm::erfc((coef * s2 - diff) / sqrt_2s2)
 }
 
-pub(crate) struct Back2BackParams {
+pub(crate) struct Back2BackParams<'a> {
     i: Real,
     a: Real,
     b: Real,
     x0: Real,
     s: Real,
+    phantom: PhantomData<&'a ()>,
 }
 
 struct B2BJacArm {
@@ -63,7 +66,9 @@ fn calc_d_arm_coef(consts: &CalcDArmCoefConsts, arm_coef: f64, arm: &B2BJacArm, 
     )
 }
 
-impl Model<5> for Back2BackParams {
+impl<'a> Accumulator for Back2BackParams<'a> {
+    type Jacobian = &'a mut [&'a mut [Real]];
+
     fn accumulate_value(&self, input: &[Real], output: &mut [Real]) {
         let s2 = self.s * self.s;
         let sqrt_2s2 = Real::sqrt(2.0) * self.s;
@@ -78,7 +83,7 @@ impl Model<5> for Back2BackParams {
         }
     }
 
-    fn accumulate_jacobian(&self, input: &[Real], output: &mut [[Real; 5]]) {
+    fn accumulate_jacobian(&self, input: &[Real], output: &mut [&mut [Real]]) {
         let s2 = self.s * self.s;
         let sqrt_2s2 = Real::sqrt(2.0) * self.s;
         let norm_factor = self.a * self.b / (2.0 * (self.a + self.b));
@@ -117,7 +122,32 @@ impl Model<5> for Back2BackParams {
             let ds = self.i * norm_factor * (term1 + term2 + term3 + term4);
 
             // Jacobian
-            output[i] = [di, da, db, dx0, ds];
+            output[i][0] = di;
+            output[i][1] = da;
+            output[i][2] = db;
+            output[i][3] = dx0;
+            output[i][4] = ds;
+        }
+    }
+}
+
+impl<'a> Model for Back2BackParams<'a> {
+    type Context = ();
+    type Parameters = [Real; 5];
+    
+    fn init_parameters(_context: & Self::Context) -> Self::Parameters {
+        [0.0, 0.0, 0.0, 0.0, 0.0]
+    }
+
+    fn new(source: &[Real]) -> Self {
+        assert_eq!(source.len(), 5);
+        Self {
+            i: source[0],
+            a: source[1],
+            b: source[2],
+            x0: source[3],
+            s: source[4],
+            phantom: PhantomData
         }
     }
 }
