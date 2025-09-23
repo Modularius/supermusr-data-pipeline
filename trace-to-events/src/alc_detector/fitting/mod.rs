@@ -3,96 +3,82 @@ mod back2back;
 mod lorentz;
 mod model;
 
-use std::marker::PhantomData;
-
-use ceres_solver::{nlls_problem::NllsProblem, CostFunctionType, ParameterBlock};
+use ceres_solver::{nlls_problem::{NllsProblem, NllsProblemSolution}, CostFunctionType, ParameterBlock, SolverOptions};
 
 use crate::{alc_detector::fitting::{linear_background::LinearBackground, model::{Accumulator, Model}}, pulse_detection::Real};
 
-struct MultiPeakModel<'a, const N : usize, M> {
-    models: Vec<M>,
-    linear_background: LinearBackground<'a>,
-    phantom: PhantomData<&'a()>
-}
-
-impl<'a, const N : usize, M>
-    MultiPeakModel<'a, N,M>
-    where
-        M : Model<Jacobian = &'a mut [&'a mut [Real]]>
+fn calc_jacobian<'a, const N : usize, M>(time: &[Real], models: &[M], linear_background : LinearBackground, jacobians: &'a mut [Option<&'a mut [&'a mut [Real]]>])
+    where M : Model<N, Context = ()>
 {
-    fn accumulate_value(&self, input: &[Real], output: &mut [Real]) {
-        for m in &self.models {
-            m.accumulate_value(input, output);
-        }
-        self.linear_background.accumulate_value(input, output);
-    }
-
-    fn accumulate_jacobian(&self, input: &[Real], output: &'a mut [Option<&mut [&mut [f64]]>]) {
-        for (i,m) in self.models.iter().enumerate() {
-            if let Some(jacobian) = output.get(i).expect("") {
-                m.accumulate_jacobian(input, jacobian);
+            let (lin_back_jacobian, peak_jacobians) = jacobians
+                .split_last_mut()
+                .expect("Cost function `jacobians` argument should be non-empty, this should never fail.");
+            
+            let models_jacobians = Iterator::zip(models.into_iter(), peak_jacobians);
+            for (model,jacobian) in models_jacobians {
+                if let Some(jacobian) = jacobian {
+                    model.accumulate_jacobian(time, jacobian);
+                }
             }
-        }
-        if let Some(jacobian) = output[self.models.len()] {
-            self.linear_background.accumulate_jacobian(input, jacobian);
-        }
-    }
+
+            if let Some(jacobian) = lin_back_jacobian {
+                linear_background.accumulate_jacobian(time, jacobian);
+            }
 }
 
-impl<'a, const N : usize, M> MultiPeakModel<'a, N,M> where M : Model<Context = (), Jacobian = &'a mut [Real], Parameters = [Real; N]> {
-    fn new(num_peaks: usize, parameters: &[&[f64]]) -> Self {
-        let models = (0..num_peaks).map(|peak|M::new(parameters[peak])).collect::<Vec<_>>();
+fn cost_function<'a, const N : usize, M>(time: &'a [Real], intensities: &'a [Real], num_peaks: usize) -> CostFunctionType<'a>
+    where M : Model<N, Context = ()>
+{
+    Box::new(
+    move |parameters, residuals, jacobians| {
+        assert_eq!(parameters.len(), num_peaks + 1);
+        
+        let models = (0..num_peaks)
+            .map(|peak|M::new(parameters[peak]))
+            .collect::<Vec<_>>();
         let linear_background = LinearBackground::new(parameters[num_peaks]);
-        MultiPeakModel {
-            models,
-            linear_background,
-            phantom: PhantomData
+
+        assert_eq!(time.len(), intensities.len());
+        assert_eq!(residuals.len(), intensities.len());
+
+        let residuals_intensities = Iterator::zip(residuals.iter_mut(), intensities.iter());
+        for (res,intensity) in residuals_intensities {
+            *res = -intensity;
         }
-    }
-}
-struct Fitting<'a> {
-    num_peaks: usize,
-    time: &'a [Real],
-    intensities: &'a [Real],
-}
 
-impl<'a> Fitting<'a> {
-    fn new(time: &'a [Real], intensities: &'a [Real], num_peaks: usize) -> Self {
-        Fitting { time, intensities, num_peaks }
-    }
-    fn compute_residuals<M: Accumulator>(&self, model: &M, residuals: &mut [f64]) {
-        for (i,res) in residuals.iter_mut().enumerate() {
-            *res = -self.intensities[i];
+        for m in &models {
+            m.accumulate_value(time, residuals);
         }
-        model.accumulate_value(self.time, residuals);
-    }
+        linear_background.accumulate_value(time, residuals);
 
-    fn compute_jacobian<'b, M>(&self, model: &M, jacobian: &mut [Option<&'b mut [&'b mut [f64]]>]) where M: Accumulator<Jacobian = Option<&'b mut [&'b mut [f64]]>> {
-        model.accumulate_jacobian(self.time, jacobian);
-    }
-}
-
-fn fit_n_peaks<const N : usize, M>(time: &[Real], intensities: &[Real], num_peaks: usize) where M : Model<Context = (), Parameters = [Real; N]> {
-    let fitting = Fitting::new(time, intensities, num_peaks);
-    let cost: CostFunctionType = Box::new(
-    move |parameters, residuals, jacobian| {
-        let model = MultiPeakModel::<'_, N,M>::new(num_peaks, parameters);
-
-        fitting.compute_residuals(&model, residuals);
-        if let Some(jacobian) = jacobian {
-            fitting.compute_jacobian(&model, jacobian);
+        if let Some(jacobians) = jacobians {
+            assert_eq!(jacobians.len(), num_peaks + 1);
+            calc_jacobian(time, &models, linear_background, jacobians)
         }
         true
-    });
-    let problem = (0..num_peaks).fold(
+    })
+}
+
+fn fit_n_peaks<'a, const N : usize, M>(time: &[Real], intensities: &[Real], num_peaks: usize) -> NllsProblemSolution 
+    where M : Model<N, Context = ()>
+{
+    let (problem, _) = (0..num_peaks).fold(
         NllsProblem::new()
             .residual_block_builder(),
-        |builder, _peak_index| {
+        |builder, _|
             builder.add_parameter(ParameterBlock::new(M::init_parameters(&())))
-        }
     )
     .add_parameter(ParameterBlock::new(LinearBackground::init_parameters(&())))
-    .set_cost(cost, time.len())
+    .set_cost(cost_function::<N,M>(time, intensities, num_peaks), time.len())
     .build_into_problem()
-    .unwrap();
+    .expect("Problem should build, this should never fail.");
+
+    let options = SolverOptions::builder()
+        .build()
+        .expect("Solver options should build, this should never fail.");
+
+    let sol = problem.solve(&options)
+        .expect("Problem should solve, this should never fail.");
+
+    sol
 }

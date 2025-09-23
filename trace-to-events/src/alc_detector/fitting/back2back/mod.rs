@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::{alc_detector::fitting::{Accumulator, Model}, pulse_detection::Real};
 
 const MAX_EXP: f64 = 30.0; // exp(30) ~ 1e13, safe for double
@@ -12,13 +10,12 @@ fn calc_b2b_arm(coef: f64, diff: f64, s2: f64, sqrt_2s2: f64) -> Real {
     Real::exp(arg) * libm::erfc((coef * s2 - diff) / sqrt_2s2)
 }
 
-pub(crate) struct Back2BackParams<'a> {
+pub(crate) struct Back2BackParams {
     i: Real,
     a: Real,
     b: Real,
     x0: Real,
     s: Real,
-    phantom: PhantomData<&'a ()>,
 }
 
 struct B2BJacArm {
@@ -66,9 +63,7 @@ fn calc_d_arm_coef(consts: &CalcDArmCoefConsts, arm_coef: f64, arm: &B2BJacArm, 
     )
 }
 
-impl<'a> Accumulator for Back2BackParams<'a> {
-    type Jacobian = &'a mut [&'a mut [Real]];
-
+impl Accumulator for Back2BackParams {
     fn accumulate_value(&self, input: &[Real], output: &mut [Real]) {
         let s2 = self.s * self.s;
         let sqrt_2s2 = Real::sqrt(2.0) * self.s;
@@ -131,12 +126,11 @@ impl<'a> Accumulator for Back2BackParams<'a> {
     }
 }
 
-impl<'a> Model for Back2BackParams<'a> {
+impl Model<5> for Back2BackParams {
     type Context = ();
-    type Parameters = [Real; 5];
     
-    fn init_parameters(_context: & Self::Context) -> Self::Parameters {
-        [0.0, 0.0, 0.0, 0.0, 0.0]
+    fn init_parameters(_context: & Self::Context) -> [Real; 5] {
+        [0.0; 5]
     }
 
     fn new(source: &[Real]) -> Self {
@@ -147,7 +141,6 @@ impl<'a> Model for Back2BackParams<'a> {
             b: source[2],
             x0: source[3],
             s: source[4],
-            phantom: PhantomData
         }
     }
 }
