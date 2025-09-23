@@ -1,19 +1,15 @@
 use crate::{
-    parameters::{
+    alc_detector::fit_n_peaks_b2bexp, parameters::{
         AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
         Mode, Polarity,
-    },
-    processing::get_save_file_name,
-    pulse_detection::{
-        AssembleFilter, EventFilter, Real, SaveToFileFilter,
-        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
-        threshold_detector::{ThresholdDetector, ThresholdDuration},
-        window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
-    },
+    }, processing::get_save_file_name, pulse_detection::{
+        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector}, threshold_detector::{ThresholdDetector, ThresholdDuration}, window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter}, AssembleFilter, EventFilter, Real, SaveToFileFilter
+    }
 };
 use std::path::Path;
 use ceres_solver::SolverOptions;
-use supermusr_common::{Intensity, Time};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use supermusr_common::{spanned::SpanWrapper, Intensity, Time};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::ChannelTrace,
     frame_metadata_v2_generated::FrameMetadataV2,
@@ -230,59 +226,23 @@ fn find_alc_events(
         .fold(Vec::<&[(Real,Real)]>::default(), |acc, b|{
             acc
         });
-    //let pulses = partitions.into_iter().map();
 
-    let pulses = raw
-        .clone()
-        .events(ThresholdDetector::new(&ThresholdDuration {
-            threshold: parameters.threshold,
-            duration: parameters.duration,
-            cool_off: parameters.cool_off,
-        }));
-
-    if let Some(save_path) = save_path {
-        raw.clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "raw",
-            ))
-            .unwrap();
-
-        pulses
-            .clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "pulses",
-            ))
-            .unwrap();
-    }
+    let pulses = partitions.iter()
+        .map(SpanWrapper::<_>::new_with_current)
+        .collect::<Vec<_>>()
+        .par_iter()
+        .flat_map(|partition|{
+            let time = partition.iter().map(|(time,_)|*time).collect::<Vec<_>>();
+            let intensities = partition.iter().map(|(_, intensity)|*intensity).collect::<Vec<_>>();
+            fit_n_peaks_b2bexp(time.as_slice(), intensities.as_slice(), 1)
+        })
+        .collect::<Vec<_>>();
 
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     for pulse in pulses {
-        time.push(pulse.0 as Time);
-        voltage.push(pulse.1.pulse_height as Intensity);
+        time.push(pulse.peak.time.unwrap() as Time);
+        voltage.push(pulse.peak.value.unwrap() as Intensity);
     }
     (time, voltage)
-}
-
-
-fn fit(data: &[(Real,Real)]) {
-    let cost: ceres_solver::CostFunctionType  = Box::new(|parameters: &[&[f64]],
-              residuals: &mut [f64],
-              mut jacobians: Option<&mut [Option<&mut [&mut [f64]]>]>| -> bool {
-                true
-    });
-    let (problem, _) = ceres_solver::NllsProblem::new()
-        .residual_block_builder()
-        .add_parameter(vec![0.0])
-        .add_parameter(vec![1.0])
-        .set_cost(cost, data.len())
-        .build_into_problem().expect("Problem");
-    let solution = problem.solve(&SolverOptions::builder().build().expect("")).expect("");
-    
 }

@@ -11,11 +11,11 @@ fn calc_b2b_arm(coef: f64, diff: f64, s2: f64, sqrt_2s2: f64) -> Real {
 }
 
 pub(crate) struct Back2BackParams {
-    i: Real,
-    a: Real,
-    b: Real,
-    x0: Real,
-    s: Real,
+    pub(crate) i: Real,
+    pub(crate) a: Real,
+    pub(crate) b: Real,
+    pub(crate) x0: Real,
+    pub(crate) s: Real,
 }
 
 struct B2BJacArm {

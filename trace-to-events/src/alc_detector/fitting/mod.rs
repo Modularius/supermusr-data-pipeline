@@ -3,9 +3,12 @@ mod back2back;
 mod lorentz;
 mod model;
 
+pub(super) use back2back::Back2BackParams;
+pub(super) use model::Model;
+
 use ceres_solver::{nlls_problem::{NllsProblem, NllsProblemSolution}, CostFunctionType, ParameterBlock, SolverOptions};
 
-use crate::{alc_detector::fitting::{linear_background::LinearBackground, model::{Accumulator, Model}}, pulse_detection::Real};
+use crate::{alc_detector::fitting::{linear_background::LinearBackground, model::Accumulator}, pulse_detection::Real};
 
 fn calc_jacobian<'a, const N : usize, M>(time: &[Real], models: &[M], linear_background : LinearBackground, jacobians: &'a mut [Option<&'a mut [&'a mut [Real]]>])
     where M : Model<N, Context = ()>
@@ -59,7 +62,7 @@ fn cost_function<'a, const N : usize, M>(time: &'a [Real], intensities: &'a [Rea
     })
 }
 
-fn fit_n_peaks<'a, const N : usize, M>(time: &[Real], intensities: &[Real], num_peaks: usize) -> NllsProblemSolution 
+pub(super) fn fit_n_peaks<'a, const N : usize, M>(time: &[Real], intensities: &[Real], num_peaks: usize) -> NllsProblemSolution 
     where M : Model<N, Context = ()>
 {
     let (problem, _) = (0..num_peaks).fold(
@@ -79,6 +82,5 @@ fn fit_n_peaks<'a, const N : usize, M>(time: &[Real], intensities: &[Real], num_
 
     let sol = problem.solve(&options)
         .expect("Problem should solve, this should never fail.");
-
     sol
 }
