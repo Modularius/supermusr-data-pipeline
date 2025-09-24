@@ -3,12 +3,12 @@ mod back2back;
 mod lorentz;
 mod model;
 
-pub(super) use back2back::Back2BackExp;
+pub(super) use back2back::Back2BackExpParams;
 pub(super) use model::Model;
 
 use ceres_solver::{nlls_problem::{NllsProblem, NllsProblemSolution}, solver::{DenseLinearAlgebraLibraryType, LinearSolverType, MinimizerType, TrustRegionStrategyType}, CostFunctionType, ParameterBlock, SolverOptions};
 
-use crate::{alc_detector::fitting::{linear_background::LinearBackground, model::{Accumulator, Jacobian}}, pulse_detection::Real};
+use crate::{alc_detector::fitting::{linear_background::{LinearBackground, LinearBackgroundParams}, model::{Accumulator, Jacobian}}, pulse_detection::Real};
 
 fn calc_jacobian<'a, M: Accumulator>(time: &[Real], models: &[M], linear_background : LinearBackground, jacobians: &'a mut [Option<Jacobian<'a>>]) {
     let (lin_back_jacobian, peak_jacobians) = jacobians
@@ -42,9 +42,9 @@ fn cost_function<'a, M: Model>(time: &'a [Real], intensities: &'a [Real], num_pe
         
         assert_eq!(parameters.len(), num_peaks + 1);
         let models = (0..num_peaks)
-            .map(|peak|M::new(parameters[peak]))
+            .map(|peak|M::new(parameters[peak]).accumulator())
             .collect::<Vec<_>>();
-        let linear_background = LinearBackground::new(parameters[num_peaks]);
+        let linear_background = LinearBackgroundParams::accumulator(LinearBackgroundParams::new(parameters[num_peaks]));
 
         assert_eq!(time.len(), intensities.len());
         for m in &models {
@@ -61,7 +61,7 @@ fn cost_function<'a, M: Model>(time: &'a [Real], intensities: &'a [Real], num_pe
 }
 
 pub(super) fn fit_n_peaks<'a, M>(time: &[Real], intensities: &[Real], num_peaks: usize) -> NllsProblemSolution 
-    where M : Model<Context = (Real,Real)>
+    where M: Model<Context = (Real,Real)>
 {
     let bounds = (time.first().cloned().unwrap_or_default(), time.last().cloned().unwrap_or_default());
 
@@ -74,7 +74,7 @@ pub(super) fn fit_n_peaks<'a, M>(time: &[Real], intensities: &[Real], num_peaks:
             builder.add_parameter(parameter_block)
         }
     )
-    .add_parameter(ParameterBlock::new(LinearBackground::init_parameters(&())))
+    .add_parameter(ParameterBlock::new(LinearBackgroundParams::init_parameters(&())))
     .set_cost(cost_function::<M>(time, intensities, num_peaks), time.len())
     .build_into_problem()
     .expect("Problem should build, this should never fail.");

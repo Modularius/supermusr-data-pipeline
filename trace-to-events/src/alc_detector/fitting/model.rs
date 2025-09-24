@@ -16,11 +16,13 @@ pub(crate) trait Accumulator {
     fn accumulate_jacobian(&self, input: &[Real], output: &mut [&mut [Real]]);
 }
 
-pub(crate) trait Model : Accumulator {
+pub(crate) trait Model {
     type Context;
+    type Accumulator: Accumulator;
 
+    fn new(source: &[Real]) -> Self;
+    fn accumulator(self) -> Self::Accumulator;
     fn init_parameters(context: & Self::Context) -> Vec<Real>;
     fn lower_bounds(context: &Self::Context) -> Vec<Option<f64>>;
     fn upper_bounds(context: &Self::Context) -> Vec<Option<f64>>;
-    fn new(source: &[Real]) -> Self;
 }

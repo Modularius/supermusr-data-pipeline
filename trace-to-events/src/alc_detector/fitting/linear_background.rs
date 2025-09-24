@@ -1,14 +1,16 @@
 use crate::{alc_detector::fitting::{Accumulator, Model}, pulse_detection::Real};
 
-pub(crate) struct LinearBackground {
+pub(crate) struct LinearBackgroundParams {
     m: Real,
     c: Real,
 }
 
+pub(crate) struct LinearBackground(LinearBackgroundParams);
+
 impl Accumulator for LinearBackground {
     fn accumulate_value(&self, input: &[Real], output: &mut [Real]) {
         for (i,x) in input.iter().enumerate() {
-            output[i] = self.m*x + self.c;
+            output[i] = self.0.m*x + self.0.c;
         }
     }
 
@@ -20,8 +22,13 @@ impl Accumulator for LinearBackground {
     }
 }
 
-impl<'a> Model for LinearBackground {
+impl<'a> Model for LinearBackgroundParams {
     type Context = ();
+    type Accumulator = LinearBackground;
+
+    fn accumulator(self) -> Self::Accumulator {
+        LinearBackground(self)
+    }
     
     fn init_parameters(_context: & Self::Context) -> Vec<Real> {
         vec![0.0; 2]
