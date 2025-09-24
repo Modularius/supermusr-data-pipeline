@@ -1,15 +1,15 @@
 mod partition;
 mod fitting;
 
-use fitting::{Back2BackParams, fit_n_peaks, Model};
+use fitting::{Back2BackExp, fit_n_peaks, Model};
 
 use crate::pulse_detection::{pulse::TimeValueOptional, Pulse, Real};
 
 
 pub(crate) fn fit_n_peaks_b2bexp<'a>(time: &[Real], intensities: &[Real], num_peaks: usize) -> Vec<Pulse> {
-    let sol = fit_n_peaks::<5,Back2BackParams>(time, intensities, num_peaks);
+    let sol = fit_n_peaks::<Back2BackExp>(time, intensities, num_peaks);
     sol.parameters.iter().map(|params| {
-        let params = Back2BackParams::new(params.as_slice());
+        let params = Back2BackExp::new(params.as_slice());
         Pulse {
             start: TimeValueOptional { time: None, value: None },
             end: TimeValueOptional { time: None, value: None },

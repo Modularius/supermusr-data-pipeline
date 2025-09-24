@@ -20,11 +20,11 @@ impl Accumulator for LinearBackground {
     }
 }
 
-impl<'a> Model<2> for LinearBackground {
+impl<'a> Model for LinearBackground {
     type Context = ();
     
-    fn init_parameters(_context: & Self::Context) -> [Real; 2] {
-        [0.0; 2]
+    fn init_parameters(_context: & Self::Context) -> Vec<Real> {
+        vec![0.0; 2]
     }
     
     fn new(source: &[Real]) -> Self {
@@ -33,5 +33,13 @@ impl<'a> Model<2> for LinearBackground {
             m: source[0],
             c: source[1],
         }
+    }
+    
+    fn lower_bounds(_context: & Self::Context) -> Vec<Option<f64>> {
+        vec![None;2]
+    }
+    
+    fn upper_bounds(_context: & Self::Context) -> Vec<Option<f64>> {
+        vec![None;2]
     }
 }

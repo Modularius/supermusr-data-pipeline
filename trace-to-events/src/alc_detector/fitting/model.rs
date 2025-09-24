@@ -10,17 +10,17 @@ pub(crate) type Gradient<'a> = &'a mut [Derivative];
 /// and `p_{j,k}` is the kth parameter of the jth block.
 pub(crate) type Jacobian<'a> = &'a mut [Gradient<'a>];
 
-pub(crate) type AllJacobians<'a> = &'a mut [Option<Jacobian<'a>>];
-
 
 pub(crate) trait Accumulator {
     fn accumulate_value(&self, input: &[Real], output: &mut [Real]);
     fn accumulate_jacobian(&self, input: &[Real], output: &mut [&mut [Real]]);
 }
 
-pub(crate) trait Model<const NUM_PARAMS : usize> : Accumulator{
+pub(crate) trait Model : Accumulator {
     type Context;
 
-    fn init_parameters(context: & Self::Context) -> [Real; NUM_PARAMS];
+    fn init_parameters(context: & Self::Context) -> Vec<Real>;
+    fn lower_bounds(context: &Self::Context) -> Vec<Option<f64>>;
+    fn upper_bounds(context: &Self::Context) -> Vec<Option<f64>>;
     fn new(source: &[Real]) -> Self;
 }

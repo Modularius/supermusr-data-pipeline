@@ -225,9 +225,10 @@ fn find_alc_events(
         .enumerate()
         .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
 
-    let partitions = raw.fold(Vec::<&[(Real,Real)]>::default(), |acc, b|{
-            acc
-        });
+    let partitions = raw.fold(Vec::<&[(Real,Real)]>::default(),
+        |acc, b|{
+        acc
+    });
 
     let pulses = partitions.iter()
         .map(SpanWrapper::<_>::new_with_current)
