@@ -65,10 +65,21 @@ pub(crate) struct AdvancedMuonDetectorParameters {
     pub(crate) min_amplitude: Option<Real>,
 }
 
+
+
+#[derive(Default, Debug, Clone, Parser)]
+pub(crate) struct AlcMuonDetectorParameters {
+    /// TODO.
+    #[clap(long)]
+    pub(crate) muon_onset: Real,
+}
+
 #[derive(Subcommand, Debug)]
 pub(crate) enum Mode {
     /// Detects events using a fixed threshold discriminator. Events consist only of a time value.
     FixedThresholdDiscriminator(FixedThresholdDiscriminatorParameters),
     /// Detects events using differential discriminators. Event lists consist of time and voltage values.
     AdvancedMuonDetector(AdvancedMuonDetectorParameters),
+    /// Detects events using differential discriminators. Event lists consist of time and voltage values.
+    AlcMuonDetector(AlcMuonDetectorParameters),
 }

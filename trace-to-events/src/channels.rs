@@ -1,7 +1,6 @@
 use crate::{
     alc_detector::fit_n_peaks_b2bexp, parameters::{
-        AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
-        Mode, Polarity,
+        AdvancedMuonDetectorParameters, AlcMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters, Mode, Polarity
     }, processing::get_save_file_name, pulse_detection::{
         advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector}, threshold_detector::{ThresholdDetector, ThresholdDuration}, window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter}, AssembleFilter, EventFilter, Real, SaveToFileFilter
     }
@@ -42,6 +41,13 @@ pub(crate) fn find_channel_events(
             parameters,
             save_options,
         ),
+        Mode::AlcMuonDetector(parameters) => find_alc_events(
+            trace,
+            sample_time,
+            detector_settings.polarity,
+            detector_settings.baseline as Real,
+            parameters
+        )
     };
     tracing::Span::current().record("num_pulses", result.0.len());
     result
@@ -202,13 +208,11 @@ fn find_advanced_events(
 
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_alc_events(
-    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
     baseline: Real,
-    parameters: &FixedThresholdDiscriminatorParameters,
-    save_path: Option<&Path>,
+    _parameters: &AlcMuonDetectorParameters,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
         Polarity::Positive => 1.0,
@@ -221,9 +225,7 @@ fn find_alc_events(
         .enumerate()
         .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
 
-    let partitions = raw
-        .clone()
-        .fold(Vec::<&[(Real,Real)]>::default(), |acc, b|{
+    let partitions = raw.fold(Vec::<&[(Real,Real)]>::default(), |acc, b|{
             acc
         });
 
