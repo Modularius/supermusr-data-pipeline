@@ -4,6 +4,7 @@ use leptos_use::use_interval;
 use crate::{
     Uuid,
     app::{
+        TopLevelContext,
         sections::{BrokerSection, ResultsSection, SearchSection},
         server_functions::{AwaitSearch, CreateNewSearch, FetchSearchSummaries, RefreshSession},
     },
@@ -98,13 +99,18 @@ fn init_search_control_effects() {
 /// an interval timer which triggers every 30,000 ms, and
 /// an effect which dispatches the action when the timer triggers.
 fn init_refresh_session_effect() {
-    let main_context = use_context::<MainLevelContext>()
-        .expect("MainLevelContext should be provided, this should never fail.");
-    let uuid = main_context.uuid;
+    let uuid = use_context::<MainLevelContext>()
+        .expect("MainLevelContext should be provided, this should never fail.")
+        .uuid;
+    let refresh_session_interval_sec = use_context::<TopLevelContext>()
+        .expect("TopLevelContext should be provided, this should never fail.")
+        .client_side_data
+        .default_data
+        .refresh_session_interval_sec;
 
     let refresh_session = ServerAction::<RefreshSession>::new();
 
-    let refresh_interval = use_interval(30_000);
+    let refresh_interval = use_interval(1000 * refresh_session_interval_sec);
     Effect::new(move || {
         if let Some(uuid) = uuid.get() {
             refresh_interval.counter.track();
