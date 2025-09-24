@@ -8,7 +8,7 @@ cfg_if! {
         use clap::Parser;
         use std::net::SocketAddr;
         use supermusr_common::CommonKafkaOpts;
-        use trace_viewer::{structs::{ClientSideData, DefaultData, ServerSideData, Topics}, sessions::{SessionEngineSettings}, shell};
+        use trace_viewer::{structs::{ClientSideData, DefaultData, ServerIntervals, ServerSideData, Topics}, sessions::SessionEngineSettings, shell};
         use tracing::info;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
         use url::Url;
@@ -41,6 +41,9 @@ cfg_if! {
             #[clap(flatten)]
             default: DefaultData,
 
+            #[clap(flatten)]
+            server_intervals: ServerIntervals,
+
             /// Name of the broker.
             #[clap(long)]
             broker_name: String,
@@ -52,18 +55,6 @@ cfg_if! {
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
             link_to_redpanda_console: Option<String>,
-
-            /// The frequency with which the server purges expired sessions.
-            #[clap(long, default_value = "600")]
-            purge_session_interval_sec: u64,
-
-            /// The frequency with which a client sends a refresh call to its corresponding session.
-            #[clap(long, default_value = "300")]
-            refresh_session_interval_sec: u64,
-
-            /// Specifies the time-to-live of a user session. Any session whose time since last refresh is older than this is removed during a session purge cycle.
-            #[clap(long, default_value = "600")]
-            session_ttl_sec: i64,
 
             /// Name to apply to this particular instance.
             #[clap(long)]
@@ -102,7 +93,7 @@ cfg_if! {
                 username: args.common_kafka_options.username.clone(),
                 password: args.common_kafka_options.password.clone(),
                 consumer_group: args.consumer_group.clone(),
-                session_ttl_sec: args.session_ttl_sec,
+                session_ttl_sec: args.server_intervals.session_ttl_sec,
             });
 
             let server_side_data = ServerSideData {
@@ -113,12 +104,11 @@ cfg_if! {
                 broker_name: args.broker_name,
                 link_to_redpanda_console: args.link_to_redpanda_console,
                 default_data : args.default,
-                refresh_session_interval_sec: args.refresh_session_interval_sec,
                 public_url: args.public_url,
             };
 
             // Spawn the "purge expired sessions" task.
-            let _purge_sessions = SessionEngine::spawn_purge_task(session_engine.clone(), args.purge_session_interval_sec);
+            let _purge_sessions = SessionEngine::spawn_purge_task(session_engine.clone(), args.server_intervals.purge_session_interval_sec);
 
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;

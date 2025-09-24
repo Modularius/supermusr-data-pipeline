@@ -26,7 +26,7 @@ cfg_if! {
         pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace};
         pub(crate) use server_only::{Cache, BorrowedMessageError, SearchResults, EventListMessage, FBMessage, TraceMessage};
 
-        pub use server_only::ServerSideData;
+        pub use server_only::{ServerSideData, ServerIntervals};
     }
 }
 
@@ -67,6 +67,10 @@ pub struct DefaultData {
     /// If this feature is failing, then increasing this value may help.
     #[cfg_attr(feature = "ssr", clap(long, default_value = "1000"))]
     pub(crate) poll_broker_timeout_ms: u64,
+
+    /// The frequency with which a client sends a refresh call to its corresponding session.
+    #[cfg_attr(feature = "ssr", clap(long, default_value = "300"))]
+    pub(crate) refresh_session_interval_sec: u64,
 }
 
 /// Encapsulates all run-time settings which are available to the client.
@@ -75,6 +79,5 @@ pub struct ClientSideData {
     pub default_data: DefaultData,
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
-    pub refresh_session_interval_sec: u64,
     pub public_url: Url,
 }
