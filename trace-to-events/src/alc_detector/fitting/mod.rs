@@ -60,6 +60,7 @@ fn cost_function<'a, M: Model>(time: &'a [Real], intensities: &'a [Real], num_pe
     })
 }
 
+#[tracing::instrument(skip_all)]
 pub(super) fn fit_n_peaks<'a, M>(time: &[Real], intensities: &[Real], num_peaks: usize) -> NllsProblemSolution 
     where M: Model<Context = (Real,Real)>
 {

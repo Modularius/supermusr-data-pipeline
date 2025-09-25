@@ -71,7 +71,7 @@ pub(crate) struct AdvancedMuonDetectorParameters {
 pub(crate) struct AlcMuonDetectorParameters {
     /// TODO.
     #[clap(long)]
-    pub(crate) muon_onset: Real,
+    pub(crate) threshold: Real,
 }
 
 #[derive(Subcommand, Debug)]

@@ -1,5 +1,7 @@
+use std::ops::Deref;
+
 use crate::{
-    alc_detector::fit_n_peaks_b2bexp, parameters::{
+    alc_detector::{fit_n_peaks_b2bexp, partition_trace}, parameters::{
         AdvancedMuonDetectorParameters, AlcMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters, Mode, Polarity
     }, pulse_detection::{
         advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector}, threshold_detector::{ThresholdDetector, ThresholdDuration}, window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter}, AssembleFilter, EventFilter, Real
@@ -145,7 +147,7 @@ fn find_alc_events(
     sample_time: Real,
     polarity: &Polarity,
     baseline: Real,
-    _parameters: &AlcMuonDetectorParameters,
+    parameters: &AlcMuonDetectorParameters,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
         Polarity::Positive => 1.0,
@@ -158,17 +160,28 @@ fn find_alc_events(
         .enumerate()
         .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
 
-    let partitions = raw.fold(Vec::<&[(Real,Real)]>::default(),
+    let pulses = raw
+        .clone()
+        .events(ThresholdDetector::new(&ThresholdDuration {
+            threshold: parameters.threshold,
+            duration: 1,
+            cool_off: 0,
+        }))
+        .map(|(time,data)|(time, data.pulse_height))
+        .collect::<Vec<_>>();
+
+    let partitions = partition_trace(raw.clone(), pulses.as_slice());
+    /*let partitions = raw.fold(Vec::<&[(Real,Real)]>::default(),
         |acc, b|{
         acc
-    });
+    });*/
 
-    let pulses = partitions.iter()
+    let pulses = partitions.into_iter()
         .map(SpanWrapper::<_>::new_with_current)
         .collect::<Vec<_>>()
         .par_iter()
-        .flat_map(|partition|{
-            let time = partition.iter().map(|(time,_)|*time).collect::<Vec<_>>();
+        .flat_map(|&partition|{
+            let time = partition.iter().collect::<Vec<_>>();
             let intensities = partition.iter().map(|(_, intensity)|*intensity).collect::<Vec<_>>();
             fit_n_peaks_b2bexp(time.as_slice(), intensities.as_slice(), 1)
         })
