@@ -23,22 +23,7 @@ pub(crate) fn SearchSettings() -> impl IntoView {
                 </div>
                 <div class = "control">
                     <label for = "time"> "Advance Time (ms):" </label>
-                    <span>
-                        <input type = "button" value = "<" on:click = move |_| {
-                            let pair = search_level_context.time.get().overflowing_sub_signed(TimeDelta::nanoseconds(1_000_000*advance_time.get()));
-                            tracing::warn!("{pair:?}");
-                            search_level_context.time.set(pair.0);
-                        } />
-
-                        <ValidatedInput name = "advance-time" id = "advance-time" datatype = "number" bind_to_signal = advance_time />
-                        
-                        <input type = "button" value = ">" on:click = move |_| { search_level_context.time.try_update(|time| {
-                                let pair = time.overflowing_add_signed(TimeDelta::nanoseconds(1_000_000*advance_time.get()));
-                                *time = pair.0;
-                                leptos::logging::log!("{pair:?}");
-                            });
-                        } />
-                    </span>
+                    <ValidatedInput name = "advance-time" id = "advance-time" datatype = "number" bind_to_signal = advance_time />
                 </div>
             </div>
         </div>
