@@ -5,7 +5,7 @@ mod section;
 
 use leptos::{logging, tachys::renderer::dom::Element};
 
-pub(crate) use controls::ValidatedInput;
+pub(crate) use controls::{ValidatedInput, ValidatedSelect};
 pub(crate) use display_errors::DisplayErrors;
 pub(crate) use section::Section;
 

@@ -1,7 +1,8 @@
 use crate::app::{
+    TopLevelContext,
     components::Section,
     sections::broker_poll::{broker_control::BrokerPoller, broker_info::DisplayBrokerInfo},
-    server_functions::PollBroker, TopLevelContext
+    server_functions::PollBroker,
 };
 use leptos::{IntoView, component, prelude::*, view};
 
@@ -19,7 +20,7 @@ pub(crate) fn BrokerSection() -> impl IntoView {
         <Section text = "Broker" id = "broker">
             <BrokerPoller poll_broker_timeout_ms/>
             <DisplayBrokerInfo poll_broker_action />
-            
+
             <input type = "button" class = "poll-broker-button" value = "Poll Broker" on:click = move |_| {
                 poll_broker_action.dispatch(PollBroker { poll_broker_timeout_ms: poll_broker_timeout_ms.get() });
             }/>
