@@ -28,25 +28,21 @@ div.section>div.name:hover {
 
 div.section>div.content {
   display: flex;
-  flex-direction: row;
   flex-wrap: wrap;
-  justify-content: space-between;
+  flex-direction: row;
+  flex-grow: 1;
 }
+
+div.division {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+  margin: 1em;
+  padding: 1em;
+}
+
 
 div.closable-container.closed>div.closable {
   display: none;
-}
-
-div.panel {
-  display: grid;
-  padding: 1mm;
-}
-
-div.panel:not(:last-child) {
-  border-right: 1px lightgray solid;
-}
-
-.panel-item.across-two-cols {
-  grid-column-start: 1;
-  grid-column-end: 3;
 }

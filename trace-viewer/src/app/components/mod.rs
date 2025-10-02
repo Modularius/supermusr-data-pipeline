@@ -1,9 +1,11 @@
 //! Defines Leptos components which are used throughout the rest of the [app] module.
+mod controls;
 mod display_errors;
 mod section;
 
 use leptos::{logging, tachys::renderer::dom::Element};
 
+pub(crate) use controls::ValidatedInput;
 pub(crate) use display_errors::DisplayErrors;
 pub(crate) use section::Section;
 

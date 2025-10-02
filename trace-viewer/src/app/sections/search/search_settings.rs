@@ -1,4 +1,5 @@
-use crate::app::sections::search::context::SearchLevelContext;
+use crate::app::{components::ValidatedInput, sections::search::context::SearchLevelContext};
+use chrono::TimeDelta;
 use leptos::{IntoView, component, either::EitherOf3, prelude::*, view};
 use std::str::FromStr;
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -8,48 +9,66 @@ pub(crate) fn SearchSettings() -> impl IntoView {
     let search_level_context = use_context::<SearchLevelContext>()
         .expect("search_broker_node_refs should be provided, this should never fail.");
 
+    let advance_time = RwSignal::<i64>::new(1000);
     view! {
-        <SearchMode />
-        <label for = "date">
-            "Date:"
-            <input name = "date" id = "date" type = "date"
-                value = {move ||search_level_context.date.get().to_string()}
-                on:change = {move |ev|search_level_context.date.set(event_target_value(&ev).parse().expect("Date should parse, this should never fail."))}
-            />
-        </label>
-        <label for = "time">
-            "Time:"
-            <input name = "time" id = "time" type = "text"
-                value = {move ||search_level_context.time.get().to_string()}
-                on:change = {move |ev|search_level_context.time.set(event_target_value(&ev).parse().expect("Time should parse, this should never fail."))}
-            />
-        </label>
-        <label for = "number">
-            "Number:"
-            <input name = "number" id = "number" type = "text"
-                value = {move ||search_level_context.number.get().to_string()}
-                on:change = {move |ev|search_level_context.number.set(event_target_value(&ev).parse().expect("Number should parse, this should never fail."))}
-            />
-        </label>
-        <Show when = move|| matches!(search_level_context.search_mode.get(), SearchMode::Dragnet)>
-            <label for = "backstep">
-                "Backstep:"
-                <input name = "backstep" id = "backstep" type = "text"
-                    value = {move ||search_level_context.backstep.get().to_string()}
-                    on:change = {move |ev|search_level_context.backstep.set(event_target_value(&ev).parse().expect("Backstep should parse, this should never fail."))}
-                />
-            </label>
-            <label for = "forward-dist">
-                "Forward Distance:"
-                <input name = "forward-dist" id = "forward-dist" type = "text"
-                    value = {move ||search_level_context.forward_distance.get().to_string()}
-                    on:change = {move |ev|search_level_context.forward_distance.set(event_target_value(&ev).parse().expect("Forward Distance should parse, this should never fail."))}
-                />
-            </label>
-        </Show>
+        <div class = "division">
+            <div class = "control-grid">
+                <div class = "control">
+                    <label for = "date"> "Date:" </label>
+                    <ValidatedInput name = "date" id = "date" datatype = "date" bind_to_signal = search_level_context.date/>
+                </div>
+                <div class = "control">
+                    <label for = "time"> "Time:" </label>
+                    <ValidatedInput name = "time" id = "time" datatype = "text" bind_to_signal = search_level_context.time />
+                </div>
+                <div class = "control">
+                    <label for = "time"> "Advance Time (ms):" </label>
+                    <span>
+                        <input type = "button" value = "<" on:click = move |_| {
+                            let pair = search_level_context.time.get().overflowing_sub_signed(TimeDelta::nanoseconds(1_000_000*advance_time.get()));
+                            tracing::warn!("{pair:?}");
+                            search_level_context.time.set(pair.0);
+                        } />
 
-        <MatchCriteria />
-        <MatchBy />
+                        <ValidatedInput name = "advance-time" id = "advance-time" datatype = "number" bind_to_signal = advance_time />
+                        
+                        <input type = "button" value = ">" on:click = move |_| { search_level_context.time.try_update(|time| {
+                                let pair = time.overflowing_add_signed(TimeDelta::nanoseconds(1_000_000*advance_time.get()));
+                                *time = pair.0;
+                                leptos::logging::log!("{pair:?}");
+                            });
+                        } />
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class = "division">
+            <div class = "control-grid">
+                <SearchMode />
+                <div class = "control">
+                    <label for = "number"> "Number:" </label>
+                    <ValidatedInput name = "time" id = "time" datatype = "number" bind_to_signal = search_level_context.number />
+                </div>
+                <Show when = move|| matches!(search_level_context.search_mode.get(), SearchMode::Dragnet)>
+                    <div class = "control">
+                        <label for = "backstep"> "Backstep:" </label>
+                        <ValidatedInput name = "backstep" id = "backstep" datatype = "number" bind_to_signal = search_level_context.backstep />
+                    </div>
+                    <div class = "control">
+                        <label for = "forward-dist"> "Forward Distance:" </label>
+                        <ValidatedInput name = "forward-dist" id = "forward-dist" datatype = "number" bind_to_signal = search_level_context.forward_distance />
+                    </div>
+                </Show>
+            </div>
+        </div>
+
+        <div class = "division">
+            <div class = "control-grid">
+                <MatchCriteria />
+                <MatchBy />
+            </div>
+        </div>
     }
 }
 
@@ -70,9 +89,11 @@ pub(crate) fn SearchMode() -> impl IntoView {
     let search_mode = search_level_context.search_mode;
 
     view! {
-        <label class = "panel-item" for = "search-mode">
-            "Search Mode: "
-            <select name = "search-mode" id = "search-mode" class = "panel-item"
+        <div class = "control">
+            <label class = "panel-item" for = "search-mode">
+                "Search Mode: "
+            </label>
+            <select name = "search-mode" id = "search-mode"
                 on:change = move |ev|
                     search_mode.set(
                         event_target_value(&ev)
@@ -86,7 +107,7 @@ pub(crate) fn SearchMode() -> impl IntoView {
                     <option selected={search_mode.get() == mode} value = {mode.to_string()}> {mode.to_string()} </option>
                 </For>
             </select>
-        </label>
+        </div>
     }
 }
 
@@ -109,8 +130,10 @@ pub(crate) fn MatchCriteria() -> impl IntoView {
     let search_by = search_level_context.search_by;
 
     view! {
-        <label for = "match-criteria">
-            "Match Criteria: "
+        <div class = "control">
+            <label for = "match-criteria">
+                "Match Criteria: "
+            </label>
             <select name = "match-criteria" id = "match-criteria" class = "panel-item"
                 data-tooltip = "Choose which criteria to match on: by channel's contained, or by digitiser id."
                 on:change = move |ev| search_by.set(
@@ -127,7 +150,7 @@ pub(crate) fn MatchCriteria() -> impl IntoView {
                     <option selected={search_by.get() == mode}  value = {mode.to_string()}>{mode.to_string()}</option>
                 </For>
             </select>
-        </label>
+        </div>
     }
 }
 
@@ -156,22 +179,26 @@ pub(crate) fn MatchBy() -> impl IntoView {
     move || match search_level_context.search_by.get() {
         SearchBy::All => EitherOf3::A(()),
         SearchBy::ByChannels => EitherOf3::B(view! {
-            <label for = "channels">
+            <div class = "control">
+                <label for = "channels">
                 "Channels:"
+                </label>
                 <input class = "panel-item" type = "text" id = "channels"
                     value = move ||parse_to_list(&search_level_context.channels.get())
                     on:change = move |ev|search_level_context.channels.set(parse_from_list(event_target_value(&ev).parse().expect("msg")))
                 />
-            </label>
+            </div>
         }),
         SearchBy::ByDigitiserIds => EitherOf3::C(view! {
-            <label for = "digitiser-ids">
-                "Digitiser IDs:"
+            <div class = "control">
+                <label for = "digitiser-ids">
+                    "Digitiser IDs:"
+                </label>
                 <input class = "panel-item" type = "text" id = "digitiser-ids"
                     value = move ||parse_to_list(&search_level_context.digitiser_ids.get())
                     on:change = move |ev|search_level_context.digitiser_ids.set(parse_from_list(event_target_value(&ev).parse().expect("msg")))
                 />
-            </label>
+            </div>
         }),
     }
 }

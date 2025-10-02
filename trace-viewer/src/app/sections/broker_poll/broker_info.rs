@@ -8,15 +8,18 @@ use leptos::{IntoView, component, either::Either, prelude::*, view};
 pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {
     move || {
         if poll_broker_action.pending().get() {
-            Either::Left(view! {<p> "Loading Broker Info..."</p>})
+            Either::Left(view! {
+            <div class = "division"><p> "Loading Broker Info..."</p></div>})
         } else {
             Either::Right(poll_broker_action.value().get().map(move |broker_info| {
                 let broker_info =
                     broker_info.map(|broker_info| view! { <BrokerInfoTable broker_info /> });
                 view! {
-                    <ErrorBoundary fallback = move |errors| view!{ <DisplayErrors errors /> }>
-                        {broker_info}
-                    </ErrorBoundary>
+                    <div class = "division">
+                        <ErrorBoundary fallback = move |errors| view!{ <DisplayErrors errors /> }>
+                            {broker_info}
+                        </ErrorBoundary>
+                    </div>
                 }
             }))
         }
