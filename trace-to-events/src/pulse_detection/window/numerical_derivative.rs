@@ -72,21 +72,37 @@ mod tests {
     use crate::pulse_detection::window::WindowFilter;
     use supermusr_common::Intensity;
 
+    fn b2bexp(
+        x: Real,
+        ampl: Real,
+        spread: Real,
+        x0: Real,
+        rising: Real,
+        falling: Real,
+    ) -> Intensity {
+        let normalising_factor = ampl * 0.5 * (rising * falling) / (rising + falling);
+        let rising_spread = rising * spread.powi(2);
+        let falling_spread = falling * spread.powi(2);
+        let x_shift = x - x0;
+        let rising_exp = Real::exp(rising * 0.5 * (rising_spread + 2.0 * x_shift));
+        let rising_erfc = libm::erfc((rising_spread + x_shift) / (Real::sqrt(2.0) * spread));
+        let falling_exp = Real::exp(falling * 0.5 * (falling_spread - 2.0 * x_shift));
+        let falling_erfc = libm::erfc((falling_spread - x_shift) / (Real::sqrt(2.0) * spread));
+        (normalising_factor * (rising_exp * rising_erfc + falling_exp * falling_erfc)) as Intensity
+    }
+
     #[test]
     fn sample_data() {
-        let input: Vec<Intensity> = vec![0, 6, 2, 1, 3, 1, 0];
-        let mut output = input
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
-            .window(NumericalDerivative::new(3))
-            .map(|(_, x)| x);
+        let range = 0..100;
+        let input = range.clone().map(|x| {
+            b2bexp()
+        })
 
-        assert_eq!(output.next(), Some(RealArray::new([2., -4., -10.])));
-        assert_eq!(output.next(), Some(RealArray::new([1., -1., 3.])));
-        assert_eq!(output.next(), Some(RealArray::new([3., 2., 3.])));
-        assert_eq!(output.next(), Some(RealArray::new([1., -2., -4.])));
-        assert_eq!(output.next(), Some(RealArray::new([0., -1., 1.])));
+        assert_eq!(output.next(), Some(RealArray::new([2., -4.])));
+        assert_eq!(output.next(), Some(RealArray::new([1., -1.])));
+        assert_eq!(output.next(), Some(RealArray::new([3., 2.])));
+        assert_eq!(output.next(), Some(RealArray::new([1., -2.])));
+        assert_eq!(output.next(), Some(RealArray::new([0., -1.])));
         assert!(output.next().is_none());
     }
 }
