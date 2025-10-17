@@ -8,6 +8,14 @@ pub(crate) struct NumericalDerivative {
     diff: RealArray<2>,
 }
 
+fn factorial(n: i32) -> i32 {
+    let mut f = n;
+    for i in 1..n {
+        f = f*i;
+    }
+    f
+}
+
 impl NumericalDerivative {
     pub(crate) fn new(radius: i32) -> Self {
         NumericalDerivative {
@@ -17,7 +25,7 @@ impl NumericalDerivative {
                     if p == 0 {
                         0.0
                     } else {
-                        (-1.0_f64).powi(p)*libm::factorial(radius).powi(2) as f64/(p*libm::factorial(radius - p)*libm::factorial(radius + p)) as f64
+                        (-1.0_f64).powi(p)*factorial(radius).pow(2) as f64/(p*factorial(radius - p)*factorial(radius + p)) as f64
                     }
                 })
                 .collect(),
@@ -93,16 +101,19 @@ mod tests {
 
     #[test]
     fn sample_data() {
-        let range = 0..100;
-        let input = range.clone().map(|x| {
-            b2bexp()
-        })
-
-        assert_eq!(output.next(), Some(RealArray::new([2., -4.])));
-        assert_eq!(output.next(), Some(RealArray::new([1., -1.])));
-        assert_eq!(output.next(), Some(RealArray::new([3., 2.])));
-        assert_eq!(output.next(), Some(RealArray::new([1., -2.])));
-        assert_eq!(output.next(), Some(RealArray::new([0., -1.])));
-        assert!(output.next().is_none());
+        let input = (0..100)
+            .map(|x| {
+                b2bexp(x as Real, 1000.0, 3.5, 20.0, 3.5, 2.25)
+                    + b2bexp(x as Real, 1000.0, 3.5, 54.0, 4.5, 5.5)
+                    + b2bexp(x as Real, 1000.0, 3.5, 81.0, 1.5, 3.25)
+            })
+            .collect::<Vec<_>>();
+        let output = input
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .window(NumericalDerivative::new(3))
+            .collect::<Vec<_>>();
+        println!("{output:?}");
     }
 }
