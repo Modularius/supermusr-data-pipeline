@@ -1,5 +1,6 @@
 pub(crate) mod baseline;
 pub(crate) mod finite_differences;
+pub(crate) mod numerical_derivative;
 pub(crate) mod smoothing_window;
 
 use super::{Real, RealArray, Stats, Temporal, TracePoint};
