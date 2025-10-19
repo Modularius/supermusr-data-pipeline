@@ -5,11 +5,7 @@ use crate::{
         Polarity,
     },
     pulse_detection::{
-        AssembleFilter, EventFilter, Real,
-        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
-        detectors::differential_threshold_detector::DifferentialThresholdDetector,
-        threshold_detector::{ThresholdDetector, ThresholdDuration},
-        window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
+        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector}, detectors::differential_threshold_detector::DifferentialThresholdDetector, threshold_detector::{ThresholdDetector, ThresholdDuration}, window::{Baseline, FiniteDifferences, NumericalDerivative, SmoothingWindow, WindowFilter}, AssembleFilter, EventFilter, Real
     },
 };
 use digital_muon_common::{Intensity, Time};
@@ -103,16 +99,24 @@ fn find_differential_threshold_events(
         .enumerate()
         .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
 
-    let pulses = raw.clone().window(FiniteDifferences::<2>::new()).events(
-        DifferentialThresholdDetector::new(
+    let detector = DifferentialThresholdDetector::new(
             &ThresholdDuration {
                 threshold: parameters.threshold,
                 duration: parameters.duration,
                 cool_off: parameters.cool_off,
             },
             parameters.constant_multiple,
-        ),
-    );
+        );
+
+    let pulses : Vec<_> = if let Some(central_fin_diff_radius) = parameters.central_fin_diff_radius {
+        raw.window(NumericalDerivative::new(central_fin_diff_radius))
+            .events(detector)
+            .collect()
+    } else {
+        raw.window(FiniteDifferences::<2>::new())
+            .events(detector)
+            .collect()
+    };
 
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();

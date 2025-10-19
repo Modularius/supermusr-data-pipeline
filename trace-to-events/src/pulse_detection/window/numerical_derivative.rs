@@ -12,19 +12,20 @@ fn factorial(n: i32) -> i32 {
     (1..=n).fold(1, i32::saturating_mul)
 }
 
+fn nonzero_coef(p: i32, n: i32) -> Real {
+     ((-1_i32).pow(p.unsigned_abs() + 1) * factorial(n).pow(2)) as f64
+        / (p * factorial(n - p) * factorial(n + p)) as f64
+}
+
 impl NumericalDerivative {
     pub(crate) fn new(radius: i32) -> Self {
         NumericalDerivative {
             values: VecDeque::<Real>::with_capacity(2 * radius as usize + 1),
             coefficients: ((-radius)..=radius)
-                .map(|p| {
-                    if p == 0 {
-                        0.0
-                    } else {
-                        ((-1_i32).pow(p.unsigned_abs()) * factorial(radius).pow(2)) as f64
-                            / (p * factorial(radius - p) * factorial(radius + p)) as f64
-                    }
-                })
+                .map(|p| (p != 0)
+                    .then(||nonzero_coef(-p, radius))
+                    .unwrap_or_default()
+                )
                 .collect(),
             diff: RealArray::new([Real::default(); 2]),
         }
@@ -183,5 +184,50 @@ mod tests {
         assert_approx_eq!(output[9].1, 16.040476190476205);
         assert_eq!(output[18].0, 22.0);
         assert_approx_eq!(output[18].1, -9.2);
+    }
+
+    #[test]
+    fn factorial_accuracy() {
+        assert_eq!(factorial(0), 1);
+        assert_eq!(factorial(1), 1);
+        assert_eq!(factorial(2), 2);
+        assert_eq!(factorial(3), 6);
+        assert_eq!(factorial(4), 24);
+    }
+
+    #[test]
+    fn derivative_accuracy() {
+        let size = 100;
+        let f = |x: Real|x.powi(3) + 3.0*x.powi(2);
+        let df_dx = |x: Real|3.0*x.powi(2) + 6.0*x;
+
+        let x = (0..size).map(|x|x as Real);
+        let y = x.clone().map(f);
+        let dy_dx = x.map(df_dx);
+
+        let radius = 6;
+        for r in 2..radius {
+            let dy_dx_exact = dy_dx.clone()
+                .enumerate()
+                .take(size - r)
+                .skip(r)
+                .collect::<Vec<_>>();
+
+            let window_fn = NumericalDerivative::new(r as i32);
+            let dy_dx_approx = y.clone()
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| (i as Real, v as Real))
+                .window(window_fn)
+                .map(|x| (x.0, x.1[1]))
+                .collect::<Vec<_>>();
+
+            assert_eq!(dy_dx_exact.len(), dy_dx_approx.len());
+            for (a,b) in dy_dx_exact.into_iter().zip(dy_dx_approx.into_iter()) {
+                //println!("{}, {}", a.0, b.0);
+                assert_eq!(a.0 as i32, b.0 as i32);
+                assert_approx_eq!(a.1,b.1);
+            }
+        }
     }
 }
