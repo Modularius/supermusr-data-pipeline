@@ -6,33 +6,34 @@ pub(crate) struct NumericalDerivative {
     coefficients: Vec<Real>,
     values: VecDeque<Real>,
     diff: RealArray<2>,
+    midpoint: usize,
 }
 
-fn factorial(n: i32) -> i32 {
-    (1..=n).fold(1, i32::saturating_mul)
+fn prod(from: i32, to: i32) -> Real {
+    (from..=to).fold(1, i32::saturating_mul) as Real
 }
 
 fn nonzero_coef(p: i32, n: i32) -> Real {
-     ((-1_i32).pow(p.unsigned_abs() + 1) * factorial(n).pow(2)) as f64
-        / (p * factorial(n - p) * factorial(n + p)) as f64
+    // 1 2 3 4 ... (n - |p| - 1) (n - |p|) (n - |p| + 1) ... (n - 1) n (n + 1) ... (n + |p| - 1) (n + |p|)
+    (-1_f64).powi(p + 1)*
+    prod(n - (p.abs() - 1), n)
+    /(prod(n + 1, n + p.abs()) * p  as f64)
 }
 
 impl NumericalDerivative {
-    pub(crate) fn new(radius: i32) -> Self {
+    pub(crate) fn new(radius: usize) -> Self {
         NumericalDerivative {
-            values: VecDeque::<Real>::with_capacity(2 * radius as usize + 1),
-            coefficients: ((-radius)..=radius)
+            values: VecDeque::<Real>::with_capacity(2 * radius + 1),
+            coefficients: (-(radius as i32)..=radius as i32)
                 .map(|p| (p != 0)
-                    .then(||nonzero_coef(-p, radius))
+                    .then(||nonzero_coef(p, radius as i32))
                     .unwrap_or_default()
                 )
+                .rev() // We reverse the order of the coeffients due to how the temp values are stored.
                 .collect(),
             diff: RealArray::new([Real::default(); 2]),
+            midpoint: radius as usize
         }
-    }
-
-    fn midpoint(&self) -> usize {
-        self.values.len().div_ceil(2)
     }
 }
 
@@ -50,7 +51,7 @@ impl Window for NumericalDerivative {
             self.diff = RealArray::new([
                 *self
                     .values
-                    .get(self.midpoint())
+                    .get(self.midpoint)
                     .expect("Midpoint should exist, this should never fail"),
                 self.values
                     .iter()
@@ -68,7 +69,7 @@ impl Window for NumericalDerivative {
     }
 
     fn apply_time_shift(&self, time: Self::TimeType) -> Self::TimeType {
-        time - self.midpoint() as f64
+        time - self.midpoint as f64
     }
 }
 
@@ -77,6 +78,7 @@ mod tests {
     use super::*;
     use crate::pulse_detection::window::WindowFilter;
     use assert_approx_eq::assert_approx_eq;
+    use std::ops::Range;
     use supermusr_common::Intensity;
 
     fn b2bexp(
@@ -187,47 +189,87 @@ mod tests {
     }
 
     #[test]
-    fn factorial_accuracy() {
-        assert_eq!(factorial(0), 1);
-        assert_eq!(factorial(1), 1);
-        assert_eq!(factorial(2), 2);
-        assert_eq!(factorial(3), 6);
-        assert_eq!(factorial(4), 24);
+    fn findif_coef_accuracy() {
+        assert_approx_eq!(nonzero_coef(-1, 1), -0.5);
+        assert_approx_eq!(nonzero_coef(1, 1), 0.5);
+
+        assert_approx_eq!(nonzero_coef(-2, 2), 1.0/12.0);
+        assert_approx_eq!(nonzero_coef(-1, 2), -2.0/3.0);
+        assert_approx_eq!(nonzero_coef(1, 2), 2.0/3.0);
+        assert_approx_eq!(nonzero_coef(2, 2), -1.0/12.0);
+
+        assert_approx_eq!(nonzero_coef(-3, 3), -1.0/60.0);
+        assert_approx_eq!(nonzero_coef(-2, 3), 3.0/20.0);
+        assert_approx_eq!(nonzero_coef(-1, 3), -3.0/4.0);
+        assert_approx_eq!(nonzero_coef(1, 3), 3.0/4.0);
+        assert_approx_eq!(nonzero_coef(2, 3), -3.0/20.0);
+        assert_approx_eq!(nonzero_coef(3, 3), 1.0/60.0);
+
+        assert_approx_eq!(nonzero_coef(-4, 4), 1.0/280.0);
+        assert_approx_eq!(nonzero_coef(-3, 4), -4.0/105.0);
+        assert_approx_eq!(nonzero_coef(-2, 4), 1.0/5.0);
+        assert_approx_eq!(nonzero_coef(-1, 4), -4.0/5.0);
+        assert_approx_eq!(nonzero_coef(1, 4), 4.0/5.0);
+        assert_approx_eq!(nonzero_coef(2, 4), -1.0/5.0);
+        assert_approx_eq!(nonzero_coef(3, 4), 4.0/105.0);
+        assert_approx_eq!(nonzero_coef(4, 4), -1.0/280.0);
+    }
+
+    fn derivative_accuracy(size: usize, radius_bounds: Range<usize>, f: impl Fn(Real) -> Real, df_dx: impl Fn(Real) -> Real) {
+        let x = (0..size).map(|x|x as Real);
+        let y = x.clone().map(f).collect::<Vec<_>>();
+        let dy_dx = x.map(df_dx).collect::<Vec<_>>();
+
+        for radius in radius_bounds {
+            let dy_dx_exact = dy_dx.iter()
+                .enumerate()
+                .take(size - radius)
+                .skip(radius)
+                .collect::<Vec<_>>();
+
+            let window_fn = NumericalDerivative::new(radius);
+            let dy_dx_approx = y.iter()
+                .enumerate()
+                .map(|(i, v)| (i as Real, *v as Real))
+                .window(window_fn)
+                .map(|x| (x.0, (x.1[0], x.1[1])))
+                .collect::<Vec<_>>();
+
+            // Both should be of the same size now.
+            assert_eq!(dy_dx_exact.len(), dy_dx_approx.len());
+
+            let y_trunc = y.iter()
+                .take(size - radius)
+                .skip(radius)
+                .collect::<Vec<_>>();
+            
+            // Both should be of the same size now.
+            assert_eq!(y_trunc.len(), dy_dx_approx.len());
+            for (&y1, &(_, (y2, _))) in Iterator::zip(y_trunc.iter(),dy_dx_approx.iter()) {
+                // Check the y values agree.
+                assert_approx_eq!(y1, y2);
+            }
+
+            for ((i_exact, &d_exact), (i_approx, (_, d_approx))) in Iterator::zip(dy_dx_exact.into_iter(),dy_dx_approx.into_iter()) {
+                // Check the indices agree.
+                assert_eq!(i_exact as i32, i_approx as i32);
+                // The derivatives should be approximately equal to within 1e-6.
+                assert_approx_eq!(d_exact, d_approx);
+            }
+        }
     }
 
     #[test]
-    fn derivative_accuracy() {
-        let size = 100;
+    fn polynomial_derivative_accuracy() {
         let f = |x: Real|x.powi(3) + 3.0*x.powi(2);
         let df_dx = |x: Real|3.0*x.powi(2) + 6.0*x;
+        derivative_accuracy(120, 2..9, f, df_dx);
+    }
 
-        let x = (0..size).map(|x|x as Real);
-        let y = x.clone().map(f);
-        let dy_dx = x.map(df_dx);
-
-        let radius = 6;
-        for r in 2..radius {
-            let dy_dx_exact = dy_dx.clone()
-                .enumerate()
-                .take(size - r)
-                .skip(r)
-                .collect::<Vec<_>>();
-
-            let window_fn = NumericalDerivative::new(r as i32);
-            let dy_dx_approx = y.clone()
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| (i as Real, v as Real))
-                .window(window_fn)
-                .map(|x| (x.0, x.1[1]))
-                .collect::<Vec<_>>();
-
-            assert_eq!(dy_dx_exact.len(), dy_dx_approx.len());
-            for (a,b) in dy_dx_exact.into_iter().zip(dy_dx_approx.into_iter()) {
-                //println!("{}, {}", a.0, b.0);
-                assert_eq!(a.0 as i32, b.0 as i32);
-                assert_approx_eq!(a.1,b.1);
-            }
-        }
+    #[test]
+    fn sine_derivative_accuracy() {
+        let f = |x: Real|Real::sin(x/10.0);
+        let df_dx = |x: Real|Real::cos(x/10.0)/10.0;
+        derivative_accuracy(100, 2..9, f, df_dx);
     }
 }
