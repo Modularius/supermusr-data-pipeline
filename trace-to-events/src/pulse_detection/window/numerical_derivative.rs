@@ -15,9 +15,7 @@ fn prod(from: i32, to: i32) -> Real {
 
 fn nonzero_coef(p: i32, n: i32) -> Real {
     // 1 2 3 4 ... (n - |p| - 1) (n - |p|) (n - |p| + 1) ... (n - 1) n (n + 1) ... (n + |p| - 1) (n + |p|)
-    (-1_f64).powi(p + 1)*
-    prod(n - (p.abs() - 1), n)
-    /(prod(n + 1, n + p.abs()) * p  as f64)
+    (-1_f64).powi(p + 1) * prod(n - (p.abs() - 1), n) / (prod(n + 1, n + p.abs()) * p as f64)
 }
 
 impl NumericalDerivative {
@@ -25,14 +23,15 @@ impl NumericalDerivative {
         NumericalDerivative {
             values: VecDeque::<Real>::with_capacity(2 * radius + 1),
             coefficients: (-(radius as i32)..=radius as i32)
-                .map(|p| (p != 0)
-                    .then(||nonzero_coef(p, radius as i32))
-                    .unwrap_or_default()
-                )
+                .map(|p| {
+                    (p != 0)
+                        .then(|| nonzero_coef(p, radius as i32))
+                        .unwrap_or_default()
+                })
                 .rev() // We reverse the order of the coeffients due to how the temp values are stored.
                 .collect(),
             diff: RealArray::new([Real::default(); 2]),
-            midpoint: radius as usize
+            midpoint: radius as usize,
         }
     }
 }
@@ -78,32 +77,124 @@ mod tests {
     use super::*;
     use crate::pulse_detection::window::WindowFilter;
     use assert_approx_eq::assert_approx_eq;
-    use std::ops::Range;
-    use supermusr_common::Intensity;
+    use digital_muon_common::Intensity;
+    use std::{
+        f64::consts::{FRAC_1_SQRT_2, FRAC_2_SQRT_PI},
+        ops::Range,
+    };
 
-    fn b2bexp(
-        x: Real,
-        ampl: Real,
-        spread: Real,
-        x0: Real,
+    struct B2bexp {
+        normalising_factor: Real,
         rising: Real,
+        rising_spread: Real,
         falling: Real,
-    ) -> Intensity {
-        let normalising_factor = ampl * 0.5 * (rising * falling) / (rising + falling);
-        let rising_spread = rising * spread.powi(2);
-        let falling_spread = falling * spread.powi(2);
-        let x_shift = x - x0;
-        let rising_exp = Real::exp(rising * 0.5 * (rising_spread + 2.0 * x_shift));
-        let rising_erfc = libm::erfc((rising_spread + x_shift) / (Real::sqrt(2.0) * spread));
-        let falling_exp = Real::exp(falling * 0.5 * (falling_spread - 2.0 * x_shift));
-        let falling_erfc = libm::erfc((falling_spread - x_shift) / (Real::sqrt(2.0) * spread));
-        (normalising_factor * (rising_exp * rising_erfc + falling_exp * falling_erfc)) as Intensity
+        falling_spread: Real,
+        frac_1_sqrt_2_spread: Real,
+        x0: Real,
+    }
+
+    impl B2bexp {
+        fn new(ampl: Real, spread: Real, x0: Real, rising: Real, falling: Real) -> Self {
+            Self {
+                normalising_factor: ampl * 0.5 * (rising * falling) / (rising + falling),
+                rising,
+                rising_spread: rising * spread.powi(2),
+                falling,
+                falling_spread: falling * spread.powi(2),
+                frac_1_sqrt_2_spread: FRAC_1_SQRT_2 / spread,
+                x0,
+            }
+        }
+
+        fn value(&self, x: Real) -> Real {
+            let x_shift = x - self.x0;
+
+            let rising_exp = Real::exp(self.rising * (0.5 * self.rising_spread + x_shift));
+            let rising_erfc =
+                libm::erfc((self.rising_spread + x_shift) * self.frac_1_sqrt_2_spread);
+            let falling_exp = Real::exp(self.falling * (0.5 * self.falling_spread - x_shift));
+            let falling_erfc =
+                libm::erfc((self.falling_spread - x_shift) * self.frac_1_sqrt_2_spread);
+
+            self.normalising_factor * (rising_exp * rising_erfc + falling_exp * falling_erfc)
+        }
+
+        fn erfc_deriv(x: Real) -> Real {
+            -FRAC_2_SQRT_PI * Real::exp(-Real::powi(x, 2))
+        }
+
+        fn deriv(&self, x: Real) -> Real {
+            let x_shift = x - self.x0;
+
+            let rising_exp = Real::exp(self.rising * (0.5 * self.rising_spread + x_shift));
+            let rising_erfc =
+                libm::erfc((self.rising_spread + x_shift) * self.frac_1_sqrt_2_spread);
+            let falling_exp = Real::exp(self.falling * (0.5 * self.falling_spread - x_shift));
+            let falling_erfc =
+                libm::erfc((self.falling_spread - x_shift) * self.frac_1_sqrt_2_spread);
+
+            let rising_exp_deriv = self.rising * rising_exp;
+            let rising_erfc_deriv = self.frac_1_sqrt_2_spread
+                * Self::erfc_deriv((self.rising_spread + x_shift) * self.frac_1_sqrt_2_spread);
+            let falling_exp_deriv = -self.falling * falling_exp;
+            let falling_erfc_deriv = -self.frac_1_sqrt_2_spread
+                * Self::erfc_deriv((self.falling_spread - x_shift) * self.frac_1_sqrt_2_spread);
+
+            self.normalising_factor
+                * (rising_exp_deriv * rising_erfc
+                    + rising_exp * rising_erfc_deriv
+                    + falling_exp_deriv * falling_erfc
+                    + falling_exp * falling_erfc_deriv)
+        }
+    }
+
+    #[test]
+    fn b2bexp_deriv_test() {
+        let b2bexp = B2bexp::new(1000.0, 3.5, 15.0, 3.5, 2.25);
+
+        let num: i32 = 10000;
+        for r in 10..20 {
+            let left: Real = (0..(num * r))
+                .map(|x| b2bexp.deriv(x as Real / num as Real) / num as Real)
+                .sum();
+
+            let right = b2bexp.value(r as Real) - b2bexp.value(0.0);
+
+            assert_approx_eq!(left, right, 1e-3);
+        }
+    }
+
+    #[test]
+    fn radius() {
+        let b2bexp = B2bexp::new(1000.0, 3.5, 15.0, 3.5, 2.25);
+
+        for r in 1..4 {
+            let input = (0..30).map(|x| b2bexp.value(x as Real)).collect::<Vec<_>>();
+            let window_fn = NumericalDerivative::new(r);
+            let output = input
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| (i as Real, v as Real))
+                .window(window_fn)
+                .map(|x| x.1[1])
+                .collect::<Vec<_>>();
+
+            let deriv = (0..30)
+                .map(|x| b2bexp.deriv(x as Real))
+                .skip(r)
+                .collect::<Vec<_>>();
+
+            for (a, b) in deriv.into_iter().zip(output.iter()) {
+                assert_approx_eq!(a, b, 0.1_f64.powi(r as i32 - 1));
+            }
+        }
     }
 
     #[test]
     fn radius_1() {
+        let b2bexp = B2bexp::new(1000.0, 3.5, 15.0, 3.5, 2.25);
         let input = (0..30)
-            .map(|x| b2bexp(x as Real, 1000.0, 3.5, 15.0, 3.5, 2.25))
+            .map(|x| b2bexp.value(x as Real) as Intensity)
             .collect::<Vec<_>>();
         let window_fn = NumericalDerivative::new(1);
         let output = input
@@ -124,8 +215,9 @@ mod tests {
 
     #[test]
     fn radius_2() {
+        let b2bexp = B2bexp::new(1000.0, 3.5, 15.0, 3.5, 2.25);
         let input = (0..30)
-            .map(|x| b2bexp(x as Real, 1000.0, 3.5, 15.0, 3.5, 2.25))
+            .map(|x| b2bexp.value(x as Real) as Intensity)
             .collect::<Vec<_>>();
         let window_fn = NumericalDerivative::new(2);
         let output = input
@@ -146,8 +238,9 @@ mod tests {
 
     #[test]
     fn radius_3() {
+        let b2bexp = B2bexp::new(1000.0, 3.5, 15.0, 3.5, 2.25);
         let input = (0..30)
-            .map(|x| b2bexp(x as Real, 1000.0, 3.5, 15.0, 3.5, 2.25))
+            .map(|x| b2bexp.value(x as Real) as Intensity)
             .collect::<Vec<_>>();
         let window_fn = NumericalDerivative::new(3);
         let output = input
@@ -168,8 +261,9 @@ mod tests {
 
     #[test]
     fn radius_4() {
+        let b2bexp = B2bexp::new(1000.0, 3.5, 15.0, 3.5, 2.25);
         let input = (0..30)
-            .map(|x| b2bexp(x as Real, 1000.0, 3.5, 15.0, 3.5, 2.25))
+            .map(|x| b2bexp.value(x as Real) as Intensity)
             .collect::<Vec<_>>();
         let window_fn = NumericalDerivative::new(4);
         let output = input
@@ -193,42 +287,49 @@ mod tests {
         assert_approx_eq!(nonzero_coef(-1, 1), -0.5);
         assert_approx_eq!(nonzero_coef(1, 1), 0.5);
 
-        assert_approx_eq!(nonzero_coef(-2, 2), 1.0/12.0);
-        assert_approx_eq!(nonzero_coef(-1, 2), -2.0/3.0);
-        assert_approx_eq!(nonzero_coef(1, 2), 2.0/3.0);
-        assert_approx_eq!(nonzero_coef(2, 2), -1.0/12.0);
+        assert_approx_eq!(nonzero_coef(-2, 2), 1.0 / 12.0);
+        assert_approx_eq!(nonzero_coef(-1, 2), -2.0 / 3.0);
+        assert_approx_eq!(nonzero_coef(1, 2), 2.0 / 3.0);
+        assert_approx_eq!(nonzero_coef(2, 2), -1.0 / 12.0);
 
-        assert_approx_eq!(nonzero_coef(-3, 3), -1.0/60.0);
-        assert_approx_eq!(nonzero_coef(-2, 3), 3.0/20.0);
-        assert_approx_eq!(nonzero_coef(-1, 3), -3.0/4.0);
-        assert_approx_eq!(nonzero_coef(1, 3), 3.0/4.0);
-        assert_approx_eq!(nonzero_coef(2, 3), -3.0/20.0);
-        assert_approx_eq!(nonzero_coef(3, 3), 1.0/60.0);
+        assert_approx_eq!(nonzero_coef(-3, 3), -1.0 / 60.0);
+        assert_approx_eq!(nonzero_coef(-2, 3), 3.0 / 20.0);
+        assert_approx_eq!(nonzero_coef(-1, 3), -3.0 / 4.0);
+        assert_approx_eq!(nonzero_coef(1, 3), 3.0 / 4.0);
+        assert_approx_eq!(nonzero_coef(2, 3), -3.0 / 20.0);
+        assert_approx_eq!(nonzero_coef(3, 3), 1.0 / 60.0);
 
-        assert_approx_eq!(nonzero_coef(-4, 4), 1.0/280.0);
-        assert_approx_eq!(nonzero_coef(-3, 4), -4.0/105.0);
-        assert_approx_eq!(nonzero_coef(-2, 4), 1.0/5.0);
-        assert_approx_eq!(nonzero_coef(-1, 4), -4.0/5.0);
-        assert_approx_eq!(nonzero_coef(1, 4), 4.0/5.0);
-        assert_approx_eq!(nonzero_coef(2, 4), -1.0/5.0);
-        assert_approx_eq!(nonzero_coef(3, 4), 4.0/105.0);
-        assert_approx_eq!(nonzero_coef(4, 4), -1.0/280.0);
+        assert_approx_eq!(nonzero_coef(-4, 4), 1.0 / 280.0);
+        assert_approx_eq!(nonzero_coef(-3, 4), -4.0 / 105.0);
+        assert_approx_eq!(nonzero_coef(-2, 4), 1.0 / 5.0);
+        assert_approx_eq!(nonzero_coef(-1, 4), -4.0 / 5.0);
+        assert_approx_eq!(nonzero_coef(1, 4), 4.0 / 5.0);
+        assert_approx_eq!(nonzero_coef(2, 4), -1.0 / 5.0);
+        assert_approx_eq!(nonzero_coef(3, 4), 4.0 / 105.0);
+        assert_approx_eq!(nonzero_coef(4, 4), -1.0 / 280.0);
     }
 
-    fn derivative_accuracy(size: usize, radius_bounds: Range<usize>, f: impl Fn(Real) -> Real, df_dx: impl Fn(Real) -> Real) {
-        let x = (0..size).map(|x|x as Real);
+    fn derivative_accuracy(
+        size: usize,
+        radius_bounds: Range<usize>,
+        f: impl Fn(Real) -> Real,
+        df_dx: impl Fn(Real) -> Real,
+    ) {
+        let x = (0..size).map(|x| x as Real);
         let y = x.clone().map(f).collect::<Vec<_>>();
         let dy_dx = x.map(df_dx).collect::<Vec<_>>();
 
         for radius in radius_bounds {
-            let dy_dx_exact = dy_dx.iter()
+            let dy_dx_exact = dy_dx
+                .iter()
                 .enumerate()
                 .take(size - radius)
                 .skip(radius)
                 .collect::<Vec<_>>();
 
             let window_fn = NumericalDerivative::new(radius);
-            let dy_dx_approx = y.iter()
+            let dy_dx_approx = y
+                .iter()
                 .enumerate()
                 .map(|(i, v)| (i as Real, *v as Real))
                 .window(window_fn)
@@ -238,19 +339,22 @@ mod tests {
             // Both should be of the same size now.
             assert_eq!(dy_dx_exact.len(), dy_dx_approx.len());
 
-            let y_trunc = y.iter()
+            let y_trunc = y
+                .iter()
                 .take(size - radius)
                 .skip(radius)
                 .collect::<Vec<_>>();
-            
+
             // Both should be of the same size now.
             assert_eq!(y_trunc.len(), dy_dx_approx.len());
-            for (&y1, &(_, (y2, _))) in Iterator::zip(y_trunc.iter(),dy_dx_approx.iter()) {
+            for (&y1, &(_, (y2, _))) in Iterator::zip(y_trunc.iter(), dy_dx_approx.iter()) {
                 // Check the y values agree.
                 assert_approx_eq!(y1, y2);
             }
 
-            for ((i_exact, &d_exact), (i_approx, (_, d_approx))) in Iterator::zip(dy_dx_exact.into_iter(),dy_dx_approx.into_iter()) {
+            for ((i_exact, &d_exact), (i_approx, (_, d_approx))) in
+                Iterator::zip(dy_dx_exact.into_iter(), dy_dx_approx.into_iter())
+            {
                 // Check the indices agree.
                 assert_eq!(i_exact as i32, i_approx as i32);
                 // The derivatives should be approximately equal to within 1e-6.
@@ -261,15 +365,15 @@ mod tests {
 
     #[test]
     fn polynomial_derivative_accuracy() {
-        let f = |x: Real|x.powi(3) + 3.0*x.powi(2);
-        let df_dx = |x: Real|3.0*x.powi(2) + 6.0*x;
+        let f = |x: Real| x.powi(3) + 3.0 * x.powi(2);
+        let df_dx = |x: Real| 3.0 * x.powi(2) + 6.0 * x;
         derivative_accuracy(120, 2..9, f, df_dx);
     }
 
     #[test]
     fn sine_derivative_accuracy() {
-        let f = |x: Real|Real::sin(x/10.0);
-        let df_dx = |x: Real|Real::cos(x/10.0)/10.0;
+        let f = |x: Real| Real::sin(x / 10.0);
+        let df_dx = |x: Real| Real::cos(x / 10.0) / 10.0;
         derivative_accuracy(100, 2..9, f, df_dx);
     }
 }

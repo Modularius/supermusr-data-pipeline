@@ -6,8 +6,8 @@ pub(crate) mod smoothing_window;
 use super::{Real, RealArray, Stats, Temporal, TracePoint};
 pub(crate) use baseline::Baseline;
 pub(crate) use finite_differences::FiniteDifferences;
-pub(crate) use smoothing_window::SmoothingWindow;
 pub(crate) use numerical_derivative::NumericalDerivative;
+pub(crate) use smoothing_window::SmoothingWindow;
 
 pub(crate) trait Window: Clone {
     type TimeType: Temporal;
