@@ -24,14 +24,16 @@ impl NumericalDerivative {
             values: VecDeque::<Real>::with_capacity(2 * radius + 1),
             coefficients: (-(radius as i32)..=radius as i32)
                 .map(|p| {
-                    (p != 0)
-                        .then(|| nonzero_coef(p, radius as i32))
-                        .unwrap_or_default()
+                    if p != 0 {
+                        nonzero_coef(p, radius as i32)
+                    } else {
+                        Default::default()
+                    }
                 })
                 .rev() // We reverse the order of the coeffients due to how the temp values are stored.
                 .collect(),
             diff: RealArray::new([Real::default(); 2]),
-            midpoint: radius as usize,
+            midpoint: radius,
         }
     }
 }
