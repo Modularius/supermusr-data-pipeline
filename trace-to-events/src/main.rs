@@ -396,6 +396,7 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint
     }
 }
 
+#[instrument(skip_all)]
 async fn produce_eventlist_to_kafka(future: DeliveryFuture) {
     match future.await {
         Ok(_) => {
