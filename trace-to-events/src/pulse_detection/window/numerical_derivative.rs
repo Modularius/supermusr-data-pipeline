@@ -9,12 +9,20 @@ pub(crate) struct NumericalDerivative {
     midpoint: usize,
 }
 
+/// Calculates the product of the integer range provided by the bounds.
+/// 
+/// The range is bound-inclusive, and the multiplication is [i32::saturating_mul].
 fn prod(from: i32, to: i32) -> Real {
     (from..=to).fold(1, i32::saturating_mul) as Real
 }
 
+/// Calculates the coefficient of the `p`the coefficient, where `p != 0` in the explicit formula for degree `n` central finite difference approximation.
+/// 
+/// The formula has the form:
+/// ```text
+/// (-1)^(p + 1) (n!)^2 / [ p(n - p)!(n + p)! ].
+/// ```
 fn nonzero_coef(p: i32, n: i32) -> Real {
-    // 1 2 3 4 ... (n - |p| - 1) (n - |p|) (n - |p| + 1) ... (n - 1) n (n + 1) ... (n + |p| - 1) (n + |p|)
     (-1_f64).powi(p + 1) * prod(n - (p.abs() - 1), n) / (prod(n + 1, n + p.abs()) * p as f64)
 }
 
